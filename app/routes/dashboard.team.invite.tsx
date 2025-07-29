@@ -111,18 +111,7 @@ export const action: ActionFunction = async ({ request }) => {
     }
   }
 
-  await supabaseClient.auth.signInWithOtp({ email: email.toLowerCase() });
-  // // create invite link
-  // const { data: resetLink, error: resetError } =
-  //   await supabaseClient.auth.admin.generateLink({
-  //     type: "recovery",
-  //     email: email.toLowerCase(),
-  //     options: {
-  //       redirectTo: `${import.meta.env.VITE_URL}/invite`,
-  //     },
-  //   });
-
-  // console.log({ resetLink: resetLink?.properties?.action_link });
+  await supabaseClient.auth.admin.inviteUserByEmail(email.toLowerCase());
 
   return redirect("/dashboard/team");
 };
