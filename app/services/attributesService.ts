@@ -1,10 +1,13 @@
 import { Attribute } from "../types";
-import { supabase } from "../lib/supabase";
 import { convertKeysToCamelCase } from "../utils/helpers";
 
 export class AttributesService {
+  client;
+  constructor(client: any) {
+    this.client = client;
+  }
   async getAllAttributes(): Promise<Attribute[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("report_attributes")
       .select("*")
       .order("name");
@@ -14,7 +17,7 @@ export class AttributesService {
   }
 
   async getAttribueById(attributeId: string): Promise<Attribute> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("report_attributes")
       .select("*")
       .eq("id", attributeId)
@@ -27,7 +30,7 @@ export class AttributesService {
   async addNewAttribue(
     attributeData: Omit<Attribute, "id" | "createdAt">
   ): Promise<Attribute> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("report_attributes")
       .insert({
         name: attributeData.name,
@@ -45,7 +48,7 @@ export class AttributesService {
     attributeData: Omit<Attribute, "id" | "createdAt">,
     attributeId: string
   ): Promise<Attribute> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("report_attributes")
       .update(attributeData)
       .eq("id", attributeId)
@@ -56,6 +59,3 @@ export class AttributesService {
     return convertKeysToCamelCase(data) || null;
   }
 }
-
-// Export singleton instance
-export const attributesService = new AttributesService();

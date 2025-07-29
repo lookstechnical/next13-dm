@@ -1,10 +1,14 @@
+import { SupabaseClient } from "@supabase/supabase-js";
 import { PlayerReport, SkillRating } from "../types";
-import { supabase } from "../lib/supabase";
 import { convertKeysToCamelCase } from "../utils/helpers";
 
 export class ReportService {
+  client;
+  constructor(client: SupabaseClient) {
+    this.client = client;
+  }
   async getAllReports(): Promise<PlayerReport[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("player_reports")
       .select("*")
       .order("created_at", { ascending: false });
@@ -14,7 +18,7 @@ export class ReportService {
   }
 
   async getReportById(id: string): Promise<PlayerReport | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("player_reports")
       .select("*")
       .eq("id", id)
@@ -32,10 +36,10 @@ export class ReportService {
     scoutId?: string,
     isHeadScout?: boolean
   ): Promise<PlayerReport[]> {
-    let query = supabase
+    let query = this.client
       .from("player_reports")
       .select(
-        "*, report_scores(*,report_attributes(*)), matches(*), events(*), users(*)"
+        "*, report_scores(*,report_attributes(*)), matches(*), events(*), users(*), players(*)"
       )
       .eq("player_id", playerId);
 
@@ -59,7 +63,7 @@ export class ReportService {
   ): Promise<PlayerReport[]> {
     if (playerIds.length === 0) return [];
 
-    let query = supabase
+    let query = this.client
       .from("player_reports")
       .select("*")
       .in("player_id", playerIds);
@@ -82,7 +86,7 @@ export class ReportService {
     scoutId?: string,
     isHeadScout?: boolean
   ): Promise<PlayerReport[]> {
-    let query = supabase
+    let query = this.client
       .from("player_reports")
       .select("*")
       .eq("match_id", matchId);
@@ -105,7 +109,7 @@ export class ReportService {
     scoutId?: string,
     isHeadScout?: boolean
   ): Promise<PlayerReport[]> {
-    let query = supabase
+    let query = this.client
       .from("player_reports")
       .select(
         "*,report_scores(*,report_attributes(*)), matches(*), events(*), users(*)"
@@ -126,7 +130,7 @@ export class ReportService {
   }
 
   async getReportsByScout(scoutId: string): Promise<PlayerReport[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("player_reports")
       .select("*")
       .eq("scout_id", scoutId)
@@ -140,7 +144,7 @@ export class ReportService {
     reportData: Omit<PlayerReport, "id" | "scoutId" | "createdAt" | "eventId">,
     scoutId: string
   ): Promise<PlayerReport> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("player_reports")
       .insert({
         player_id: reportData.playerId,
@@ -171,7 +175,7 @@ export class ReportService {
     > & { eventId: string },
     scoutId: string
   ): Promise<PlayerReport> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("player_reports")
       .insert({
         player_id: reportData.playerId,
@@ -211,7 +215,7 @@ export class ReportService {
     }
     if (updates.notes !== undefined) updateData.notes = updates.notes;
 
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("player_reports")
       .update(updateData)
       .eq("id", id)
@@ -226,7 +230,7 @@ export class ReportService {
   }
 
   async deleteReport(id: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await this.client
       .from("player_reports")
       .delete()
       .eq("id", id);
@@ -240,7 +244,7 @@ export class ReportService {
     reportId: string,
     score: string
   ): Promise<any> {
-    const { error } = await supabase.from("report_scores").insert({
+    const { error } = await this.client.from("report_scores").insert({
       attribute_id: attributeId,
       report_id: reportId,
       score,
@@ -318,6 +322,3 @@ export class ReportService {
     };
   }
 }
-
-// Export singleton instance
-export const reportService = new ReportService();

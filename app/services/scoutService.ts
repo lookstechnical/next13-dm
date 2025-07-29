@@ -8,6 +8,17 @@ export class ScoutService {
     this.client = client;
   }
 
+  async getUserByEmail(email: string): Promise<User> {
+    const { data, error } = await this.client
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (error) throw error;
+    return convertKeysToCamelCase(data) || [];
+  }
+
   async updateTeamContext(id: string, team_id: string): Promise<User[]> {
     const { data, error } = await this.client
       .from("users")

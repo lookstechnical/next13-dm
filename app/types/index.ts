@@ -25,6 +25,7 @@ export interface Template {
   name: string;
   id: string;
   active?: boolean;
+  templateAttributes: TemplateAttribute[];
 }
 
 export interface TemplateAttribute {
@@ -72,6 +73,9 @@ export interface PlayerReport {
   notes: string;
   createdAt: string;
   templateId: string;
+  events?: Event;
+  matches?: Match;
+  reportScores: any[];
 }
 
 export interface Scout {
@@ -162,7 +166,7 @@ export interface PlayerGroup {
   teamId: string;
   name: string;
   description: string;
-  playerIds: string[];
+  playerIds?: string[];
   createdBy: string;
   createdAt: string;
   type: "selection" | "squad" | "program" | "other";

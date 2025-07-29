@@ -1,6 +1,16 @@
-import type { ActionFunction, MetaFunction } from "@remix-run/node";
-import { Form, Link, redirect, useNavigate } from "@remix-run/react";
-import { GroupForm } from "~/components/forms/form/group";
+import type {
+  ActionFunction,
+  LoaderFunction,
+  MetaFunction,
+} from "@remix-run/node";
+import {
+  Form,
+  Link,
+  redirect,
+  useLoaderData,
+  useNavigate,
+} from "@remix-run/react";
+import { AttributeForm } from "~/components/forms/form/attribute";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -11,8 +21,8 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import { getSupabaseServerClient } from "~/lib/supabase";
-import { GroupService } from "~/services/groupService";
-import { PlayerGroup } from "~/types";
+import { AttributesService } from "~/services/attributesService";
+import { Attribute } from "~/types";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -22,9 +32,20 @@ export const meta: MetaFunction = () => {
   ];
 };
 
+export const loader: LoaderFunction = async ({ request, params }) => {
+  const { supabaseClient } = getSupabaseServerClient(request);
+  const attributeService = new AttributesService(supabaseClient);
+
+  const attribute = params.id
+    ? await attributeService.getAttribueById(params.id)
+    : undefined;
+
+  return { attribute };
+};
+
 export const action: ActionFunction = async ({ request }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
-  const groupService = new GroupService(supabaseClient);
+  const attributeService = new AttributesService(supabaseClient);
 
   const { user: authUser } = await requireUser(supabaseClient);
   const user = await getAppUser(authUser.id, supabaseClient);
@@ -35,48 +56,45 @@ export const action: ActionFunction = async ({ request }) => {
 
   let formData = await request.formData();
   const name = formData.get("name") as string;
-  const type = formData.get("type") as PlayerGroup["type"];
   const description = formData.get("description") as string;
+  const id = formData.get("attributeId") as string;
 
-  const data: Omit<PlayerGroup, "id" | "createdAt"> = {
+  const data: Omit<Attribute, "id" | "createdAt"> = {
     name,
-    type,
     description,
-    teamId: user.current_team as string,
-    status: "active",
-    createdBy: user.id,
   };
 
-  await groupService.createGroup(data, user.id);
+  await attributeService.updateAtrribute(data, id);
 
-  return redirect("/dashboard/groups");
+  return redirect("/dashboard/attributes");
 };
 
-export default function PlayersCreate() {
+export default function AttributeCreate() {
   const navigate = useNavigate();
+  const { attribute } = useLoaderData<typeof loader>();
   return (
     <Sheet
       open
       onOpenChange={(open) => {
         if (!open) {
-          navigate("/dashboard/groups");
+          navigate("/dashboard/attributes");
         }
       }}
     >
       <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
         <SheetHeader className="">
-          <SheetTitle>Add Group</SheetTitle>
-          <SheetDescription>Add a player</SheetDescription>
+          <SheetTitle>Update Attribute</SheetTitle>
+          <SheetDescription>Update a Attribute</SheetDescription>
         </SheetHeader>
         <Form method="POST">
-          <GroupForm />
+          <AttributeForm attribute={attribute} />
 
           <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
             <Button asChild variant="link">
-              <Link to={`/dashboard/groups`}>Cancel</Link>
+              <Link to={`/dashboard/attributes`}>Cancel</Link>
             </Button>
             <Button className="text-white" variant="outline" type="submit">
-              Add Group
+              Update Attribute
             </Button>
           </SheetFooter>
         </Form>

@@ -23,13 +23,13 @@ export const ListingHeader: React.FC<ListingHeader> = ({
           {title}
         </h1>
         <div className="md:w-2/3 flex flex-row gap-2 items-center text-muted ">
-          <Input
+          {/* <Input
             title="search"
             placeholder={searchPlaceholder}
             name="searchTerm"
             className="md:text-lg w-full hidden md:flex"
           />
-          <FilterXIcon />
+          <FilterXIcon /> */}
         </div>
       </div>
       <div className="flex space-x-2">{renderActions && renderActions()}</div>

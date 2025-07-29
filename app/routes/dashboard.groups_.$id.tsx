@@ -58,11 +58,17 @@ export const action: ActionFunction = async ({ request }) => {
   let formData = await request.formData();
   const groupId = formData.get("groupId");
   const playerId = formData.get("playerId");
+  const action = formData.get("action");
 
-  if (playerId && groupId) {
-    await groupsService.removePlayersFromGroup(groupId as string, [
-      playerId as string,
-    ]);
+  if (action === "delete-group") {
+    await groupsService.deleteGroup(groupId as string);
+    return redirect("/dashboard/groups");
+  } else {
+    if (playerId && groupId) {
+      await groupsService.removePlayersFromGroup(groupId as string, [
+        playerId as string,
+      ]);
+    }
   }
 
   return { message: "Successfully removed" };
@@ -107,6 +113,18 @@ export default function PlayerPage() {
                     )}
                     teamName={group.name}
                   />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="p-0">
+                  <Form method="delete" className="w-full">
+                    <input type="hidden" name="groupId" value={group.id} />
+                    <input type="hidden" name="action" value="delete-group" />
+                    <Button
+                      variant="outline"
+                      className="w-full hover:bg-primary"
+                    >
+                      Delete Group
+                    </Button>
+                  </Form>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

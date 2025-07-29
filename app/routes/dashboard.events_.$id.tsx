@@ -90,8 +90,6 @@ export default function PlayerPage() {
   const { event, players } = useLoaderData<typeof loader>();
   const [status, setStatus] = useState<string>();
 
-  console.log({ status });
-
   const getVariant = (player: EventRegistration) => {
     switch (player.status) {
       case "attended":
@@ -169,29 +167,45 @@ export default function PlayerPage() {
             ]}
           />
           <div className="w-1/5 text-foreground flex flex-row gap-2 items-center justify-start">
-            <User2 /> {filteredPlayers.length} players
+            <User2 /> {filteredPlayers.length}{" "}
+            <span className="hidden md:inline-block">players</span>
           </div>
         </div>
         <div className="container mx-auto px-4">
           <CardGrid items={filteredPlayers} name="Players">
             {filteredPlayers.map((player: EventRegistration) => (
               <PlayerCard player={player.players}>
-                <Form method="POST">
-                  <input
-                    type="hidden"
-                    name="playerId"
-                    value={player.players.id}
-                  />
-                  <input type="hidden" name="eventId" value={player.eventId} />
+                <div className="flex flex-row w-full ">
+                  <Form method="POST" className="flex-1 w-full">
+                    <input
+                      type="hidden"
+                      name="playerId"
+                      value={player.players.id}
+                    />
+                    <input
+                      type="hidden"
+                      name="eventId"
+                      value={player.eventId}
+                    />
 
-                  <Button
-                    type="submit"
-                    variant={getVariant(player)}
-                    className={cn("w-full text-white uppercase border-muted")}
-                  >
-                    {player.status}
+                    <Button
+                      type="submit"
+                      variant={getVariant(player)}
+                      className={cn(
+                        "w-full flex-1 text-white uppercase border-muted"
+                      )}
+                    >
+                      {player.status}
+                    </Button>
+                  </Form>
+                  <Button className="w-full flex-1" variant="ghost">
+                    <Link
+                      to={`/dashboard/events/${event.id}/report/${player.playerId}`}
+                    >
+                      Add Report
+                    </Link>
                   </Button>
-                </Form>
+                </div>
               </PlayerCard>
             ))}
           </CardGrid>

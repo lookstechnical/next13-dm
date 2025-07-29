@@ -5,13 +5,14 @@ import type {
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { DeleteIcon, Edit2Icon, User } from "lucide-react";
+import { ReportCard } from "~/components/reports/report-card";
 import { Button } from "~/components/ui/button copy";
-// import RadarAttributes from "~/components/charts/radar";
-import { Card } from "~/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
 import { PlayerService } from "~/services/playerService";
+import { ReportService } from "~/services/reportService";
+import { PlayerReport } from "~/types";
 import {
   calculateAgeGroup,
   calculateRelativeAgeQuartile,
@@ -25,8 +26,11 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   // const;
   const { supabaseClient } = getSupabaseServerClient(request);
   const playerService = new PlayerService(supabaseClient);
+  const reportService = new ReportService(supabaseClient);
+
   const player = await playerService.getPlayerById(params.id as string);
-  return { player };
+  const reports = await reportService.getReportsByPlayer(params.id as string);
+  return { player, reports };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -44,7 +48,7 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function PlayerPage() {
-  const { player } = useLoaderData<typeof loader>();
+  const { player, reports } = useLoaderData<typeof loader>();
 
   return (
     <>
@@ -116,9 +120,9 @@ export default function PlayerPage() {
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
           <TabsContent value="reports">
-            <Card className="p-4">
-              <h1>asdasd</h1>
-            </Card>
+            {reports.map((report: PlayerReport) => (
+              <ReportCard report={report} />
+            ))}
           </TabsContent>
         </Tabs>
         <Outlet />

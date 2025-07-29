@@ -61,9 +61,12 @@ export const UserMenu: React.FC<UserMenu> = ({ user }) => {
             </Form>
           ))}
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuLabel>Account</DropdownMenuLabel>
+
         <DropdownMenuGroup>
           <DropdownMenuItem>Profile</DropdownMenuItem>
+          <DropdownMenuItem>Logout</DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

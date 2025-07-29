@@ -7,14 +7,16 @@ import {
 } from "../ui/dropdown-menu";
 import { PropsWithChildren } from "react";
 
-type MoreActions = PropsWithChildren<{}>;
+type MoreActions = PropsWithChildren<{
+  title?: string;
+}>;
 
-export const MoreActions: React.FC<MoreActions> = ({ children }) => {
+export const MoreActions: React.FC<MoreActions> = ({ children, title }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex flex-row">
         <Button variant="outline" className="border-muted text-foreground">
-          Actions
+          {title}
           <MoreVertical />
         </Button>
       </DropdownMenuTrigger>

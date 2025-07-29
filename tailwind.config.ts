@@ -19,6 +19,7 @@ const config: Config = {
         accent: "#3B82F6",
         popover: "#1A1D2D",
         foreground: "#F8FAFC",
+        success: "#2CFF05",
       },
       borderColor: {
         card: "#000000",

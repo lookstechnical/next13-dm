@@ -1,0 +1,150 @@
+import type { LoaderFunction, MetaFunction } from "@remix-run/node";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  redirect,
+  useLoaderData,
+} from "@remix-run/react";
+import { UserPlus, Users2Icon } from "lucide-react";
+import { ListingHeader } from "~/components/layout/listing-header";
+import { MoreActions } from "~/components/layout/more-actions";
+import { DataTable } from "~/components/table/data-table";
+import { Badge, BadgeProps } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card } from "~/components/ui/card";
+import { CardGrid } from "~/components/ui/card-grid";
+import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
+import { getSupabaseServerClient } from "~/lib/supabase";
+import { AttributesService } from "~/services/attributesService";
+import { ScoutService } from "~/services/scoutService";
+import { TeamService } from "~/services/teamService";
+import { Scout, Team, User } from "~/types";
+import { getAppUser, requireUser } from "~/utils/require-user";
+
+export const meta: MetaFunction = () => {
+  return [{ title: "Players" }, { name: "description", content: "Player" }];
+};
+
+export const loader: LoaderFunction = async ({ request }) => {
+  // const;
+  const { supabaseClient } = getSupabaseServerClient(request);
+  const authUser = await requireUser(supabaseClient);
+  const user = await getAppUser(authUser.user.id, supabaseClient);
+  if (!user) {
+    return redirect("/");
+  }
+  const teamService = new TeamService(supabaseClient);
+  const teams = await teamService.getAllTeams();
+  const usersService = new ScoutService(supabaseClient);
+  const users = await usersService.getAllScouts();
+
+  return { teams, users, user };
+};
+
+const roleToVariant = (role: Scout["role"]): BadgeProps["variant"] => {
+  switch (role) {
+    case "ADMIN":
+      return "default";
+    case "COACH":
+      return "secondary";
+    case "HEAD_OF_DEPARTMENT":
+      return "destructive";
+    case "SCOUT":
+      return "outline";
+  }
+};
+
+export default function Team() {
+  const { users, teams, user } = useLoaderData<typeof loader>();
+
+  return (
+    <div className="flex flex-column space-y-10 container px-4 mx-auto py-10 text-foreground">
+      <div className="w-full">
+        <ListingHeader
+          title={`Team`}
+          searchPlaceholder="Search Attribue Name"
+          renderActions={() => (
+            <MoreActions>
+              <DropdownMenuItem asChild>
+                <Button asChild variant={"outline"}>
+                  <Link to="/dashboard/team/create">
+                    <Users2Icon />
+                    Add Team
+                  </Link>
+                </Button>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Button asChild variant={"outline"}>
+                  <Link to="/dashboard/team/invite">
+                    <UserPlus />
+                    Invite Member
+                  </Link>
+                </Button>
+              </DropdownMenuItem>
+            </MoreActions>
+          )}
+        />
+
+        <CardGrid items={[{}]} name="You have 0 teams">
+          {teams.map((team: Team) => (
+            <Card className="rounded-lg shadow-sm border border-gray-100 p-4 text-foreground">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">{team.name}</h3>
+                <Badge
+                  variant="secondary"
+                  className="px-2 py-1 rounded-full text-xs font-medium uppercase"
+                >
+                  {team.type}
+                </Badge>
+              </div>
+              <p className="text-sm mb-2 text-muted ">{team.description}</p>
+            </Card>
+          ))}
+        </CardGrid>
+
+        <h2 className="text-2xl mb-2 text-bold bold">Users</h2>
+        <DataTable
+          columns={[
+            {
+              key: "name",
+              header: "Name",
+              render: (val, row: User) => (
+                <div>
+                  <div></div>
+                  <div>
+                    <p className="text-bold bold">{row.name}</p>
+                    <p className="text-muted">{row.email}</p>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "role",
+              header: "Role",
+              render: (val, row) => (
+                <Badge variant={roleToVariant(val)}>{val}</Badge>
+              ),
+            },
+            {
+              key: "actions",
+              header: "",
+              className: "w-4",
+              render: (_val, row) => (
+                <MoreActions>
+                  <DropdownMenuItem asChild>
+                    <NavLink to={`/dashboard/attributes/${row.id}`}>
+                      Edit
+                    </NavLink>
+                  </DropdownMenuItem>
+                </MoreActions>
+              ),
+            },
+          ]}
+          data={users}
+        />
+        <Outlet />
+      </div>
+    </div>
+  );
+}
