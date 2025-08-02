@@ -12,6 +12,7 @@ import {
 } from "@remix-run/react";
 import { useState } from "react";
 import { PlayerCard } from "~/components/players/player-card";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import {
@@ -123,12 +124,9 @@ export default function AddPlayersToGroup() {
             ))}
           </CardGrid>
         </div>
-        <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
+        <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2 bg-card">
           <Button asChild variant="link">
             <Link to={`/dashboard/groups/${group.id}`}>Cancel</Link>
-          </Button>
-          <Button className="text-white" variant="outline" type="submit">
-            Add Players to Group
           </Button>
         </SheetFooter>
       </SheetContent>

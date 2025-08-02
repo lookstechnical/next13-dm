@@ -11,8 +11,8 @@ export const Header: React.FC<Header> = ({ user }) => {
     <header className="min-h-[80px] flex flex-row items-center">
       <div className="flex flex-row items-center container px-4 mx-auto  justify-between">
         <img src="/logo.png" width={30} height={30} />
-        <Menu />
-        <div>
+        <Menu user={user} />
+        <div className="hidden lg:block">
           <UserMenu user={user} />
           {user.role === "ADMIN" && <AccountMenu />}
         </div>

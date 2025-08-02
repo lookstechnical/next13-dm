@@ -11,6 +11,7 @@ import {
   useNavigate,
 } from "@remix-run/react";
 import { PlayerForm } from "~/components/forms/player";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -108,9 +109,7 @@ export default function PlayersCreate() {
             <Button asChild variant="link">
               <Link to={`/dashboard/players/${player.id}`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="default" type="submit">
-              Update Player
-            </Button>
+            <ActionButton title="Update player" />
           </SheetFooter>
         </Form>
       </SheetContent>

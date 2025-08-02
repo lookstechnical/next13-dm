@@ -65,8 +65,11 @@ export const UserMenu: React.FC<UserMenu> = ({ user }) => {
         <DropdownMenuLabel>Account</DropdownMenuLabel>
 
         <DropdownMenuGroup>
-          <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem>Logout</DropdownMenuItem>
+          <DropdownMenuItem>
+            <Form className="w-full" method="post" action="/logout">
+              <button className="w-full text-left">Logout</button>
+            </Form>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

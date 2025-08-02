@@ -1,6 +1,7 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { Form, Link, redirect, useNavigate } from "@remix-run/react";
 import { GroupForm } from "~/components/forms/form/group";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -75,9 +76,8 @@ export default function PlayersCreate() {
             <Button asChild variant="link">
               <Link to={`/dashboard/groups`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Add Group
-            </Button>
+
+            <ActionButton title="Add Group" />
           </SheetFooter>
         </Form>
       </SheetContent>

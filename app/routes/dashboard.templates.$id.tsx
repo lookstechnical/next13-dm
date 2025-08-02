@@ -11,6 +11,7 @@ import {
   useNavigate,
 } from "@remix-run/react";
 import { TemplateForm } from "~/components/forms/form/template";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -108,9 +109,8 @@ export default function AttributeCreate() {
             <Button asChild variant="link">
               <Link to={`/dashboard/templates`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Add Attribute
-            </Button>
+
+            <ActionButton title="Add Attribute" />
           </SheetFooter>
         </Form>
       </SheetContent>

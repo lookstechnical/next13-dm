@@ -20,7 +20,7 @@ import { ClubService } from "~/services/clubService";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
-  return [{ title: "Players" }, { name: "description", content: "Player" }];
+  return [{ title: "Clubs" }, { name: "description", content: "Clubs" }];
 };
 
 export const loader: LoaderFunction = async ({ request }) => {

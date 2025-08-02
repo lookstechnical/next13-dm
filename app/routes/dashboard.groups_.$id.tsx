@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
 import { PlayerCard } from "~/components/players/player-card";
+import ActionButton from "~/components/ui/action-button";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
 // import RadarAttributes from "~/components/charts/radar";
@@ -147,13 +148,10 @@ export default function PlayerPage() {
                   />
                   <input type="hidden" name="groupId" value={group.id} />
 
-                  <Button
-                    type="submit"
-                    variant="outline"
+                  <ActionButton
                     className={cn("w-full text-white uppercase border-muted")}
-                  >
-                    Remove
-                  </Button>
+                    title="Remove"
+                  />
                 </Form>
               </PlayerCard>
             ))}

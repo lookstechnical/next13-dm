@@ -176,7 +176,7 @@ export default function PlayerPage() {
             {filteredPlayers.map((player: EventRegistration) => (
               <PlayerCard player={player.players}>
                 <div className="flex flex-row w-full ">
-                  <Form method="POST" className="flex-1 w-full">
+                  <Form method="POST" className="w-full">
                     <input
                       type="hidden"
                       name="playerId"
@@ -198,7 +198,7 @@ export default function PlayerPage() {
                       {player.status}
                     </Button>
                   </Form>
-                  <Button className="w-full flex-1" variant="ghost">
+                  <Button className="w-full border-muted" variant="outline">
                     <Link
                       to={`/dashboard/events/${event.id}/report/${player.playerId}`}
                     >

@@ -1,14 +1,27 @@
 import { Link } from "@remix-run/react";
-import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from "../ui/sheet";
 import { MenuIcon } from "lucide-react";
 import { PropsWithChildren } from "react";
+import { User } from "~/types";
 
-type MenuLink = PropsWithChildren<{ to: string }>;
+type MenuLink = PropsWithChildren<{ to: string; close?: boolean }>;
 
-const MenuLink: React.FC<MenuLink> = ({ children, to }) => {
+const MenuLink: React.FC<MenuLink> = ({ children, to, close }) => {
+  if (close) {
+    return (
+      <SheetClose asChild>
+        <Link
+          className="lg:items-center w-full lg:w-fit flex items-end px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
+          to={to}
+        >
+          {children}
+        </Link>
+      </SheetClose>
+    );
+  }
   return (
     <Link
-      className="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
+      className="lg:items-center w-full lg:w-fit flex items-end px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
       to={to}
     >
       {children}
@@ -16,21 +29,50 @@ const MenuLink: React.FC<MenuLink> = ({ children, to }) => {
   );
 };
 
-const MenuItems = () => {
+const MenuItems = ({ close }: { close?: boolean }) => {
   return (
-    <nav className="flex flex-col lg:flex-row lg:flex space-x-6 px-5">
-      <MenuLink to="/dashboard">Dashboard</MenuLink>
+    <nav className="flex flex-col lg:flex-row lg:flex  w-full lg:w-fit">
+      <MenuLink close={close} to="/dashboard">
+        Dashboard
+      </MenuLink>
       {/* <MenuLink to="/dashboard/matches">Matches</MenuLink> */}
-      <MenuLink to="/dashboard/players">Players</MenuLink>
-      <MenuLink to="/dashboard/events">Events</MenuLink>
-      <MenuLink to="/dashboard/groups" data-discover="true">
+      <MenuLink close={close} to="/dashboard/players">
+        Players
+      </MenuLink>
+      <MenuLink close={close} to="/dashboard/events">
+        Events
+      </MenuLink>
+      <MenuLink close={close} to="/dashboard/groups" data-discover="true">
         Groups
       </MenuLink>
     </nav>
   );
 };
 
-export const Menu: React.FC<{ className?: string }> = ({ className }) => {
+const AccountMenuItems = ({ close }: { close?: boolean }) => {
+  return (
+    <nav className="flex flex-col lg:flex-row lg:flex   w-full lg:w-fit">
+      <h2 className="text-xl text-foreground">Admin</h2>
+      <MenuLink close={close} to="/dashboard/team">
+        Team
+      </MenuLink>
+      <MenuLink close={close} to="/dashboard/clubs">
+        Clubs
+      </MenuLink>
+      <MenuLink close={close} to="/dashboard/attributes">
+        Attributes
+      </MenuLink>
+      <MenuLink close={close} to="/dashboard/templates">
+        Templates
+      </MenuLink>
+    </nav>
+  );
+};
+
+export const Menu: React.FC<{ className?: string; user?: User }> = ({
+  className,
+  user,
+}) => {
   return (
     <div className={className}>
       <div className="hidden lg:block">
@@ -42,7 +84,12 @@ export const Menu: React.FC<{ className?: string }> = ({ className }) => {
             <MenuIcon />
           </SheetTrigger>
           <SheetContent>
-            <MenuItems />
+            <MenuItems close={true} />
+
+            <div className="lg:hidden bt-1 border-muted fixed bottom-0">
+              {/* {user && <UserMenu user={user} />} */}
+              {user && user.role === "ADMIN" && <AccountMenuItems />}
+            </div>
           </SheetContent>
         </Sheet>
       </div>

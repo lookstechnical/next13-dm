@@ -11,6 +11,7 @@ import {
   useNavigate,
 } from "@remix-run/react";
 import { InviteUserForm } from "~/components/forms/form/invite-user";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -139,9 +140,8 @@ export default function InviteUser() {
             <Button asChild variant="link">
               <Link to={`/dashboard/team`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Invite User
-            </Button>
+
+            <ActionButton title="Invite User" />
           </SheetFooter>
         </Form>
       </SheetContent>

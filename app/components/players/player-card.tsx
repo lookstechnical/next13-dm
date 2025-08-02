@@ -98,9 +98,11 @@ export const PlayerCard: React.FC<PlayerCard> = ({
     >
       {link && <Link to={link}>{renderContent()}</Link>}
       {!link && renderContent()}
-      <div className="mt-10 text-foreground">
-        <div className="absolute bottom-0 mt-10 w-full">{children}</div>
-      </div>
+      {children && (
+        <div className="mt-10 text-foreground">
+          <div className="absolute bottom-0 mt-10 w-full">{children}</div>
+        </div>
+      )}
       {onSelect && (
         <div className="flex flex-row justify-end p-4 absolute bottom-0 mt-10 w-full">
           <div

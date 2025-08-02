@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 import { GroupCard } from "~/components/groups/group-card";
 import { PlayerCard } from "~/components/players/player-card";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import {
@@ -210,9 +211,8 @@ export default function AddPlayersToGroup() {
               value={JSON.stringify(selectedGroups)}
             />
             <input type="hidden" name="eventId" value={event.id} />
-            <Button className="text-white" variant="outline" type="submit">
-              Add players to Event
-            </Button>
+
+            <ActionButton title="Add players to Event" />
           </Form>
         </SheetFooter>
       </SheetContent>

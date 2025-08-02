@@ -5,6 +5,7 @@ import type {
 } from "@remix-run/node";
 import { Form, redirect, useActionData, useNavigate } from "@remix-run/react";
 import { useEffect } from "react";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -87,7 +88,7 @@ export default function Index() {
                   />
                 </div>
                 <div className="flex justify-end flex-row w-full">
-                  <Button>Login</Button>
+                  <ActionButton title="Login" loading={false} />
                 </div>
               </div>
             </Form>

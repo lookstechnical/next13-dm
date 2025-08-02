@@ -1,6 +1,7 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { Form, Link, redirect, useNavigate } from "@remix-run/react";
 import { AttributeForm } from "~/components/forms/form/attribute";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -71,9 +72,8 @@ export default function AttributeCreate() {
             <Button asChild variant="link">
               <Link to={`/dashboard/attributes`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Add Attribute
-            </Button>
+
+            <ActionButton title="Add Attribute" />
           </SheetFooter>
         </Form>
       </SheetContent>

@@ -1,6 +1,7 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { Form, Link, redirect, useNavigate } from "@remix-run/react";
 import { ClubForm } from "~/components/forms/form/club";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -73,9 +74,7 @@ export default function TeamCreate() {
             <Button asChild variant="link">
               <Link to={`/dashboard/clubs`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Add Club
-            </Button>
+            <ActionButton title="Add Club" />
           </SheetFooter>
         </Form>
       </SheetContent>

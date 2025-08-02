@@ -11,6 +11,7 @@ import {
   useNavigate,
 } from "@remix-run/react";
 import { ReportForm } from "~/components/forms/form/report";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -130,9 +131,8 @@ export default function PlayerEventReport() {
             <Button asChild variant="link">
               <Link to={`/dashboard/events/${event.id}`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Add Report
-            </Button>
+
+            <ActionButton title="Add Report" />
           </SheetFooter>
         </Form>
       </SheetContent>
