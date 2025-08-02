@@ -27,6 +27,7 @@ export const loader: LoaderFunction = async ({ request }) => {
   }
   const playerService = new EventService(supabaseClient);
   const events = (await playerService.getEventsByTeam(user.team.id)) || [];
+
   return { events, user };
 };
 

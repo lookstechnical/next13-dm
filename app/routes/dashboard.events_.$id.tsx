@@ -31,13 +31,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
 import { EventService } from "~/services/eventService";
-import { PlayerService } from "~/services/playerService";
+import { GroupService } from "~/services/groupService";
 import { EventRegistration } from "~/types";
-import {
-  calculateAgeGroup,
-  calculateRelativeAgeQuartile,
-  formatDate,
-} from "~/utils/helpers";
+import { formatDate } from "~/utils/helpers";
+import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
@@ -46,11 +43,22 @@ export const meta: MetaFunction = () => {
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
   const eventService = new EventService(supabaseClient);
+
+  const { user: authUser } = await requireUser(supabaseClient);
+  const user = await getAppUser(authUser.id, supabaseClient);
+
+  if (!user) {
+    return redirect("/");
+  }
+
   const event = await eventService.getEventById(params.id as string);
   const players = event
     ? await eventService.getEventRegistrations(event.id as string)
     : [];
-  return { event, players };
+
+  const groupService = new GroupService(supabaseClient);
+  const groups = (await groupService.getGroupsByTeam(user.team.id)) || [];
+  return { event, players, groups };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -87,8 +95,9 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function PlayerPage() {
-  const { event, players } = useLoaderData<typeof loader>();
+  const { event, players, groups } = useLoaderData<typeof loader>();
   const [status, setStatus] = useState<string>();
+  const [group, setGroup] = useState<string>();
 
   const getVariant = (player: EventRegistration) => {
     switch (player.status) {
@@ -101,8 +110,16 @@ export default function PlayerPage() {
     }
   };
 
-  const filteredPlayers = status
+  let filteredPlayers = status
     ? players.filter((p) => p.status === status)
+    : players;
+
+  console.log({ group, filteredPlayers });
+
+  filteredPlayers = group
+    ? filteredPlayers.filter((p) =>
+        p.players.playerGroupMembers?.map((gm) => gm.groupId).includes(group)
+      )
     : players;
 
   return (
@@ -156,15 +173,21 @@ export default function PlayerPage() {
         <div className="container mx-auto px-4 flex flex-row items-end  gap-2">
           <SelectField
             name="status"
-            label="Status"
+            label="Attendance"
             onValueChange={(status) =>
-              setStatus(status === "none" ? undefined : status)
+              setStatus(status === "all" ? undefined : status)
             }
             options={[
-              { id: "none", name: "None" },
+              { id: "all", name: "all" },
               { id: "attended", name: "Attended" },
               { id: "confirmed", name: "Confirmed" },
             ]}
+          />
+          <SelectField
+            name="group"
+            label="Group"
+            onValueChange={(group) => setGroup(group)}
+            options={groups.map((g) => ({ id: g.id, name: g.name }))}
           />
           <div className="w-1/5 text-foreground flex flex-row gap-2 items-center justify-start">
             <User2 /> {filteredPlayers.length}{" "}
