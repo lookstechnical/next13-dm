@@ -114,8 +114,6 @@ export default function PlayerPage() {
     ? players.filter((p) => p.status === status)
     : players;
 
-  console.log({ group, filteredPlayers });
-
   filteredPlayers = group
     ? filteredPlayers.filter((p) =>
         p.players.playerGroupMembers?.map((gm) => gm.groupId).includes(group)

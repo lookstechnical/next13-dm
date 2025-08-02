@@ -8,7 +8,6 @@ export const loader = () => {
 };
 
 export const action: ActionFunction = async ({ request }) => {
-  console.log("switch teams acction called");
   const { supabaseClient } = getSupabaseServerClient(request);
 
   const user = await requireUser(supabaseClient);

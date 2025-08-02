@@ -71,8 +71,6 @@ export const action: ActionFunction = async ({ request }) => {
     templateId: templateId,
   };
 
-  console.log({ data });
-
   await eventsService.createEvent(data, user.id);
 
   return redirect("/dashboard/events");

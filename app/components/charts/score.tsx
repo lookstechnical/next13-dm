@@ -23,8 +23,6 @@ export const Score: React.FC<Score> = ({ score, attribute }) => {
 
   const left = 10 - score;
 
-  console.log({ left, score });
-
   return (
     <Doughnut
       className="w-6 h-6"

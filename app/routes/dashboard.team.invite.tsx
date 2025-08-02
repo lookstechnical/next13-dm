@@ -95,8 +95,6 @@ export const action: ActionFunction = async ({ request }) => {
         },
       });
 
-    console.log({ regAuthUser });
-
     if (!appUser && regAuthUser) {
       // create an app user
       appUser = await userService.addScout({

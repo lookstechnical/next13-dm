@@ -46,7 +46,6 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     ? await eventService.getEventById(params.id)
     : undefined;
 
-  console.log(params);
   const player = params.playerId
     ? await playerService.getPlayerById(params.playerId)
     : undefined;
