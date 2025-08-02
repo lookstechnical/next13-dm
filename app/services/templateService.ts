@@ -51,7 +51,7 @@ export class TemplateService {
       .from("report_templates")
       .update(templateData)
       .eq("id", templateId)
-      .select()
+      .select("*, template_attributes(attribute_id)")
       .single();
 
     if (error) throw error;
@@ -69,6 +69,19 @@ export class TemplateService {
       })
       .select()
       .single();
+
+    if (error) throw error;
+    return convertKeysToCamelCase(data) || null;
+  }
+
+  async removeAttributeFromTemplate(
+    templateData: Omit<TemplateAttribute, "id" | "createdAt">
+  ): Promise<TemplateAttribute> {
+    const { data, error } = await this.client
+      .from("template_attributes")
+      .delete()
+      .eq("attribute_id", templateData.attribute_id)
+      .eq("template_id", templateData.template_id);
 
     if (error) throw error;
     return convertKeysToCamelCase(data) || null;

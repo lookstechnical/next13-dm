@@ -34,14 +34,14 @@ export const UserMenu: React.FC<UserMenu> = ({ user }) => {
           </div>
           <div className="text-left">
             <div className="text-sm">{user?.name}</div>
-            <div className="text-xs">{user?.team.name}</div>
+            <div className="text-xs">{user?.team?.name}</div>
           </div>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Switch Teams</DropdownMenuLabel>
         <DropdownMenuGroup>
-          {user.teams.map((team) => (
+          {user?.teams?.map((team) => (
             <Form
               key={`team-context-switch-${team.id}`}
               method="POST"
@@ -55,7 +55,7 @@ export const UserMenu: React.FC<UserMenu> = ({ user }) => {
               />
               <DropdownMenuItem asChild key={`context-${team.id}`}>
                 <button type="submit" className="w-full">
-                  {team.name}
+                  {team?.name}
                 </button>
               </DropdownMenuItem>
             </Form>

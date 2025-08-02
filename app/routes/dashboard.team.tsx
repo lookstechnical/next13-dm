@@ -126,20 +126,6 @@ export default function Team() {
                 <Badge variant={roleToVariant(val)}>{val}</Badge>
               ),
             },
-            {
-              key: "actions",
-              header: "",
-              className: "w-4",
-              render: (_val, row) => (
-                <MoreActions>
-                  <DropdownMenuItem asChild>
-                    <NavLink to={`/dashboard/attributes/${row.id}`}>
-                      Edit
-                    </NavLink>
-                  </DropdownMenuItem>
-                </MoreActions>
-              ),
-            },
           ]}
           data={users}
         />

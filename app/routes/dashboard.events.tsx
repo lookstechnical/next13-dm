@@ -26,8 +26,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     return redirect("/");
   }
   const playerService = new EventService(supabaseClient);
-  const events =
-    (await playerService.getEventsByTeam(user?.current_team as string)) || [];
+  const events = (await playerService.getEventsByTeam(user.team.id)) || [];
   return { events, user };
 };
 
@@ -39,19 +38,25 @@ export default function Events() {
         <ListingHeader
           title="Events"
           searchPlaceholder="Search Events by Name"
-          renderActions={() => (
-            <MoreActions>
-              <DropdownMenuItem asChild>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-full border-muted focus:ring-0"
-                >
-                  <Link to={`/dashboard/events/create`}>Add Event</Link>
-                </Button>
-              </DropdownMenuItem>
-            </MoreActions>
-          )}
+          renderActions={() => {
+            if (user.role === "ADMIN" || user.role === "HEAD_OF_DEPARTMENT") {
+              return (
+                <MoreActions>
+                  <DropdownMenuItem asChild>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full border-muted focus:ring-0"
+                    >
+                      <Link to={`/dashboard/events/create`}>Add Event</Link>
+                    </Button>
+                  </DropdownMenuItem>
+                </MoreActions>
+              );
+            }
+
+            return null;
+          }}
         />
         <CardGrid name={`${user.team.name} has 0 events`} items={events}>
           {events?.map((event: Event) => (

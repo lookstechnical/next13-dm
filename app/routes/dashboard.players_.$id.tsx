@@ -17,6 +17,7 @@ import {
   calculateAgeGroup,
   calculateRelativeAgeQuartile,
 } from "~/utils/helpers";
+import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
@@ -28,8 +29,24 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const playerService = new PlayerService(supabaseClient);
   const reportService = new ReportService(supabaseClient);
 
+  const { user: authUser } = await requireUser(supabaseClient);
+  const user = await getAppUser(authUser.id, supabaseClient);
+
+  if (!user) {
+    return redirect("/");
+  }
+
   const player = await playerService.getPlayerById(params.id as string);
-  const reports = await reportService.getReportsByPlayer(params.id as string);
+
+  let reports = [];
+  if (user.role === "ADMIN" || user?.role === "HEAD_OF_DEPARTMENT") {
+    reports = await reportService.getReportsByPlayer(params.id as string);
+  } else {
+    reports = await reportService.getReportsByPlayer(
+      params.id as string,
+      user.id
+    );
+  }
   return { player, reports };
 };
 
@@ -120,9 +137,11 @@ export default function PlayerPage() {
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
           <TabsContent value="reports">
-            {reports.map((report: PlayerReport) => (
-              <ReportCard report={report} />
-            ))}
+            <div className="gap-4 flex flex-col">
+              {reports.map((report: PlayerReport) => (
+                <ReportCard report={report} />
+              ))}
+            </div>
           </TabsContent>
         </Tabs>
         <Outlet />

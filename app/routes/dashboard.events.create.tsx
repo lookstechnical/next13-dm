@@ -12,6 +12,7 @@ import {
 } from "@remix-run/react";
 import { useState } from "react";
 import { EventForm } from "~/components/forms/form/event";
+import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
   Sheet,
@@ -108,9 +109,7 @@ export default function AddEvent() {
             <Button asChild variant="link">
               <Link to={`/dashboard/events`}>Cancel</Link>
             </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Add Event
-            </Button>
+            <ActionButton title="Add Event" />
           </SheetFooter>
         </Form>
       </SheetContent>

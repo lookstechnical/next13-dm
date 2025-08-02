@@ -1,26 +1,12 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
 import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import {
-  DownloadIcon,
-  FilterIcon,
-  MoreHorizontal,
-  MoreVertical,
-  User,
-  UserPlus,
-} from "lucide-react";
+import { DownloadIcon, UserPlus } from "lucide-react";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
 import { PlayerCard } from "~/components/players/player-card";
 import { Button } from "~/components/ui/button";
-import { Card } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { Input } from "~/components/ui/input";
+import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { PlayerService } from "~/services/playerService";
 import { Player } from "~/types";
@@ -39,8 +25,8 @@ export const loader: LoaderFunction = async ({ request }) => {
     return redirect("/");
   }
   const playerService = new PlayerService(supabaseClient);
-  const players =
-    (await playerService.getPlayersByTeam(user?.current_team as string)) || [];
+
+  const players = (await playerService.getPlayersByTeam(user.team.id)) || [];
   return { players, user };
 };
 

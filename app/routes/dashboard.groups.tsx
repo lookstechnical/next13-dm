@@ -28,8 +28,7 @@ export const loader: LoaderFunction = async ({ request }) => {
     return redirect("/");
   }
   const playerService = new GroupService(supabaseClient);
-  const groups =
-    (await playerService.getGroupsByTeam(user?.current_team as string)) || [];
+  const groups = (await playerService.getGroupsByTeam(user.team.id)) || [];
   return { groups, user };
 };
 
@@ -41,15 +40,20 @@ export default function Events() {
         <ListingHeader
           title="Player Groups"
           searchPlaceholder="Search Groups by Name"
-          renderActions={() => (
-            <MoreActions>
-              <DropdownMenuItem asChild>
-                <Button asChild variant="outline" className="w-full">
-                  <Link to={`/dashboard/groups/create`}>Add Group</Link>
-                </Button>
-              </DropdownMenuItem>
-            </MoreActions>
-          )}
+          renderActions={() => {
+            if (user.role === "ADMIN" || user.role === "HEAD_OF_DEPARTMENT") {
+              return (
+                <MoreActions>
+                  <DropdownMenuItem asChild>
+                    <Button asChild variant="outline" className="w-full">
+                      <Link to={`/dashboard/groups/create`}>Add Group</Link>
+                    </Button>
+                  </DropdownMenuItem>
+                </MoreActions>
+              );
+            }
+            return null;
+          }}
         />
         <CardGrid name={`${user.team.name} has 0 groups`} items={groups}>
           {groups?.map((group: PlayerGroup) => (

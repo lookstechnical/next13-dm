@@ -33,7 +33,7 @@ export const ReportCard: React.FC<ReportCard> = ({
   const renderContent = () => {
     return (
       <div className="flex- flex-col">
-        <div className="bg-primary text-md p-2 text-white">
+        <div className="bg-wkbackground text-md p-2 text-white">
           {report?.events?.name}
         </div>
         <div className="p-6 text-foreground flex flex-row justify-between">

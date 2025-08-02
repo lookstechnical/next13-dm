@@ -25,9 +25,15 @@ export async function getAppUser(userId: string, client: any) {
       console.error("Error loading team memberships:", membershipsError);
     }
 
-    const currentMembership = memberships?.find(
-      (tm: any) => tm.team_id === userProfiles[0].current_team
-    );
+    let currentMembership = null;
+
+    if (userProfiles[0].current_team) {
+      currentMembership = memberships?.find(
+        (tm: any) => tm.team_id === userProfiles[0].current_team
+      );
+    } else {
+      currentMembership = memberships[0];
+    }
 
     const teamService = new TeamService(client);
 
@@ -37,7 +43,13 @@ export async function getAppUser(userId: string, client: any) {
     } else {
       teams = await teamService.getUserTeams(userProfile);
     }
-    const team = teams.find((team) => team.id === userProfile.current_team);
+
+    let team = null;
+    if (userProfile.current_team) {
+      team = teams.find((team) => team.id === userProfile.current_team);
+    } else {
+      team = teams[0];
+    }
 
     const currentUser: User = {
       ...userProfile,

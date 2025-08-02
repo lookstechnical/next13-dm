@@ -61,21 +61,42 @@ export const action: ActionFunction = async ({ request }) => {
   let formData = await request.formData();
   const name = formData.get("name") as string;
   const attributeIds = formData.get("attributeIds") as string;
+  const templateId = formData.get("templateId") as string;
 
   const data: Omit<Template, "id" | "createdAt"> = {
     name,
     active: true,
   };
 
-  const template = await templateService.addNewTemplate(data);
+  const template = await templateService.updateTemplate(data, templateId);
+  const currentAttributeIds = template.templateAttributes.map(
+    (o) => o.attributeId
+  );
 
-  if (template.id) {
-    const selectedAttributesArray = JSON.parse(attributeIds);
+  const selectedAttributesArray = JSON.parse(attributeIds);
 
-    for (const attributeId of selectedAttributesArray) {
+  const deleteIds = currentAttributeIds.filter(
+    (a) => !selectedAttributesArray.includes(a)
+  );
+
+  const insertIds = selectedAttributesArray.filter(
+    (a) => !currentAttributeIds.includes(a)
+  );
+
+  if (deleteIds) {
+    for (const deleteId of deleteIds) {
+      await templateService.removeAttributeFromTemplate({
+        attribute_id: deleteId,
+        template_id: templateId,
+      });
+    }
+  }
+
+  if (insertIds) {
+    for (const attributeId of insertIds) {
       try {
         await templateService.addAttributeToTemplate({
-          template_id: template.id,
+          template_id: templateId,
           attribute_id: attributeId,
         });
       } catch (e) {}

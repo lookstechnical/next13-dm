@@ -89,8 +89,6 @@ export const action: ActionFunction = async ({ request, params }) => {
     templateId,
   };
 
-  console.log({ data });
-
   const report = await reportService.createEventReport(data, user.id);
 
   if (report) {

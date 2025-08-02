@@ -1,7 +1,6 @@
 import { Attribute, Template } from "~/types";
 import { Input } from "~/components/ui/input";
 import { Field } from "~/components/forms/field";
-import { Card } from "~/components/ui/card";
 import { AttributeCard } from "~/components/attribute/attribute-card";
 import { useState } from "react";
 
@@ -27,8 +26,6 @@ export const TemplateForm: React.FC<TemplateForm> = ({
         : [...prev, playerId]
     );
   };
-
-  console.log({ selectedAttributes });
 
   return (
     <div className="flex gap-4 flex-col p-4">
