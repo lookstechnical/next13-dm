@@ -1,6 +1,8 @@
 import { Player } from "../types";
 import { convertKeysToCamelCase } from "../utils/helpers";
 
+type AvScore = { score: string };
+
 export class PlayerService {
   client;
   constructor(client: any) {
@@ -158,6 +160,16 @@ export class PlayerService {
       )
       .eq("team_id", teamId)
       .order("name");
+
+    if (error) throw error;
+    return convertKeysToCamelCase(data);
+  }
+
+  async getPlayerAverageScores(playerIds: string[]): Promise<AvScore[]> {
+    const { data, error } = await this.client
+      .from("player_avg_scores")
+      .select()
+      .in("player_id", playerIds);
 
     if (error) throw error;
     return convertKeysToCamelCase(data);

@@ -44,7 +44,6 @@ export default function Attributes() {
       <div className="w-full">
         <ListingHeader
           title={`Report Attributes`}
-          searchPlaceholder="Search Attribue Name"
           renderActions={() => (
             <MoreActions>
               <DropdownMenuItem asChild>

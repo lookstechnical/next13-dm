@@ -39,7 +39,6 @@ export default function Events() {
       <div className="w-full">
         <ListingHeader
           title="Player Groups"
-          searchPlaceholder="Search Groups by Name"
           renderActions={() => {
             if (user.role === "ADMIN" || user.role === "HEAD_OF_DEPARTMENT") {
               return (

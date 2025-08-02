@@ -5,14 +5,12 @@ import { ReactNode } from "react";
 
 type ListingHeader = {
   title: string;
-  searchPlaceholder: string;
   renderFilters?: () => ReactNode;
   renderActions?: () => ReactNode;
 };
 
 export const ListingHeader: React.FC<ListingHeader> = ({
   title,
-  searchPlaceholder,
   renderFilters,
   renderActions,
 }) => {

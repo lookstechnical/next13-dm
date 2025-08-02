@@ -26,7 +26,16 @@ export const loader: LoaderFunction = async ({ request }) => {
   }
   const playerService = new PlayerService(supabaseClient);
 
-  const players = (await playerService.getPlayersByTeam(user.team.id)) || [];
+  const dbPlayers = (await playerService.getPlayersByTeam(user.team.id)) || [];
+  const scores = await playerService.getPlayerAverageScores(
+    dbPlayers.map((p) => p.id)
+  );
+
+  const players = dbPlayers.map((p) => ({
+    ...p,
+    score: scores.find((s) => s.playerId === p.id),
+  }));
+
   return { players, user };
 };
 
@@ -42,7 +51,7 @@ export default function Players() {
       <div className="w-full">
         <ListingHeader
           title={`${user.team.name} Players`}
-          searchPlaceholder="Search Players by Name"
+          // renderFilters={() => <div>filters</div>}
           renderActions={() => (
             <MoreActions>
               <DropdownMenuItem asChild>

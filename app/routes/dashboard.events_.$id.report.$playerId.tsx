@@ -96,10 +96,12 @@ export const action: ActionFunction = async ({ request, params }) => {
       if (match) {
         const uuid = match[1];
 
-        reportService.addReportScore(uuid, report.id, value.toString());
+        await reportService.addReportScore(uuid, report.id, value.toString());
       }
     }
   }
+
+  await reportService.refreshAverageScores();
 
   return redirect(`/dashboard/events/${eventId}`);
 };

@@ -254,6 +254,10 @@ export class ReportService {
     return true;
   }
 
+  async refreshAverageScores() {
+    await this.client.rpc("refresh_player_avg_scores");
+  }
+
   async getPlayerOverallRating(
     playerId: string,
     scoutId?: string,

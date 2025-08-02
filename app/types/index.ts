@@ -52,6 +52,9 @@ export interface Player {
   scoutId: string;
   createdAt: string;
   updatedAt: string;
+  score?: {
+    avgScore?: string;
+  };
 }
 
 export type SkillRating = {

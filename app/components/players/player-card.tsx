@@ -17,6 +17,17 @@ type PlayerCard = PropsWithChildren<{
   isSelected?: boolean;
 }>;
 
+const getScoreColor = (score: number) => {
+  if (score <= 5) {
+    return "text-primary";
+  }
+  if (score > 5 && score < 7) {
+    return "text-secondary";
+  }
+
+  return "text-success";
+};
+
 export const PlayerCard: React.FC<PlayerCard> = ({
   to,
   player,
@@ -81,7 +92,16 @@ export const PlayerCard: React.FC<PlayerCard> = ({
               </div>
             </div>
           </div>
-          <div className="flex flex-col items-end"></div>
+          <div
+            className={cn(
+              "flex flex-col items-end",
+              getScoreColor(Math.round(player.score?.avgScore))
+            )}
+          >
+            {player.score &&
+              player.score?.avgScore &&
+              Math.round(player.score?.avgScore)}
+          </div>
         </div>
       </div>
     );

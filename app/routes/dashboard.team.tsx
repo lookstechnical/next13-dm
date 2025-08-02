@@ -63,7 +63,6 @@ export default function Team() {
       <div className="w-full">
         <ListingHeader
           title={`Team`}
-          searchPlaceholder="Search Attribue Name"
           renderActions={() => (
             <MoreActions>
               <DropdownMenuItem asChild>

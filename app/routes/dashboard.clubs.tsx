@@ -45,7 +45,6 @@ export default function Clubs() {
       <div className="w-full">
         <ListingHeader
           title={`Clubs`}
-          searchPlaceholder="Search Clubs by Name"
           renderActions={() => (
             <MoreActions>
               <DropdownMenuItem asChild>

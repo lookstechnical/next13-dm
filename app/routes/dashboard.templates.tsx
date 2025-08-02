@@ -44,7 +44,6 @@ export default function Templates() {
       <div className="w-full">
         <ListingHeader
           title={`Templates`}
-          searchPlaceholder="Search Attribue Name"
           renderActions={() => (
             <MoreActions>
               <DropdownMenuItem asChild>
