@@ -134,8 +134,12 @@ export class PlayerService {
     return (data || []).map(this.transformFromDb);
   }
 
-  async getPlayersByTeam(teamId: string): Promise<Player[]> {
-    const { data, error } = await this.client
+  async getPlayersByTeam(
+    teamId: string,
+    orderBy?: string,
+    name?: string
+  ): Promise<Player[]> {
+    const query = this.client
       .from("players")
       .select(
         `
@@ -158,8 +162,19 @@ export class PlayerService {
         player_reports(count)
       `
       )
-      .eq("team_id", teamId)
-      .order("name");
+      .eq("team_id", teamId);
+
+    if (name) {
+      query.ilike("name", `${name}%`);
+    }
+
+    if (orderBy) {
+      query.order(orderBy);
+    } else {
+      query.order("name");
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return convertKeysToCamelCase(data);

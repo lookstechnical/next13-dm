@@ -11,6 +11,8 @@ export async function getAppUser(userId: string, client: any) {
     .eq("id", userId)
     .limit(1);
 
+  console.log({ error });
+
   const userProfile =
     userProfiles && userProfiles.length > 0 ? userProfiles[0] : null;
 

@@ -95,7 +95,7 @@ export interface User extends Scout {
   status?: "active" | "pending" | "inactive";
   teamMemberships?: TeamMembership[];
   current_team?: string;
-  team: Team;
+  team?: Team;
 }
 
 export interface Team {

@@ -1,8 +1,17 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
+import {
+  Form,
+  Link,
+  Outlet,
+  redirect,
+  useLoaderData,
+  useSubmit,
+} from "@remix-run/react";
 import { DownloadIcon, UserPlus } from "lucide-react";
+import { SelectField } from "~/components/forms/select";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
+import { PlayerFilters } from "~/components/players/filters";
 import { PlayerCard } from "~/components/players/player-card";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
@@ -26,7 +35,16 @@ export const loader: LoaderFunction = async ({ request }) => {
   }
   const playerService = new PlayerService(supabaseClient);
 
-  const dbPlayers = (await playerService.getPlayersByTeam(user.team.id)) || [];
+  const url = new URL(request.url);
+  const order = url.searchParams.get("order");
+  const nameFilter = url.searchParams.get("name");
+
+  const dbPlayers =
+    (await playerService.getPlayersByTeam(
+      user.team.id,
+      order as string,
+      nameFilter as string
+    )) || [];
   const scores = await playerService.getPlayerAverageScores(
     dbPlayers.map((p) => p.id)
   );
@@ -42,6 +60,8 @@ export const loader: LoaderFunction = async ({ request }) => {
 export default function Players() {
   const { players, user } = useLoaderData<typeof loader>();
 
+  const submit = useSubmit();
+
   const cardUrl = (id: string) => {
     return `/dashboard/players/${id}`;
   };
@@ -51,7 +71,27 @@ export default function Players() {
       <div className="w-full">
         <ListingHeader
           title={`${user.team.name} Players`}
-          // renderFilters={() => <div>filters</div>}
+          renderFilters={() => (
+            <div className="flex flex-row items-center justify-center gap-4">
+              <PlayerFilters />
+              <Form
+                onChange={(event) => {
+                  submit(event.currentTarget);
+                }}
+              >
+                <SelectField
+                  name="order"
+                  label=""
+                  placeholder="Order By"
+                  options={[
+                    { id: "name", name: "Name" },
+                    // { id: "score", name: "Avg Score" },
+                    { id: "date_of_birth", name: "Age" },
+                  ]}
+                />
+              </Form>
+            </div>
+          )}
           renderActions={() => (
             <MoreActions>
               <DropdownMenuItem asChild>

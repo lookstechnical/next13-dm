@@ -19,10 +19,17 @@ export const InviteUserForm: React.FC<InviteUserForm> = ({ teams }) => {
     <div className="flex gap-4 flex-col p-4">
       <div className="flex flex-col w-full gap-5">
         <div className="flex flex-row w-full gap-5">
-          <Field name="name" label="Name">
+          <Field name="email" label="Email">
             <Input
               name="email"
               placeholder="Enter Email"
+              className="bg-card border-gray-600 text-white placeholder:text-gray-400"
+            />
+          </Field>
+          <Field name="name" label="Name">
+            <Input
+              name="name"
+              placeholder="Enter Name"
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />
           </Field>

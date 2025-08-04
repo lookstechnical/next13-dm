@@ -58,6 +58,7 @@ export const action: ActionFunction = async ({ request }) => {
 
   let formData = await request.formData();
   const email = formData.get("email") as string;
+  const name = formData.get("name") as string;
   const role = formData.get("role") as User["role"];
   const team = formData.get("team") as string;
 
@@ -98,12 +99,13 @@ export const action: ActionFunction = async ({ request }) => {
     if (!appUser && regAuthUser) {
       // create an app user
       appUser = await userService.addScout({
-        id: regAuthUser.user.id,
+        id: regAuthUser?.user?.id as string,
         email: email.toLowerCase(),
+        name,
         role,
-        name: "",
         status: "pending",
         invitedBy: user.id,
+        current_team: team,
       });
 
       await teamService.addUserToTeam(appUser.id, team, role);
