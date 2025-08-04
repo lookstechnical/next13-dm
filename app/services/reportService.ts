@@ -254,8 +254,16 @@ export class ReportService {
     return true;
   }
 
-  async refreshAverageScores() {
-    await this.client.rpc("refresh_player_avg_scores");
+  async refreshAverageScores(playerId: string) {
+    const { error } = await this.client.rpc("refresh_player_avg_scores", {
+      target_player_id: playerId,
+    });
+
+    if (error) {
+      console.error("Error refreshing score for player:", error);
+    } else {
+      console.log("Player scores refreshed.");
+    }
   }
 
   async getPlayerOverallRating(

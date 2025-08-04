@@ -101,7 +101,7 @@ export const action: ActionFunction = async ({ request, params }) => {
     }
   }
 
-  await reportService.refreshAverageScores();
+  await reportService.refreshAverageScores(playerId);
 
   return redirect(`/dashboard/events/${eventId}`);
 };

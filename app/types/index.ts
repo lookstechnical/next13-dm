@@ -52,8 +52,8 @@ export interface Player {
   scoutId: string;
   createdAt: string;
   updatedAt: string;
-  score?: {
-    avgScore?: string;
+  playerAvgScores?: {
+    avgOverallScore?: string;
   };
 }
 

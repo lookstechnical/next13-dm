@@ -39,20 +39,12 @@ export const loader: LoaderFunction = async ({ request }) => {
   const order = url.searchParams.get("order");
   const nameFilter = url.searchParams.get("name");
 
-  const dbPlayers =
+  const players =
     (await playerService.getPlayersByTeam(
       user.team.id,
       order as string,
       nameFilter as string
     )) || [];
-  const scores = await playerService.getPlayerAverageScores(
-    dbPlayers.map((p) => p.id)
-  );
-
-  const players = dbPlayers.map((p) => ({
-    ...p,
-    score: scores.find((s) => s.playerId === p.id),
-  }));
 
   return { players, user };
 };
@@ -85,7 +77,7 @@ export default function Players() {
                   placeholder="Order By"
                   options={[
                     { id: "name", name: "Name" },
-                    // { id: "score", name: "Avg Score" },
+                    { id: "score", name: "Avg Score" },
                     { id: "date_of_birth", name: "Age" },
                   ]}
                 />

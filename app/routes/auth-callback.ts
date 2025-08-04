@@ -9,7 +9,6 @@ export const loader = async ({ request }: ActionFunctionArgs) => {
     const { supabaseClient, headers } = getSupabaseServerClient(request);
     const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
     if (error) {
-      console.log({ error });
       return redirect("/");
     }
     return redirect("/dashboard", {

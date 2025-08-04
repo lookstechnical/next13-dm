@@ -95,12 +95,12 @@ export const PlayerCard: React.FC<PlayerCard> = ({
           <div
             className={cn(
               "flex flex-col items-end",
-              getScoreColor(Math.round(player.score?.avgScore))
+              getScoreColor(Math.round(player.playerAvgScores?.avgOverallScore))
             )}
           >
-            {player.score &&
-              player.score?.avgScore &&
-              Math.round(player.score?.avgScore)}
+            {player.playerAvgScores &&
+              player.playerAvgScores.avgOverallScore &&
+              Math.round(player.playerAvgScores?.avgOverallScore)}
           </div>
         </div>
       </div>

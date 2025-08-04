@@ -159,7 +159,8 @@ export class PlayerService {
         scout_id,
         created_at,
         updated_at,
-        player_reports(count)
+        player_reports(count),
+        player_avg_scores(*)
       `
       )
       .eq("team_id", teamId);
@@ -169,12 +170,23 @@ export class PlayerService {
     }
 
     if (orderBy) {
-      query.order(orderBy);
+      if (orderBy === "score") {
+      } else {
+        query.order(orderBy);
+      }
     } else {
       query.order("name");
     }
 
     const { data, error } = await query;
+
+    if (orderBy === "score") {
+      data.sort((a, b) => {
+        const scoreA = a.player_avg_scores?.avg_overall_score ?? -Infinity;
+        const scoreB = b.player_avg_scores?.avg_overall_score ?? -Infinity;
+        return scoreB - scoreA;
+      });
+    }
 
     if (error) throw error;
     return convertKeysToCamelCase(data);
