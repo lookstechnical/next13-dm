@@ -84,11 +84,11 @@ export default function Index() {
                   <Input
                     name="email"
                     placeholder="Enter your email"
-                    className="bg-dashboard-card border-gray-600 text-white placeholder:text-gray-400"
+                    className="bg-dashboard-card border-gray-600 text-black placeholder:text-gray-400"
                   />
                 </div>
                 <div className="flex justify-end flex-row w-full">
-                  <ActionButton title="Login" loading={false} />
+                  <ActionButton title="Login" />
                 </div>
               </div>
             </Form>
