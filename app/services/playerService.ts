@@ -326,6 +326,10 @@ export class PlayerService {
         return { error: "Invalid file upload." };
       }
 
+      if (avatar.size === 0) {
+        return { error: "empty file" };
+      }
+
       const fileExt = avatar.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${playerId}/${fileName}`;

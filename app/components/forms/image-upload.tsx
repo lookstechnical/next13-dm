@@ -40,6 +40,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ image }) => {
             type="file"
             accept="image/*"
             name="avatar"
+            defaultValue={image}
             onChange={handleFileChange}
             className="hidden"
           />
