@@ -58,9 +58,11 @@ export const action: ActionFunction = async ({ request }) => {
   const name = formData.get("name") as string;
   const description = formData.get("description") as string;
   const id = formData.get("attributeId") as string;
+  const category = formData.get("category") as string;
 
   const data: Omit<Attribute, "id" | "createdAt"> = {
     name,
+    category,
     description,
   };
 

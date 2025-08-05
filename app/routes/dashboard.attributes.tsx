@@ -61,6 +61,7 @@ export default function Attributes() {
           columns={[
             { key: "name", header: "Name" },
             { key: "description", header: "Description" },
+            { key: "category", header: "Category" },
             {
               key: "actions",
               header: "",

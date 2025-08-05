@@ -19,6 +19,7 @@ export interface Attribute {
   description: string;
   id: string;
   active?: boolean;
+  category?: string;
 }
 
 export interface Template {

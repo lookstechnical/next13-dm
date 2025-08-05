@@ -41,7 +41,11 @@ export function DataTable<T extends object>({
                 const value = row[col.key];
                 return (
                   <TableCell key={colIndex} className={col.className}>
-                    {col.render ? col.render(value, row) : String(value)}
+                    {col.render
+                      ? col.render(value, row)
+                      : value
+                      ? String(value).toUpperCase()
+                      : "-"}
                   </TableCell>
                 );
               })}

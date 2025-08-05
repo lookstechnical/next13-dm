@@ -2,6 +2,7 @@ import { Attribute } from "~/types";
 import { Input } from "~/components/ui/input";
 import { Field } from "~/components/forms/field";
 import { Textarea } from "~/components/ui/textarea";
+import { SelectField } from "../select";
 
 type AttributeForm = {
   attribute?: Attribute;
@@ -23,6 +24,18 @@ export const AttributeForm: React.FC<AttributeForm> = ({ attribute }) => {
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />
           </Field>
+          <SelectField
+            name="category"
+            label="Category"
+            placeholder="Select Category"
+            defaultValue={attribute?.category}
+            options={[
+              { id: "technical", name: "Technical" },
+              { id: "tactical", name: "Tactical" },
+              { id: "mental", name: "Mental" },
+              { id: "physical", name: "Physical" },
+            ]}
+          />
         </div>
 
         <div>
