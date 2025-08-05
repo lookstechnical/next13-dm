@@ -36,6 +36,7 @@ export class AttributesService {
         name: attributeData.name,
         description: attributeData.description,
         active: attributeData.active,
+        category: attributeData.category,
       })
       .select()
       .single();
