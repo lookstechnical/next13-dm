@@ -43,7 +43,7 @@ export const TemplateForm: React.FC<TemplateForm> = ({
             />
           </Field>
         </div>
-        <div className="text-foreground">
+        <div className="text-foreground overflow-scroll h-[60vh]">
           <input
             type="hidden"
             name="attributeIds"

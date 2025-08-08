@@ -20,7 +20,12 @@ ChartJS.register(
   Legend
 );
 
-export default function RadarAttributes() {
+type RadarAttributes = {
+  attributes: any[];
+  averages: any[];
+};
+export default function RadarAttributes({ attributes, averages }) {
+  console.log({ attributes, averages });
   const chartRef = useRef(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -29,32 +34,35 @@ export default function RadarAttributes() {
     setIsMounted(true);
   }, []);
 
+  const options = {
+    scales: {
+      r: {
+        min: 1,
+        max: 10,
+        ticks: {
+          stepSize: 1,
+          color: "white",
+          callback: function (value) {
+            return value >= 1 && value <= 10 ? value : "";
+          },
+        },
+        pointLabels: {
+          color: "white",
+          font: {
+            size: 11,
+          },
+        },
+      },
+    },
+  };
+
   const data = useMemo(() => ({
-    labels: [
-      "Eating",
-      "Drinking",
-      "Sleeping",
-      "Designing",
-      "Coding",
-      "Cycling",
-      "Running",
-    ],
+    labels: attributes.map(({ reportAttributes }) => reportAttributes.name),
     datasets: [
       {
-        label: "My First Dataset",
-        data: [65, 59, 90, 81, 56, 55, 40],
-        fill: true,
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        borderColor: "rgb(255, 99, 132)",
-        pointBackgroundColor: "rgb(255, 99, 132)",
-        pointBorderColor: "#fff",
-        pointHoverBackgroundColor: "#fff",
-        pointHoverBorderColor: "rgb(255, 99, 132)",
-      },
-      {
-        label: "My Second Dataset",
-        data: [28, 48, 40, 19, 96, 27, 100],
-        fill: true,
+        label: "Player Score",
+        data: attributes.map((a) => a.score),
+        fill: false,
         backgroundColor: "rgba(54, 162, 235, 0.2)",
         borderColor: "rgb(54, 162, 235)",
         pointBackgroundColor: "rgb(54, 162, 235)",
@@ -62,10 +70,24 @@ export default function RadarAttributes() {
         pointHoverBackgroundColor: "#fff",
         pointHoverBorderColor: "rgb(54, 162, 235)",
       },
+      {
+        label: "Team average",
+        data: attributes.map(
+          (a) =>
+            averages.find((av) => av.attributeId === a.attributeId).avgScore
+        ),
+        fill: true,
+        backgroundColor: "rgba(54, 162, 235, 0.2)",
+        borderColor: "rgba(32, 245, 231, 1)",
+        pointBackgroundColor: "rgba(32, 245, 231, 1)",
+        pointBorderColor: "#fff",
+        pointHoverBackgroundColor: "#fff",
+        pointHoverBorderColor: "rgba(32, 245, 231, 1)",
+      },
     ],
   }));
 
   if (!isMounted) return null;
 
-  return <Radar id="player" ref={chartRef} data={data} />;
+  return <Radar id="player" ref={chartRef} data={data} options={options} />;
 }

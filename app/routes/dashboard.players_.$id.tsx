@@ -5,6 +5,8 @@ import type {
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { DeleteIcon, Edit2Icon, User } from "lucide-react";
+import RadarAttributes from "~/components/charts/radar";
+import { ProgressCard } from "~/components/progress/progress-card";
 import { ReportCard } from "~/components/reports/report-card";
 import { Button } from "~/components/ui/button copy";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -47,7 +49,13 @@ export const loader: LoaderFunction = async ({ request, params }) => {
       user.id
     );
   }
-  return { player, reports };
+
+  const progress = await reportService.getProgressByPlayer(params.id as string);
+  const teamProgress = await reportService.getTeamProgressAvg(
+    user.current_team as string
+  );
+
+  return { player, reports, progress, teamProgress };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -65,7 +73,8 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function PlayerPage() {
-  const { player, reports } = useLoaderData<typeof loader>();
+  const { player, reports, progress, teamProgress } =
+    useLoaderData<typeof loader>();
 
   return (
     <>
@@ -128,13 +137,20 @@ export default function PlayerPage() {
               </div>
             </div>
           </div>
-          <div>{/* <RadarAttributes /> */}</div>
+          <div>
+            <Button asChild>
+              <Link to={`/dashboard/players/${player.id}/nine-box`}>
+                Progress Report
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
       <div className="bg-card min-h-screen py-10">
         <Tabs defaultValue="reports" className="container mx-auto">
           <TabsList>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="progress">Progress</TabsTrigger>
           </TabsList>
           <TabsContent value="reports">
             <div className="gap-4 flex flex-col">
@@ -142,6 +158,11 @@ export default function PlayerPage() {
                 <ReportCard report={report} />
               ))}
             </div>
+          </TabsContent>
+          <TabsContent value="progress">
+            {progress && (
+              <ProgressCard report={progress} teamProgress={teamProgress} />
+            )}
           </TabsContent>
         </Tabs>
         <Outlet />

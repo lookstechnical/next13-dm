@@ -1,9 +1,10 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { DashboardService } from "~/services/dashboardService";
+import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [
@@ -16,7 +17,16 @@ export const loader: LoaderFunction = async ({ request }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
   const dashService = new DashboardService(supabaseClient);
 
-  const dashboard = await dashService.getDashboardStats();
+  const { user: authUser } = await requireUser(supabaseClient);
+  const user = await getAppUser(authUser.id, supabaseClient);
+
+  if (!user) {
+    return redirect("/");
+  }
+
+  const dashboard = await dashService.getDashboardStats(
+    user.current_team as string
+  );
 
   return { dashboard };
 };

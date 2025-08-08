@@ -7,13 +7,20 @@ export class DashboardService {
     this.client = client;
   }
 
-  async getDashboardStats(): Promise<any> {
+  async getDashboardStats(teamId: string): Promise<any> {
     const [players, groups, events] = await Promise.all([
-      this.client.from("players").select("*", { count: "exact", head: true }),
+      this.client
+        .from("players")
+        .select("*", { count: "exact", head: true })
+        .eq("team_id", teamId),
       this.client
         .from("player_groups")
-        .select("*", { count: "exact", head: true }),
-      this.client.from("events").select("*", { count: "exact", head: true }),
+        .select("*", { count: "exact", head: true })
+        .eq("team_id", teamId),
+      this.client
+        .from("events")
+        .select("*", { count: "exact", head: true })
+        .eq("team_id", teamId),
     ]);
 
     const counts = {

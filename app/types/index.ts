@@ -32,6 +32,7 @@ export interface Template {
 export interface TemplateAttribute {
   template_id: string;
   attribute_id: string;
+  category: string;
   order?: string;
 }
 

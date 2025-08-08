@@ -41,7 +41,8 @@ export class ReportService {
       .select(
         "*, report_scores(*,report_attributes(*)), matches(*), events(*), users(*), players(*)"
       )
-      .eq("player_id", playerId);
+      .eq("player_id", playerId)
+      .not("template_id", "eq", "ace2242f-8893-43eb-a283-6e1813a97985");
 
     // Apply scout filtering if not head scout
     if (!isHeadScout && scoutId) {
@@ -54,6 +55,29 @@ export class ReportService {
 
     if (error) throw error;
     return convertKeysToCamelCase(data) || [];
+  }
+
+  async getProgressByPlayer(playerId: string): Promise<PlayerReport[]> {
+    const { data, error } = await this.client
+      .from("player_reports")
+      .select(
+        "*, report_scores(*,report_attributes(*)), matches(*), events(*), users(*), players(*)"
+      )
+      .eq("player_id", playerId)
+      .eq("template_id", "ace2242f-8893-43eb-a283-6e1813a97985")
+      .single();
+
+    return convertKeysToCamelCase(data) || undefined;
+  }
+
+  async getTeamProgressAvg(teamId: string): Promise<any> {
+    const { data, error } = await this.client
+      .from("team_progress_avg_scores")
+      .select()
+      .eq("team_id", teamId)
+      .single();
+
+    return convertKeysToCamelCase(data) || undefined;
   }
 
   async getReportsByPlayerIds(
@@ -193,6 +217,35 @@ export class ReportService {
     return this.transformFromDb(data);
   }
 
+  async createPlayerReport(
+    reportData: Omit<
+      PlayerReport,
+      | "id"
+      | "scoutId"
+      | "createdAt"
+      | "matchId"
+      | "position"
+      | "suggestedPosition"
+      | "reportScores"
+      | "notes"
+      | "eventId"
+    >,
+    scoutId: string
+  ): Promise<PlayerReport> {
+    const { data, error } = await this.client
+      .from("player_reports")
+      .insert({
+        player_id: reportData.playerId,
+        scout_id: scoutId,
+        template_id: reportData.templateId,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.transformFromDb(data);
+  }
+
   async updateReport(
     id: string,
     updates: Partial<PlayerReport>
@@ -202,17 +255,6 @@ export class ReportService {
     if (updates.position !== undefined) updateData.position = updates.position;
     if (updates.suggestedPosition !== undefined)
       updateData.suggested_position = updates.suggestedPosition;
-    if (updates.minutes !== undefined) {
-      updateData.minutes_from = updates.minutes.from;
-      updateData.minutes_to = updates.minutes.to;
-    }
-    if (updates.rating !== undefined) {
-      updateData.rating_technique = updates.rating.technique;
-      updateData.rating_physical = updates.rating.physical;
-      updateData.rating_tactical = updates.rating.tactical;
-      updateData.rating_mental = updates.rating.mental;
-      updateData.rating_potential = updates.rating.potential;
-    }
     if (updates.notes !== undefined) updateData.notes = updates.notes;
 
     const { data, error } = await this.client
@@ -226,7 +268,7 @@ export class ReportService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    return this.transformFromDb(data);
+    return convertKeysToCamelCase(data);
   }
 
   async deleteReport(id: string): Promise<boolean> {
@@ -234,6 +276,16 @@ export class ReportService {
       .from("player_reports")
       .delete()
       .eq("id", id);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async removeReportScores(reportId: string) {
+    const { error } = await this.client
+      .from("report_scores")
+      .delete()
+      .eq("report_id", reportId);
 
     if (error) throw error;
     return true;
@@ -258,6 +310,21 @@ export class ReportService {
     const { error } = await this.client.rpc("refresh_player_avg_scores", {
       target_player_id: playerId,
     });
+
+    if (error) {
+      console.error("Error refreshing score for player:", error);
+    } else {
+      console.log("Player scores refreshed.");
+    }
+  }
+
+  async refreshTeamProgress(teamId: string) {
+    const { error } = await this.client.rpc(
+      "calculate_and_store_team_avg_scores",
+      {
+        target_team_id: teamId,
+      }
+    );
 
     if (error) {
       console.error("Error refreshing score for player:", error);
@@ -306,6 +373,19 @@ export class ReportService {
       mental: +(totalRating.mental / playerReports.length).toFixed(1),
       potential: +(totalRating.potential / playerReports.length).toFixed(1),
     };
+  }
+
+  async getNineBoxReport(playerId: string, nineBoxTemplateId: string) {
+    const { data, error } = await this.client
+      .from("player_reports")
+      .select(
+        "*,report_scores(*,report_attributes(*)), matches(*), events(*), users(*)"
+      )
+      .eq("player_id", playerId)
+      .eq("template_id", nineBoxTemplateId)
+      .single();
+
+    return convertKeysToCamelCase(data) || undefined;
   }
 
   // Transform database row to application format

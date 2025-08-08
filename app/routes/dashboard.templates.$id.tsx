@@ -126,7 +126,7 @@ export default function AttributeCreate() {
         <Form method="POST">
           <TemplateForm attributes={attributes} template={template} />
 
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
+          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2 bg-background">
             <Button asChild variant="link">
               <Link to={`/dashboard/templates`}>Cancel</Link>
             </Button>
