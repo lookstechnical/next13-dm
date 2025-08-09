@@ -107,6 +107,7 @@ export interface Team {
   type: "mens" | "womens" | "youth" | "junior" | "academy" | "other";
   createdAt: string;
   createdBy: string;
+  progresTemplateId?: string;
 }
 
 export interface TeamMembership {

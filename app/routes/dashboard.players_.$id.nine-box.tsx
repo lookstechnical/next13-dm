@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/sheet";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ReportService } from "~/services/reportService";
+import { TeamService } from "~/services/teamService";
 import { TemplateService } from "~/services/templateService";
 import { PlayerReport } from "~/types";
 import { getAppUser, requireUser } from "~/utils/require-user";
@@ -35,16 +36,20 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     return redirect("/");
   }
 
-  const nineBoxTemplateId = "ace2242f-8893-43eb-a283-6e1813a97985";
+  let template;
+  let report;
+  if (user?.team?.progresTemplateId) {
+    template = await templateService.getTemplateById(
+      user?.team?.progresTemplateId as string
+    );
 
-  const template = await templateService.getTemplateById(nineBoxTemplateId);
+    report = await reportService.getNineBoxReport(
+      params.id as string,
+      user?.team?.progresTemplateId as string
+    );
+  }
 
-  const report = await reportService.getNineBoxReport(
-    params.id as string,
-    nineBoxTemplateId
-  );
-
-  return { report, template, plater: { id: params.id } };
+  return { report, template, player: { id: params.id } };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -109,12 +114,13 @@ export default function PlayerPage() {
   const navigate = useNavigate();
   const { report, template, player } = useLoaderData<typeof loader>();
 
+  console.log({ player });
   return (
     <Sheet
       open
       onOpenChange={(open) => {
         if (!open) {
-          navigate("/dashboard/players");
+          navigate(`/dashboard/players/${player.id}`);
         }
       }}
     >

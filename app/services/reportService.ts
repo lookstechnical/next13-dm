@@ -57,14 +57,17 @@ export class ReportService {
     return convertKeysToCamelCase(data) || [];
   }
 
-  async getProgressByPlayer(playerId: string): Promise<PlayerReport[]> {
+  async getProgressByPlayer(
+    playerId: string,
+    templateId: stirng
+  ): Promise<PlayerReport[]> {
     const { data, error } = await this.client
       .from("player_reports")
       .select(
         "*, report_scores(*,report_attributes(*)), matches(*), events(*), users(*), players(*)"
       )
       .eq("player_id", playerId)
-      .eq("template_id", "ace2242f-8893-43eb-a283-6e1813a97985")
+      .eq("template_id", templateId)
       .single();
 
     return convertKeysToCamelCase(data) || undefined;

@@ -1,3 +1,4 @@
+import { convertKeysToCamelCase } from "~/utils/helpers";
 import { Team, TeamMembership, User } from "../types";
 
 export class TeamService {
@@ -13,7 +14,7 @@ export class TeamService {
       .order("name");
 
     if (error) throw error;
-    return data || [];
+    return convertKeysToCamelCase(data) || [];
   }
 
   async getTeamById(id: string): Promise<Team | null> {
@@ -51,7 +52,7 @@ export class TeamService {
       .in("id", teamIds);
 
     if (teamsError) throw teamsError;
-    return teams || [];
+    return convertKeysToCamelCase(teams) || [];
   }
 
   getUserRoleInTeam(

@@ -50,12 +50,26 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     );
   }
 
-  const progress = await reportService.getProgressByPlayer(params.id as string);
-  const teamProgress = await reportService.getTeamProgressAvg(
-    user.current_team as string
-  );
+  let progress;
+  let teamProgress;
 
-  return { player, reports, progress, teamProgress };
+  if (user?.team?.progresTemplateId) {
+    progress = await reportService.getProgressByPlayer(
+      params.id as string,
+      user?.team?.progresTemplateId as string
+    );
+    teamProgress = await reportService.getTeamProgressAvg(
+      user.current_team as string
+    );
+  }
+
+  return {
+    player,
+    reports,
+    progress,
+    teamProgress,
+    hasProgressTemplate: !!user?.team?.progresTemplateId,
+  };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -73,7 +87,7 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function PlayerPage() {
-  const { player, reports, progress, teamProgress } =
+  const { player, reports, progress, teamProgress, hasProgressTemplate } =
     useLoaderData<typeof loader>();
 
   return (
@@ -138,19 +152,25 @@ export default function PlayerPage() {
             </div>
           </div>
           <div>
-            <Button asChild>
-              <Link to={`/dashboard/players/${player.id}/nine-box`}>
-                Progress Report
-              </Link>
-            </Button>
+            {hasProgressTemplate && (
+              <Button asChild>
+                <Link to={`/dashboard/players/${player.id}/nine-box`}>
+                  Progress Report
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
       <div className="bg-card min-h-screen py-10">
+        {progress && (
+          <div className="container mx-auto max-w-[90vw]">
+            <ProgressCard report={progress} teamProgress={teamProgress} />
+          </div>
+        )}
         <Tabs defaultValue="reports" className="container mx-auto">
           <TabsList>
             <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="progress">Progress</TabsTrigger>
           </TabsList>
           <TabsContent value="reports">
             <div className="gap-4 flex flex-col">
@@ -158,11 +178,6 @@ export default function PlayerPage() {
                 <ReportCard report={report} />
               ))}
             </div>
-          </TabsContent>
-          <TabsContent value="progress">
-            {progress && (
-              <ProgressCard report={progress} teamProgress={teamProgress} />
-            )}
           </TabsContent>
         </Tabs>
         <Outlet />
