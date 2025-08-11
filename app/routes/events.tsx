@@ -20,7 +20,7 @@ export const PublicEvents = () => {
     <div className="min-h-screen min-w-screen bg-background text-foreground">
       <div className="w-full py-10 bg-wkbackground">
         <div className="container mx-auto max-w-[50rem] py-10 flex flex-row gap-3 items-end">
-          <img src="/logo.png" className="w-20" />
+          <img src="/logo.png" className="w-20" width={50} height={50} />
           <div>
             <h1 className="text-4xl">Our upcoming events or camps</h1>
             <p className="text-muted">
