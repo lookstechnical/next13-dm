@@ -13,6 +13,7 @@ const MenuLink: React.FC<MenuLink> = ({ children, to, close }) => {
         <Link
           className="lg:items-center w-full lg:w-fit flex items-end px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
           to={to}
+          prefetch="intent"
         >
           {children}
         </Link>

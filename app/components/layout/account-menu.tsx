@@ -29,22 +29,30 @@ export const AccountMenu: React.FC<AccountMenu> = ({ player }) => {
         <DropdownMenuLabel>Admin Management</DropdownMenuLabel>
         <DropdownMenuGroup>
           <DropdownMenuItem>
-            <Link className="w-full" to="/dashboard/team">
+            <Link className="w-full" to="/dashboard/team" prefetch="intent">
               Team
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link className="w-full" to="/dashboard/clubs">
+            <Link className="w-full" to="/dashboard/clubs" prefetch="intent">
               Clubs
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link className="w-full" to="/dashboard/attributes">
+            <Link
+              className="w-full"
+              to="/dashboard/attributes"
+              prefetch="intent"
+            >
               Attributes
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link className="w-full" to="/dashboard/templates">
+            <Link
+              className="w-full"
+              to="/dashboard/templates"
+              prefetch="intent"
+            >
               Templates
             </Link>
           </DropdownMenuItem>
