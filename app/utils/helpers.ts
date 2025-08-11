@@ -267,3 +267,18 @@ export function convertKeysToCamelCase<T>(input: T): T {
   }
   return input;
 }
+
+import { ZodError } from "zod";
+
+export function zodErrorToFormErrors<T>(
+  error: ZodError<T>[]
+): Record<string, string> {
+  console.log({ g: error.issues });
+  return error?.reduce<Record<string, string>>((acc, err) => {
+    const fieldPath = err.path.join(".");
+    if (fieldPath) {
+      acc[fieldPath] = err.message;
+    }
+    return acc;
+  }, {});
+}

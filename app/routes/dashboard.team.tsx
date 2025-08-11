@@ -58,8 +58,6 @@ const roleToVariant = (role: Scout["role"]): BadgeProps["variant"] => {
 export default function Team() {
   const { users, teams, user } = useLoaderData<typeof loader>();
 
-  console.log({ users });
-
   return (
     <div className="flex flex-column space-y-10 container px-4 mx-auto py-10 text-foreground">
       <div className="w-full">

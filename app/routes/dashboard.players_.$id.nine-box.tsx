@@ -114,7 +114,6 @@ export default function PlayerPage() {
   const navigate = useNavigate();
   const { report, template, player } = useLoaderData<typeof loader>();
 
-  console.log({ player });
   return (
     <Sheet
       open

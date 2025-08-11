@@ -20,6 +20,8 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { EventService } from "~/services/eventService";
 import { PlayerService } from "~/services/playerService";
+import { step1 } from "~/validations/player-registration";
+import z from "zod";
 
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
@@ -46,6 +48,9 @@ export const action: ActionFunction = async ({ request }) => {
   const eventId = formData.get("eventId") as string;
 
   if (step === "1") {
+    const validations = step1.safeParse({ email });
+    if (validations.error) return { errors: z.treeifyError(validations.error) };
+
     const player = await playerService.getPlayerByEmail(email);
 
     if (player) {
@@ -137,7 +142,7 @@ export const PublicEventsRegister = () => {
           <Form method="post">
             <input type="hidden" name="step" value="1" />
             <input type="hidden" name="eventId" value={event.id} />
-            <Field name="email" label="Email">
+            <Field name="email" label="Email" errors={action?.errors}>
               <Input
                 name="email"
                 placeholder="Enter your Email"
