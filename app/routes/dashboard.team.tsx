@@ -58,6 +58,8 @@ const roleToVariant = (role: Scout["role"]): BadgeProps["variant"] => {
 export default function Team() {
   const { users, teams, user } = useLoaderData<typeof loader>();
 
+  console.log({ users });
+
   return (
     <div className="flex flex-column space-y-10 container px-4 mx-auto py-10 text-foreground">
       <div className="w-full">
@@ -122,7 +124,21 @@ export default function Team() {
               key: "role",
               header: "Role",
               render: (val, row) => (
-                <Badge variant={roleToVariant(val)}>{val}</Badge>
+                <>
+                  {row.teamMemberships?.map((member) => (
+                    <div className="flex flex-row gap-2 mb-2">
+                      <div>{member.teams.name}</div>
+                      <div>
+                        <Badge variant={roleToVariant(member.role)}>
+                          {member.role.replaceAll("_", " ")}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {row.teamMemberships?.length === 0 && (
+                    <Badge variant={roleToVariant(val)}>{val}</Badge>
+                  )}
+                </>
               ),
             },
           ]}

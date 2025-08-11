@@ -31,7 +31,10 @@ export const GroupCard: React.FC<GroupCard> = ({
         <div className="flex  flex-row justify-between w-full">
           <div className="flex-grow gap-4 flex flex-col">
             <h3 className="text-lg font-semibold text-white">{group?.name}</h3>
-            <p className="text-xs flex flex-row gap-2">
+            <p className="text-sm flex flex-row gap-2 text-muted">
+              {group.description}
+            </p>
+            <p className="text-xs flex flex-row gap-2 text-muted">
               <Users2Icon className="w-4 h-4" />
               {group.player_group_members?.length} Players
             </p>

@@ -57,10 +57,9 @@ export const calculateAge = (dateOfBirth: string): number => {
   return age;
 };
 
-export const calculateAgeGroup = (dateOfBirth: string): string => {
+export const calculateSchoolYearUK = (dateOfBirth: string): string => {
   if (!dateOfBirth) return "Unknown";
 
-  // Parse date safely without timezone shift
   const [year, month, day] = dateOfBirth.split("-").map(Number);
   const birthDate = new Date(year, month - 1, day);
 
@@ -70,34 +69,74 @@ export const calculateAgeGroup = (dateOfBirth: string): string => {
   }
 
   const today = new Date();
-
-  // Determine academic year
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth(); // 0-11
-  const academicYear = currentMonth >= 8 ? currentYear : currentYear - 1;
 
-  // Age on 1 September
-  let ageOnSept1st = academicYear - birthDate.getFullYear();
+  // Determine start year of the current academic year
+  const academicYearStart = currentMonth >= 8 ? currentYear : currentYear - 1;
+
+  // Age on 31 August of the academic year start
+  const cutoff = new Date(academicYearStart, 7, 31); // 31 Aug
+  let ageOnCutoff = cutoff.getFullYear() - birthDate.getFullYear();
   if (
-    birthDate.getMonth() > 8 ||
-    (birthDate.getMonth() === 8 && birthDate.getDate() > 1)
+    birthDate.getMonth() > cutoff.getMonth() ||
+    (birthDate.getMonth() === cutoff.getMonth() &&
+      birthDate.getDate() > cutoff.getDate())
   ) {
-    ageOnSept1st--;
+    ageOnCutoff--;
   }
 
-  if (ageOnSept1st >= 18) {
-    return "Senior";
+  // Reception = age 4
+  if (ageOnCutoff < 4) return "Too young for school";
+  if (ageOnCutoff === 4) return "Reception";
+
+  const yearNumber = ageOnCutoff - 4; // Y1 at age 5
+  if (yearNumber >= 1 && yearNumber <= 13) {
+    return `Y${yearNumber}`;
   }
 
-  // Clamp to minimum U12
-  const uGroupNumber = Math.max(12, ageOnSept1st + 1);
+  return "Beyond school age";
+};
 
-  // Clamp to U18 maximum
-  if (uGroupNumber > 18) {
-    return "Senior";
+export const calculateAgeGroup = (dateOfBirth: string): string => {
+  if (!dateOfBirth) return "Unknown";
+
+  const [year, month, day] = dateOfBirth.split("-").map(Number);
+  const birthDate = new Date(year, month - 1, day);
+  if (isNaN(birthDate.getTime())) {
+    console.warn(`Invalid date of birth: ${dateOfBirth}`);
+    return "Unknown";
   }
 
-  return `U${uGroupNumber}`;
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0-11
+
+  // academicYearStart = year in which the season starts (e.g. 2024 for 2024/25)
+  const academicYearStart = currentMonth >= 8 ? currentYear : currentYear - 1;
+
+  // cutoff = 31 August of academicYearStart
+  const cutoff = new Date(academicYearStart, 7, 31); // month 7 = Aug (0-based)
+
+  // age on 31 August
+  let ageOnAug31 = cutoff.getFullYear() - birthDate.getFullYear();
+  if (
+    birthDate.getMonth() > cutoff.getMonth() ||
+    (birthDate.getMonth() === cutoff.getMonth() &&
+      birthDate.getDate() > cutoff.getDate())
+  ) {
+    ageOnAug31--;
+  }
+
+  // 18 or older on cutoff => Senior
+  if (ageOnAug31 >= 18) return "Senior";
+
+  // U-group is ageOnAug31 + 1, clamp min U12, max U18 (else Senior)
+  let uGroup = ageOnAug31 + 1;
+  if (uGroup < 12) uGroup = 12;
+  if (uGroup > 18) return "Senior";
+
+  return `U${uGroup}`;
 };
 
 /**

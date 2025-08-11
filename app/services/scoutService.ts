@@ -48,7 +48,7 @@ export class ScoutService {
     const { data, error } = await this.client
       .from("users")
       .select(
-        "id, name, email, role, avatar, status, invited_by, invited_at, created_at, updated_at"
+        "id, name, email, role, avatar, status, invited_by, invited_at, created_at, updated_at, team_memberships(*, teams(name))"
       )
       .order("name");
 

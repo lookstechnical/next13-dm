@@ -77,7 +77,7 @@ export default function Players() {
                   placeholder="Order By"
                   options={[
                     { id: "name", name: "Name" },
-                    { id: "score", name: "Avg Score" },
+                    // { id: "score", name: "Avg Score" },
                     { id: "date_of_birth", name: "Age" },
                   ]}
                 />

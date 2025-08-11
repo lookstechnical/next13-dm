@@ -67,7 +67,7 @@ export class EventService {
     const { data, error } = await this.client
       .from("events")
       .select("*")
-      .eq("status", "upcoming")
+      .eq("can_register", "TRUE")
       .order("date");
 
     if (error) throw error;
@@ -183,7 +183,7 @@ export class EventService {
       .order("registered_at", { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return convertKeysToCamelCase(data) || [];
   }
 
   async getPlayerEventRegistrationById(

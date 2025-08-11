@@ -64,11 +64,8 @@ export const PlayerCard: React.FC<PlayerCard> = ({
                 • {player?.secondaryPosition}
               </span>
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-xs text-gray-400">
               <span className="mr-2">{player?.club}</span>
-            </div>
-            <div className="text-sm text-gray-400">
-              {calculateAge(player?.dateOfBirth)} years
             </div>
             <div className="flex items-center space-x-2 mt-2">
               <div className="bg-red-600 text-white px-2 py-1 rounded-lg text-xs font-medium">

@@ -110,9 +110,13 @@ export const action: ActionFunction = async ({ request }) => {
 
       await teamService.addUserToTeam(appUser.id, team, role);
     }
+
+    await supabaseClient.auth.admin.inviteUserByEmail(email.toLowerCase());
   }
 
-  await supabaseClient.auth.admin.inviteUserByEmail(email.toLowerCase());
+  if (existingUser) {
+    await teamService.addUserToTeam(existingUser.id, team, role);
+  }
 
   return redirect("/dashboard/team");
 };
