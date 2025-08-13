@@ -5,8 +5,12 @@ import { Form } from "@remix-run/react";
 import { Field } from "../forms/field";
 import { Input } from "../ui/input";
 import { useState } from "react";
+import { SelectField } from "../forms/select";
 
-export const PlayerFilters = () => {
+type PlayerFilters = {
+  appliedFilters: any;
+};
+export const PlayerFilters: React.FC<PlayerFilters> = ({ appliedFilters }) => {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={(val) => setOpen(val)}>
@@ -19,19 +23,21 @@ export const PlayerFilters = () => {
             <Input
               name="name"
               placeholder="Enter Players Name"
-              defaultValue=""
+              defaultValue={appliedFilters?.name}
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />
           </Field>
 
-          {/* <Field name="quartile" label="">
-            <Input
-              name="name"
-              placeholder="Enter Players Name"
-              defaultValue=""
-              className="bg-card border-gray-600 text-white placeholder:text-gray-400"
-            />
-          </Field> */}
+          <SelectField
+            name="age-group"
+            label="Age Group"
+            defaultValue={appliedFilters?.ageGroup}
+            options={[
+              { id: "U14", name: "U14" },
+              { id: "U15", name: "U15" },
+              { id: "U16", name: "U16" },
+            ]}
+          />
 
           <SheetClose asChild>
             <ActionButton title="Apply Filters" />

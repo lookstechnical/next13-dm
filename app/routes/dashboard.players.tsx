@@ -38,19 +38,25 @@ export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
   const order = url.searchParams.get("order");
   const nameFilter = url.searchParams.get("name");
+  const ageGroupFilter = url.searchParams.get("age-group");
 
   const players =
     (await playerService.getPlayersByTeam(
       user.team.id,
       order as string,
-      nameFilter as string
+      nameFilter as string,
+      ageGroupFilter as string
     )) || [];
 
-  return { players, user };
+  return {
+    players,
+    user,
+    appliedFilters: { order, name: nameFilter, ageGroup: ageGroupFilter },
+  };
 };
 
 export default function Players() {
-  const { players, user } = useLoaderData<typeof loader>();
+  const { players, user, appliedFilters } = useLoaderData<typeof loader>();
 
   const submit = useSubmit();
 
@@ -65,7 +71,7 @@ export default function Players() {
           title={`${user.team.name} Players`}
           renderFilters={() => (
             <div className="flex flex-row items-center justify-center gap-4">
-              <PlayerFilters />
+              <PlayerFilters appliedFilters={appliedFilters} />
               <Form
                 onChange={(event) => {
                   submit(event.currentTarget);

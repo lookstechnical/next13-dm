@@ -139,6 +139,43 @@ export const calculateAgeGroup = (dateOfBirth: string): string => {
   return `U${uGroup}`;
 };
 
+export const getDateRangeForAgeGroup = (
+  ageGroup: string
+): { start: string; end: string } | null => {
+  if (!ageGroup) return null;
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0-11
+
+  // Academic year start calculation
+  const academicYearStart = currentMonth >= 8 ? currentYear : currentYear - 1;
+
+  if (ageGroup.toLowerCase() === "senior") {
+    // Born on or before 31 Aug of (academicYearStart - 18)
+    const end = new Date(academicYearStart - 18, 7, 31); // Aug 31
+    return { start: null, end: end.toISOString().split("T")[0] };
+  }
+
+  // Match something like U12, U13, U14, etc.
+  const match = ageGroup.match(/^U(\d{1,2})$/i);
+  if (!match) return null;
+
+  const uNum = parseInt(match[1], 10);
+  if (uNum < 12 || uNum > 18) return null; // invalid per rules
+
+  const ageOnAug31 = uNum - 1; // because U15 means age 14 on Aug 31
+
+  // Start = 1 Sep of year they turned (ageOnAug31 + 1)
+  const start = new Date(academicYearStart - (ageOnAug31 + 1), 8, 1); // Sept 1
+  // End = 31 Aug of year they turned ageOnAug31
+  const end = new Date(academicYearStart - ageOnAug31, 7, 31); // Aug 31
+
+  return {
+    start: start.toISOString().split("T")[0],
+    end: end.toISOString().split("T")[0],
+  };
+};
 /**
  * Calculate relative age quartile within school year (September to August)
  * Q1 = Sept-Nov (oldest), Q2 = Dec-Feb, Q3 = Mar-May, Q4 = Jun-Aug (youngest)

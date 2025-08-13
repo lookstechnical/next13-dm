@@ -1,5 +1,8 @@
 import { Player } from "../types";
-import { convertKeysToCamelCase } from "../utils/helpers";
+import {
+  convertKeysToCamelCase,
+  getDateRangeForAgeGroup,
+} from "../utils/helpers";
 
 type AvScore = { score: string };
 
@@ -137,7 +140,8 @@ export class PlayerService {
   async getPlayersByTeam(
     teamId: string,
     orderBy?: string,
-    name?: string
+    name?: string,
+    ageGroup?: any
   ): Promise<Player[]> {
     const query = this.client
       .from("players")
@@ -176,6 +180,14 @@ export class PlayerService {
       }
     } else {
       query.order("name");
+    }
+
+    if (ageGroup) {
+      const groupFilter = getDateRangeForAgeGroup(ageGroup);
+      if (groupFilter) {
+        query.gte("date_of_birth", groupFilter.start);
+        query.lte("date_of_birth", groupFilter.end);
+      }
     }
 
     const { data, error } = await query;

@@ -1,10 +1,10 @@
 import { Club, Player } from "~/types";
-import { Input } from "../ui/input";
-import { Field } from "./field";
-import { PositionSelect } from "./position";
-import { SelectField } from "./select";
-import { DateField } from "./date";
-import { ImageUpload } from "./image-upload";
+import { Input } from "../../ui/input";
+import { Field } from "../field";
+import { PositionSelect } from "../position";
+import { SelectField } from "../select";
+import { DateField } from "../date";
+import { ImageUpload } from "../image-upload";
 
 type PlayerForm = {
   player?: Player;
@@ -45,7 +45,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
           />
         </div>
       </div>
-      <div className="flex flex-row w-full gap-5">
+      <div className="flex flex-col lg:flex-row w-full gap-5">
         <Field name="position" label="Position">
           <PositionSelect defaultValue={player?.position} name="position" />
         </Field>

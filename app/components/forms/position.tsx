@@ -1,13 +1,6 @@
 import { SelectProps } from "@radix-ui/react-select";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+
+import { SelectField } from "./select";
 
 export const POSITIONS = [
   "Fullback",
@@ -21,31 +14,19 @@ export const POSITIONS = [
   "Loose Forward",
 ];
 
-type PositionSelect = {} & SelectProps;
+type PositionSelect = { label: string } & SelectProps;
 
 export const PositionSelect: React.FC<PositionSelect> = ({
   defaultValue,
   name,
+  label,
 }) => {
   return (
-    <Select defaultValue={defaultValue} name={name}>
-      <SelectTrigger className="w-full text-foreground border-muted">
-        <SelectValue placeholder="Select a Position" />
-      </SelectTrigger>
-      <SelectContent className="text-foreground">
-        <SelectGroup>
-          <SelectLabel className=" text-foreground">Position</SelectLabel>
-          {POSITIONS.map((p) => (
-            <SelectItem
-              key={`select-option-${p}`}
-              className=" text-foreground"
-              value={p}
-            >
-              {p}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
+    <SelectField
+      defaultValue={defaultValue}
+      name={name}
+      label={label}
+      options={POSITIONS.map((p) => ({ id: p, name: p }))}
+    />
   );
 };

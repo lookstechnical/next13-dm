@@ -15,6 +15,8 @@ import {
   Users2Icon,
 } from "lucide-react";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
+import { ListingHeader } from "~/components/layout/listing-header";
+import { PlayerFilters } from "~/components/players/filters";
 import { PlayerCard } from "~/components/players/player-card";
 import ActionButton from "~/components/ui/action-button";
 import { Badge } from "~/components/ui/badge";
@@ -49,7 +51,31 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const eventService = new GroupService(supabaseClient);
   const group = await eventService.getGroupById(params.id as string);
 
-  return { group };
+  const url = new URL(request.url);
+  // const order = url.searchParams.get("order");
+  const nameFilter = url.searchParams.get("name");
+  const ageGroup = url.searchParams.get("age-group");
+
+  const playerGroupMembers = group?.playerGroupMembers.filter((pg) => {
+    const val = true;
+    if (nameFilter) {
+      const name = pg.players.name;
+      if (name && name.toLowerCase().includes(nameFilter)) {
+      } else return false;
+    }
+
+    if (ageGroup) {
+      const ag = calculateAgeGroup(pg.players.dateOfBirth);
+      if (ageGroup && ageGroup === ag) {
+      } else {
+        return false;
+      }
+    }
+
+    return val;
+  });
+
+  return { group: { ...group, playerGroupMembers } };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -134,6 +160,15 @@ export default function PlayerPage() {
       </div>
       <div className="bg-card min-h-screen py-10">
         <div className="container mx-auto px-4">
+          <ListingHeader
+            title={`${group.name} Players`}
+            renderFilters={() => (
+              <div className="flex flex-row items-center justify-center gap-4">
+                <PlayerFilters />
+              </div>
+            )}
+          />
+
           <CardGrid items={group.playerGroupMembers} name="Players">
             {group.playerGroupMembers.map((player: any) => (
               <PlayerCard

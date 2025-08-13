@@ -45,16 +45,17 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
           />
         </div>
       </div>
-      <div className="flex flex-row w-full gap-5">
-        <Field name="position" label="Position">
-          <PositionSelect defaultValue={player?.position} name="position" />
-        </Field>
-        <Field name="position" label="Secondary position">
-          <PositionSelect
-            defaultValue={player?.secondaryPosition}
-            name="secondaryPosition"
-          />
-        </Field>
+      <div className="flex flex-col md:flex-row w-full gap-5">
+        <PositionSelect
+          defaultValue={player?.position}
+          name="position"
+          label="Position"
+        />
+        <PositionSelect
+          defaultValue={player?.secondaryPosition}
+          name="secondaryPosition"
+          label="Secondary position"
+        />
         <SelectField
           name="club"
           label="Club"

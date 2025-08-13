@@ -17,7 +17,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
     .then((buf) => new Uint8Array(buf));
 
   const logoImage = await pdfDoc.embedPng(logoBytes); // or embedJpg()
-  const logoDims = logoImage.scale(0.025); // scale down logo to 15% size
+  const logoDims = logoImage.scale(0.02); // scale down logo to 15% size
 
   // Draw logo top right with some margin
   const logoX = width - logoDims.width - 50;
@@ -36,13 +36,13 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
     grouped[p.position].push(p);
   }
 
-  let y = height - 50;
+  let y = height - 40;
 
   // Title
   page.drawText(`TEAM SHEET - ${teamName}`, {
     x: 50,
     y,
-    size: 14,
+    size: 11,
     font: fontBold,
     color: rgb(0, 0, 0),
   });
@@ -84,7 +84,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
 
   // Draw each position table
   for (const [position, group] of Object.entries(grouped)) {
-    if (y < 120) {
+    if (y < 50) {
       // New page if not enough space
       page = pdfDoc.addPage([595.28, 841.89]);
       y = height - 50;
@@ -97,7 +97,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
       thickness: 1,
       color: rgb(0, 0, 0),
     });
-    y -= 10;
+    y -= 8;
 
     let i = 1;
     for (const player of group) {
@@ -107,26 +107,26 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
         y = height - 50;
       }
 
-      page.drawText(player.position, { x: marginX, y, size: 11, font });
-      page.drawText(player.name, { x: marginX + 75, y, size: 11, font });
+      page.drawText(player.position, { x: marginX, y, size: 10, font });
+      page.drawText(player.name, { x: marginX + 75, y, size: 10, font });
 
       page.drawText(calculateAgeGroup(player.dateOfBirth) ?? "", {
         x: marginX + 180,
         y,
-        size: 11,
+        size: 10,
         font,
       });
-      page.drawText(player.club ?? "", { x: marginX + 210, y, size: 11, font });
+      page.drawText(player.club ?? "", { x: marginX + 210, y, size: 10, font });
 
       // Notes column left blank - just space
 
-      y -= 20;
+      y -= 18;
 
       i++;
       // Light horizontal line under row
       if (group.length === i) drawLine(y + 10);
 
-      y -= 10;
+      y -= 8;
     }
 
     // y -= 0; // space between tables
