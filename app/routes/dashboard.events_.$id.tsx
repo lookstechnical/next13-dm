@@ -118,7 +118,7 @@ export default function PlayerPage() {
     ? filteredPlayers.filter((p) =>
         p.players.playerGroupMembers?.map((gm) => gm.groupId).includes(group)
       )
-    : players;
+    : filteredPlayers;
 
   return (
     <>
@@ -172,9 +172,9 @@ export default function PlayerPage() {
           <SelectField
             name="status"
             label="Attendance"
-            onValueChange={(status) =>
-              setStatus(status === "all" ? undefined : status)
-            }
+            onValueChange={(status) => {
+              setStatus(status === "all" ? undefined : status);
+            }}
             options={[
               { id: "all", name: "all" },
               { id: "attended", name: "Attended" },

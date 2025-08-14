@@ -3,7 +3,7 @@ import { PropsWithChildren } from "react";
 type Field = PropsWithChildren<{
   label: string;
   name: string;
-  errors: any;
+  errors?: any;
 }>;
 
 export const Field: React.FC<Field> = ({ label, name, children, errors }) => {

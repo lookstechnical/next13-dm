@@ -9,15 +9,10 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Field } from "./field";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetOverlay,
-  SheetTrigger,
-} from "../ui/sheet";
-import { useState } from "react";
+import { Sheet, SheetClose, SheetContent, SheetTrigger } from "../ui/sheet";
+import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
+import { X } from "lucide-react";
 
 type SelectField = {
   options: { id: string; name: string }[];
@@ -31,9 +26,17 @@ export const SelectField: React.FC<SelectField> = ({
   label,
   options,
   placeholder,
+  onValueChange,
   ...rest
 }) => {
-  const [value, setValue] = useState(defaultValue);
+  const [value, setValue] = useState(defaultValue || "");
+
+  useEffect(() => {
+    console.log("value change trigger");
+    onValueChange && onValueChange(value);
+  }, [value]);
+
+  const selectedOption = options.find((o) => o.id === value);
 
   return (
     <Field name={name as string} label={label}>
@@ -46,26 +49,35 @@ export const SelectField: React.FC<SelectField> = ({
               variant="outline"
               className="w-full text-foreground border-muted"
             >
-              {value || placeholder || label}
+              {selectedOption?.name || placeholder || label}
             </Button>
           </SheetTrigger>
-          <SheetContent
-            side="bottom"
-            className="max-h-[40vh] overflow-scroll p-4"
-          >
-            {options.map((p) => (
-              <SheetClose className=" text-foreground w-full">
+          <SheetContent side="bottom" className="max-h-[45vh] p-4 py-12">
+            <div className="h-[90%] overflow-scroll">
+              <SheetClose className="text-foreground w-full">
                 <Button
                   type="button"
                   variant="outline"
-                  key={`select-option-${p.id}`}
-                  className=" text-foreground w-full"
-                  onClick={() => setValue(p.id)}
+                  className="text-background w-full bg-muted"
+                  onClick={() => setValue("")}
                 >
-                  {p.name}
+                  Clear <X />
                 </Button>
               </SheetClose>
-            ))}
+              {options.map((p) => (
+                <SheetClose className=" text-foreground w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    key={`select-option-${p.id}`}
+                    className=" text-foreground w-full"
+                    onClick={() => setValue(p.id)}
+                  >
+                    {p.name}
+                  </Button>
+                </SheetClose>
+              ))}
+            </div>
           </SheetContent>
         </Sheet>
       </div>
@@ -76,10 +88,10 @@ export const SelectField: React.FC<SelectField> = ({
           value={value}
           onValueChange={(val) => setValue(val)}
         >
-          <SelectTrigger className="w-full text-foreground border-muted">
-            <SelectValue placeholder={placeholder} />
+          <SelectTrigger className="w-full text-foreground border-muted flex flex-row">
+            <SelectValue placeholder={placeholder} className="flex-1" />
           </SelectTrigger>
-          <SelectContent className="text-foreground">
+          <SelectContent className="text-foreground ">
             <SelectGroup>
               <SelectLabel className=" text-foreground">{label}</SelectLabel>
               {options.map((p) => (
