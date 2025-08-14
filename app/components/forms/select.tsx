@@ -81,17 +81,17 @@ export const SelectField: React.FC<SelectField> = ({
           </SheetContent>
         </Sheet>
       </div>
-      <div className="hidden md:block w-full">
+      <div className="hidden md:flex w-full  flex-row items-center justify-center">
         <Select
           defaultValue={defaultValue}
           {...rest}
           value={value}
           onValueChange={(val) => setValue(val)}
         >
-          <SelectTrigger className="w-full text-foreground border-muted flex flex-row">
+          <SelectTrigger className="w-full text-foreground border-muted outline-none focus:ring-offset-0">
             <SelectValue placeholder={placeholder} className="flex-1" />
           </SelectTrigger>
-          <SelectContent className="text-foreground ">
+          <SelectContent className="text-foreground outline-none">
             <SelectGroup>
               <SelectLabel className=" text-foreground">{label}</SelectLabel>
               {options.map((p) => (
@@ -106,6 +106,16 @@ export const SelectField: React.FC<SelectField> = ({
             </SelectGroup>
           </SelectContent>
         </Select>
+        {value && (
+          <Button
+            type="button"
+            variant="outline"
+            className="text-foreground border-muted"
+            onClick={() => setValue("")}
+          >
+            <X />
+          </Button>
+        )}
       </div>
     </Field>
   );
