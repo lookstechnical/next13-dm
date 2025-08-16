@@ -11,7 +11,7 @@ const MenuLink: React.FC<MenuLink> = ({ children, to, close }) => {
     return (
       <SheetClose asChild>
         <Link
-          className=" w-full flex justify-end items-end px-3 py-2 text-md font-medium transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
+          className="w-full flex justify-end items-end lg:justify-start lg:w-fit px-3 py-2 text-xl lg:text-sm transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
           to={to}
           prefetch="intent"
         >
@@ -52,8 +52,7 @@ const MenuItems = ({ close }: { close?: boolean }) => {
 
 const AccountMenuItems = ({ close }: { close?: boolean }) => {
   return (
-    <nav className="flex flex-col lg:flex-row lg:flex   w-full lg:w-fit">
-      <h2 className="text-xl text-foreground">Admin</h2>
+    <nav className="flex flex-col  w-full">
       <MenuLink close={close} to="/dashboard/team">
         Team
       </MenuLink>
