@@ -11,7 +11,7 @@ const MenuLink: React.FC<MenuLink> = ({ children, to, close }) => {
     return (
       <SheetClose asChild>
         <Link
-          className="lg:items-center w-full lg:w-fit flex items-end px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
+          className=" w-full flex justify-end items-end px-3 py-2 text-md font-medium transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
           to={to}
           prefetch="intent"
         >
