@@ -86,7 +86,7 @@ export const Menu: React.FC<{ className?: string; user?: User }> = ({
           <SheetContent>
             <MenuItems close={true} />
 
-            <div className="lg:hidden bt-1 border-muted w-full fixed bottom-0">
+            <div className="lg:hidden bt-1 border-muted w-full absolute bottom-0">
               {/* {user && <UserMenu user={user} />} */}
               {user && user.role === "ADMIN" && <AccountMenuItems close={true} />}
             </div>
