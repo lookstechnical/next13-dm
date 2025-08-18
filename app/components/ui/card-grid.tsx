@@ -9,7 +9,7 @@ type CardGrid = PropsWithChildren<{
 export const CardGrid: React.FC<CardGrid> = ({ children, items, name }) => {
   if (items.length === 0) {
     return (
-      <div className="w-full flex items-center justify-center text-foreground">
+      <div className="w-full flex items-center justify-center text-foreground gap-4 py-10">
         <Card className="w-full md:w-1/2 flex items-center justify-center p-10">
           <h2>{name}</h2>
         </Card>

@@ -3,15 +3,24 @@ import { Sheet, SheetClose, SheetContent, SheetTrigger } from "../ui/sheet";
 import { MenuIcon } from "lucide-react";
 import { PropsWithChildren } from "react";
 import { User } from "~/types";
+import { MobileUserMenu } from "./user-menu";
+import { cn } from "~/lib/utils";
 
-type MenuLink = PropsWithChildren<{ to: string; close?: boolean }>;
+type MenuLink = PropsWithChildren<{
+  to: string;
+  close?: boolean;
+  level?: number;
+}>;
 
-const MenuLink: React.FC<MenuLink> = ({ children, to, close }) => {
+const MenuLink: React.FC<MenuLink> = ({ children, to, close, level = 0 }) => {
   if (close) {
     return (
       <SheetClose asChild>
         <Link
-          className="w-full flex justify-end items-end lg:justify-start lg:w-fit px-3 py-2 text-xl lg:text-sm transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100"
+          className={cn(
+            "w-full flex justify-end items-end lg:justify-start lg:w-fit px-3 py-2 lg:text-sm transition-colors text-gray-200 hover:text-gray-900 hover:bg-gray-100",
+            level === 2 ? "text-md" : "text-xl"
+          )}
           to={to}
           prefetch="intent"
         >
@@ -53,16 +62,16 @@ const MenuItems = ({ close }: { close?: boolean }) => {
 const AccountMenuItems = ({ close }: { close?: boolean }) => {
   return (
     <nav className="flex flex-col  w-full">
-      <MenuLink close={close} to="/dashboard/team">
+      <MenuLink close={close} level={2} to="/dashboard/team">
         Team
       </MenuLink>
-      <MenuLink close={close} to="/dashboard/clubs">
+      <MenuLink close={close} level={2} to="/dashboard/clubs">
         Clubs
       </MenuLink>
-      <MenuLink close={close} to="/dashboard/attributes">
+      <MenuLink close={close} level={2} to="/dashboard/attributes">
         Attributes
       </MenuLink>
-      <MenuLink close={close} to="/dashboard/templates">
+      <MenuLink close={close} level={2} to="/dashboard/templates">
         Templates
       </MenuLink>
     </nav>
@@ -83,12 +92,15 @@ export const Menu: React.FC<{ className?: string; user?: User }> = ({
           <SheetTrigger>
             <MenuIcon />
           </SheetTrigger>
-          <SheetContent>
-            <MenuItems close={true} />
+          <SheetContent className="[&>button:last-of-type]:hidden">
+            {user && <MobileUserMenu user={user} />}
 
-            <div className="lg:hidden bt-1 border-muted w-full absolute bottom-0">
-              {/* {user && <UserMenu user={user} />} */}
-              {user && user.role === "ADMIN" && <AccountMenuItems close={true} />}
+            <div className="lg:hidden bt-1 border-muted w-full absolute bottom-0 pl-0 p-10">
+              <MenuItems close={true} />
+              <div className="h-2 w-full bg-wkbackground my-2"></div>
+              {user && user.role === "ADMIN" && (
+                <AccountMenuItems close={true} />
+              )}
             </div>
           </SheetContent>
         </Sheet>
