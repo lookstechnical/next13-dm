@@ -142,7 +142,8 @@ export class PlayerService {
     orderBy?: string,
     name?: string,
     ageGroup?: any,
-    group?: string
+    group?: string,
+    position?: string
   ): Promise<Player[]> {
     const query = this.client
       .from("players")
@@ -181,6 +182,10 @@ export class PlayerService {
       }
     } else {
       query.order("name");
+    }
+
+    if (position) {
+      query.or(`position.eq.${position},secondary_position.eq.${position}`); //.or("secondary_position", position);
     }
 
     if (ageGroup) {

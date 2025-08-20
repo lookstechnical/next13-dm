@@ -55,8 +55,11 @@ export const action: ActionFunction = async ({ request }) => {
   const name = formData.get("name") as string;
   const date = formData.get("date") as string;
   const location = formData.get("location") as string;
-  const registrationDeadline = formData.get("registrationDeadline") as string;
+  const registrationDeadline = formData.get("registrationDeadline");
   const description = formData.get("description") as string;
+  const eventType = formData.get("event-type") as string;
+  const canRegister = formData.get("canRegister") as string;
+
   const templateId = formData.get("templateId") as string;
 
   const data = {
@@ -64,11 +67,14 @@ export const action: ActionFunction = async ({ request }) => {
     date,
     location,
     description,
-    registrationDeadline,
+    registrationDeadline:
+      registrationDeadline !== "" ? registrationDeadline : null,
     teamId: user.current_team,
     status: "upcoming",
     ageGroup: "non",
     templateId: templateId,
+    eventType,
+    canRegister,
   };
 
   await eventsService.createEvent(data, user.id);

@@ -5,31 +5,16 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import {
-  Calendar,
-  DeleteIcon,
-  Edit2Icon,
-  MapPin,
-  MoreVertical,
-  User,
-  User2,
-} from "lucide-react";
+import { Calendar, MapPin, MoreVertical } from "lucide-react";
 import { useState } from "react";
-import { SelectField } from "~/components/forms/select";
-import { PlayerCard } from "~/components/players/player-card";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
-// import RadarAttributes from "~/components/charts/radar";
-import { Card } from "~/components/ui/card";
-import { CardGrid } from "~/components/ui/card-grid";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "~/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
-import { cn } from "~/lib/utils";
 import { EventService } from "~/services/eventService";
 import { GroupService } from "~/services/groupService";
 import { EventRegistration } from "~/types";
@@ -99,17 +84,6 @@ export default function PlayerPage() {
   const [status, setStatus] = useState<string>();
   const [group, setGroup] = useState<string>();
 
-  const getVariant = (player: EventRegistration) => {
-    switch (player.status) {
-      case "attended":
-        return "secondary";
-      case "confirmed":
-        return "outline";
-      case "no_show":
-        return "default";
-    }
-  };
-
   let filteredPlayers = status
     ? players.filter((p) => p.status === status)
     : players;
@@ -122,7 +96,7 @@ export default function PlayerPage() {
 
   return (
     <>
-      <div className="w-full flex flex-col gap-12 space-y-10 container px-4 mx-auto py-10 text-foreground">
+      <div className="w-full flex flex-col gap-12 space-y-10 container px-4 mx-auto pt-10 text-foreground">
         <div className="w-full flex flex-col md:flex-row gap-4 md:justify-between items-end md:items-center mb-6 ">
           <div className="flex flex-row gap-4 w-full md:w-1/2 items-center">
             <div className="flex gap-1 flex-col gap-4">
@@ -165,6 +139,18 @@ export default function PlayerPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </div>
+        <div>
+          <Button asChild variant="outline" className="bg-background ">
+            <Link to={`/dashboard/events/${event.id}`}>Players</Link>
+          </Button>
+          {event.eventType === "training" && (
+            <Button asChild variant="outline" className="bg-background ">
+              <Link to={`/dashboard/events/${event.id}/session-plan`}>
+                Session plan
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
       <div className="bg-card min-h-screen py-10">

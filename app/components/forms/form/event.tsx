@@ -49,6 +49,27 @@ export const EventForm: React.FC<EventForm> = ({ event, templates }) => {
             }
           />
         </div>
+        <div className="flex flex-row w-full gap-4">
+          <SelectField
+            placeholder="Event Type"
+            name="event-type"
+            label="Event type"
+            options={[
+              { id: "programme", name: "Programme" },
+              { id: "training", name: "Training" },
+              { id: "camp", name: "Camp" },
+            ]}
+          />
+
+          <Field name="canRegister" label="Can Register">
+            <Input
+              name="canRegister"
+              type="checkbox"
+              checked={event?.canRegister}
+              className="w-4 h-4"
+            />
+          </Field>
+        </div>
         <div>
           <Field name="description" label="Description">
             <Textarea

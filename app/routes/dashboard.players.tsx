@@ -41,6 +41,7 @@ export const loader: LoaderFunction = async ({ request }) => {
   const order = url.searchParams.get("order");
   const nameFilter = url.searchParams.get("name");
   const ageGroupFilter = url.searchParams.get("age-group");
+  const position = url.searchParams.get("position");
   const group = url.searchParams.get("group") || user.team?.defaultGroup;
 
   const players =
@@ -49,7 +50,8 @@ export const loader: LoaderFunction = async ({ request }) => {
       order as string,
       nameFilter as string,
       ageGroupFilter as string,
-      group as string
+      group as string,
+      position as string
     )) || [];
 
   const groups = await groupService.getGroupsByTeam(user.team?.id as string);
@@ -62,7 +64,8 @@ export const loader: LoaderFunction = async ({ request }) => {
       order,
       name: nameFilter,
       ageGroup: ageGroupFilter,
-      group: group,
+      group,
+      position,
     },
   };
 };

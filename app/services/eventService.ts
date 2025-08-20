@@ -98,10 +98,13 @@ export class EventService {
         requirements: eventData.requirements,
         scout_id: scoutId,
         status: eventData.status,
+        event_type: eventData.eventType,
+        can_register: eventData.canRegister,
       })
       .select()
       .single();
 
+    console.log({ error, rd: eventData.registrationDeadline });
     if (error) throw error;
     return data;
   }
@@ -127,6 +130,8 @@ export class EventService {
     if (updates.requirements !== undefined)
       updateData.requirements = updates.requirements;
     if (updates.status !== undefined) updateData.status = updates.status;
+    if (updates.eventType !== undefined)
+      updateData.event_type = updates.eventType;
 
     const { data, error } = await this.client
       .from("events")

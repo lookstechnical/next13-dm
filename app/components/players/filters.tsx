@@ -7,6 +7,7 @@ import { Input } from "../ui/input";
 import { useState } from "react";
 import { SelectField } from "../forms/select";
 import { PlayerGroup } from "~/types";
+import { POSITIONS } from "~/utils/helpers";
 
 type PlayerFilters = {
   appliedFilters: any;
@@ -50,6 +51,15 @@ export const PlayerFilters: React.FC<PlayerFilters> = ({
               label="Group"
               defaultValue={appliedFilters?.group}
               options={groups?.map((g) => ({ id: g.id, name: g.name }))}
+            />
+          )}
+
+          {POSITIONS && (
+            <SelectField
+              name="position"
+              label="Position"
+              defaultValue={appliedFilters?.position}
+              options={POSITIONS?.map((p) => ({ id: p, name: p }))}
             />
           )}
 

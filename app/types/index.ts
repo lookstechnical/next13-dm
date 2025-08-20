@@ -146,6 +146,8 @@ export interface Event {
   scoutId: string;
   createdAt: string;
   templateId: string;
+  eventType?: string;
+  canRegister?: boolean;
   status: "upcoming" | "ongoing" | "completed" | "cancelled";
 }
 
