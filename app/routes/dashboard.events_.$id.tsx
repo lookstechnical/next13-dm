@@ -79,20 +79,8 @@ export const action: ActionFunction = async ({ request, params }) => {
   return {};
 };
 
-export default function PlayerPage() {
-  const { event, players, groups } = useLoaderData<typeof loader>();
-  const [status, setStatus] = useState<string>();
-  const [group, setGroup] = useState<string>();
-
-  let filteredPlayers = status
-    ? players.filter((p) => p.status === status)
-    : players;
-
-  filteredPlayers = group
-    ? filteredPlayers.filter((p) =>
-        p.players.playerGroupMembers?.map((gm) => gm.groupId).includes(group)
-      )
-    : filteredPlayers;
+export default function EventPage() {
+  const { event } = useLoaderData<typeof loader>();
 
   return (
     <>

@@ -16,14 +16,13 @@ import { Card } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { getSupabaseServerClient } from "~/lib/supabase";
-import { AttributesService } from "~/services/attributesService";
 import { ScoutService } from "~/services/scoutService";
 import { TeamService } from "~/services/teamService";
 import { Scout, Team, User } from "~/types";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
-  return [{ title: "Players" }, { name: "description", content: "Player" }];
+  return [{ title: "Teams" }, { name: "description", content: "Teams" }];
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
@@ -35,9 +34,12 @@ export const loader: LoaderFunction = async ({ request }) => {
     return redirect("/");
   }
   const teamService = new TeamService(supabaseClient);
-  const teams = await teamService.getAllTeams();
   const usersService = new ScoutService(supabaseClient);
-  const users = await usersService.getAllScouts();
+
+  const teamsPromise = teamService.getAllTeams();
+  const usersPromise = usersService.getAllScouts();
+
+  const [teams, users] = await Promise.all([teamsPromise, usersPromise]);
 
   return { teams, users, user };
 };

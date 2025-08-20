@@ -3,7 +3,7 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Link, redirect, useLoaderData } from "@remix-run/react";
+import { Link, redirect, useLoaderData, useNavigate } from "@remix-run/react";
 import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
@@ -33,7 +33,11 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     return redirect("/");
   }
 
-  return {};
+  const event = params.id
+    ? await eventService.getEventById(params.id)
+    : undefined;
+
+  return { event };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -45,15 +49,16 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function SessionPlan() {
-  const {} = useLoaderData<typeof loader>();
+  const { event } = useLoaderData<typeof loader>();
+  const navigate = useNavigate();
 
   return (
     <Sheet
       open
       onOpenChange={(open) => {
-        // if (!open) {
-        //   navigate("/dashboard/");
-        // }
+        if (!open) {
+          navigate(`/dashboard/events/${event.id}/session-plan`);
+        }
       }}
     >
       <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
@@ -65,10 +70,12 @@ export default function SessionPlan() {
 
         <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
           <Button asChild variant="link">
-            <Link to={`/dashboard/attributes`}>Cancel</Link>
+            <Link to={`/dashboard/events/${event.id}/session-plan`}>
+              Cancel
+            </Link>
           </Button>
 
-          <ActionButton title="Add Attribute" />
+          <ActionButton title="Add Library Item" />
         </SheetFooter>
         {/* </Form> */}
       </SheetContent>

@@ -44,17 +44,18 @@ export const loader: LoaderFunction = async ({ request }) => {
   const position = url.searchParams.get("position");
   const group = url.searchParams.get("group") || user.team?.defaultGroup;
 
-  const players =
-    (await playerService.getPlayersByTeam(
-      user.team?.id as string,
-      order as string,
-      nameFilter as string,
-      ageGroupFilter as string,
-      group as string,
-      position as string
-    )) || [];
+  const playersPromise = playerService.getPlayersByTeam(
+    user.team?.id as string,
+    order as string,
+    nameFilter as string,
+    ageGroupFilter as string,
+    group as string,
+    position as string
+  );
 
-  const groups = await groupService.getGroupsByTeam(user.team?.id as string);
+  const groupsPromise = groupService.getGroupsByTeam(user.team?.id as string);
+
+  const [players, groups] = await Promise.all([playersPromise, groupsPromise]);
 
   return {
     players,
@@ -85,8 +86,8 @@ export default function Players() {
       <div className="w-full">
         <ListingHeader
           title={`${user.team.name} Players`}
-          renderFilters={() => (
-            <div className="flex flex-row items-center justify-center gap-4">
+          renderActions={() => (
+            <div className="flex flex-row items-end justify-center gap-4 p-0 m-0">
               <PlayerFilters appliedFilters={appliedFilters} groups={groups} />
               <Form
                 onChange={(event) => {
@@ -103,27 +104,25 @@ export default function Players() {
                   ]}
                 />
               </Form>
+              <MoreActions>
+                <DropdownMenuItem asChild>
+                  <Button asChild variant={"outline"}>
+                    <Link to="/dashboard/players/csv-import">
+                      <DownloadIcon />
+                      Import CSV
+                    </Link>
+                  </Button>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Button asChild variant={"outline"}>
+                    <Link to="/dashboard/players/create">
+                      <UserPlus />
+                      Add Player
+                    </Link>
+                  </Button>
+                </DropdownMenuItem>
+              </MoreActions>
             </div>
-          )}
-          renderActions={() => (
-            <MoreActions>
-              <DropdownMenuItem asChild>
-                <Button asChild variant={"outline"}>
-                  <Link to="/dashboard/players/csv-import">
-                    <DownloadIcon />
-                    Import CSV
-                  </Link>
-                </Button>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Button asChild variant={"outline"}>
-                  <Link to="/dashboard/players/create">
-                    <UserPlus />
-                    Add Player
-                  </Link>
-                </Button>
-              </DropdownMenuItem>
-            </MoreActions>
           )}
         />
 

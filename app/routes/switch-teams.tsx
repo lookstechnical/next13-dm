@@ -1,7 +1,7 @@
 import { ActionFunction, json, redirect } from "@remix-run/node";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ScoutService } from "~/services/scoutService";
-import { requireUser } from "~/utils/require-user";
+import { clearUserSession, requireUser } from "~/utils/require-user";
 
 export const loader = () => {
   return json({});
@@ -30,6 +30,7 @@ function getNearestRootUrl(path: string, allowed: string[]): string {
 export const action: ActionFunction = async ({ request }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
 
+  clearUserSession();
   const user = await requireUser(supabaseClient);
 
   let formData = await request.formData();

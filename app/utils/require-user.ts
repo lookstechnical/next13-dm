@@ -2,7 +2,11 @@ import { redirect } from "@remix-run/node";
 import { TeamService } from "~/services/teamService";
 import { Team, User } from "~/types";
 
+let sessionUser: User | undefined = undefined;
+
 export async function getAppUser(userId: string, client: any) {
+  if (sessionUser && sessionUser.id === userId) return sessionUser;
+
   const { data: userProfiles, error } = await client
     .from("users")
     .select(
@@ -63,9 +67,15 @@ export async function getAppUser(userId: string, client: any) {
           | "COACH") || "ADMIN",
     };
 
-    return currentUser;
+    sessionUser = currentUser;
+
+    return sessionUser;
   }
 }
+
+export const clearUserSession = () => {
+  sessionUser = undefined;
+};
 
 export async function requireUser(client: any) {
   const {

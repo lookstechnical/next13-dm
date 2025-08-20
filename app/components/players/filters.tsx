@@ -8,6 +8,7 @@ import { useState } from "react";
 import { SelectField } from "../forms/select";
 import { PlayerGroup } from "~/types";
 import { POSITIONS } from "~/utils/helpers";
+import { Button } from "../ui/button";
 
 type PlayerFilters = {
   appliedFilters: any;
@@ -20,8 +21,10 @@ export const PlayerFilters: React.FC<PlayerFilters> = ({
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={(val) => setOpen(val)}>
-      <SheetTrigger onClick={() => setOpen(true)}>
-        <FilterIcon />
+      <SheetTrigger asChild onClick={() => setOpen(true)}>
+        <Button variant="outline">
+          <FilterIcon />
+        </Button>
       </SheetTrigger>
       <SheetContent side="left">
         <Form className="gap-4 flex flex-col" onSubmit={() => setOpen(false)}>
