@@ -11,15 +11,15 @@ export class DashboardService {
     const [players, groups, events] = await Promise.all([
       this.client
         .from("players")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("team_id", teamId),
       this.client
         .from("player_groups")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("team_id", teamId),
       this.client
         .from("events")
-        .select("*", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true })
         .eq("team_id", teamId),
     ]);
 

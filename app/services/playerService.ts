@@ -155,17 +155,8 @@ export class PlayerService {
         position,
         secondary_position,
         date_of_birth,
-        nationality,
         club,
-        school,
-        height,
-        foot,
         photo_url,
-        email,
-        scout_id,
-        created_at,
-        updated_at,
-        player_avg_scores(*),
         player_group_members(group_id)
       `
       )
