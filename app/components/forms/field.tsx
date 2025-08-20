@@ -1,12 +1,8 @@
 import { PropsWithChildren } from "react";
-import {
-  TooltipTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-} from "../ui/tooltip";
 import { Button } from "../ui/button";
 import { InfoIcon } from "lucide-react";
+import { Popover, PopoverContent } from "@radix-ui/react-popover";
+import { PopoverTrigger } from "../ui/popover";
 
 type Field = PropsWithChildren<{
   label: string;
@@ -30,20 +26,23 @@ export const Field: React.FC<Field> = ({
       >
         {label}
         {tooltip && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-fit h-fit bg-transparent hover:bg-transparent border-none focus:outline-0 focus:ring-0"
-                >
-                  <InfoIcon />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="capitalize">{tooltip}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Popover defaultOpen={false}>
+            <PopoverTrigger asChild tabIndex={-1}>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-fit h-fit bg-transparent hover:bg-transparent border-none focus:outline-0 focus:ring-0 user-select-0"
+              >
+                <InfoIcon />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              className="capitalize p-4 border-muted z-10 bg-wkbackground shadow-sm shadow-background"
+            >
+              {tooltip}
+            </PopoverContent>
+          </Popover>
         )}
       </label>
       {children}
