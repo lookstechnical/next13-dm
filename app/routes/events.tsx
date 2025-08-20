@@ -3,6 +3,7 @@ import { Outlet, useLoaderData } from "@remix-run/react";
 import { EventCard } from "~/components/events/event-card";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
+import { Event } from "~/types";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
@@ -30,8 +31,12 @@ export const PublicEvents = () => {
         </div>
       </div>
       <div className="container mx-auto max-w-[50rem] py-10 ">
-        {events?.map((event) => (
-          <EventCard event={event} to={() => `/events/${event.id}/register`} />
+        {events?.map((event: Event) => (
+          <EventCard
+            key={event.id}
+            event={event}
+            to={() => `/events/${event.id}/register`}
+          />
         ))}
       </div>
       <Outlet />

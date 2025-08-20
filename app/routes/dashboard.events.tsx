@@ -12,6 +12,7 @@ import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
+import { Event } from "~/types";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -60,7 +61,11 @@ export default function Events() {
         />
         <CardGrid name={`${user.team.name} has 0 events`} items={events}>
           {events?.map((event: Event) => (
-            <EventCard event={event} to={(id) => `/dashboard/events/${id}`} />
+            <EventCard
+              key={event.id}
+              event={event}
+              to={(id) => `/dashboard/events/${id}`}
+            />
           ))}
         </CardGrid>
       </div>
