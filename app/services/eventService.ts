@@ -46,7 +46,7 @@ export class EventService {
       .from("events")
       .select("*, event_registrations(count)")
       .eq("team_id", teamId)
-      .order("date");
+      .order("date", { ascending: false });
 
     if (error) throw error;
     return data || [];
