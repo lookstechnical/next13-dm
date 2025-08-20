@@ -34,15 +34,19 @@ export class ReportService {
   async getReportsByPlayer(
     playerId: string,
     scoutId?: string,
-    isHeadScout?: boolean
+    isHeadScout?: boolean,
+    templateId?: string
   ): Promise<PlayerReport[]> {
     let query = this.client
       .from("player_reports")
       .select(
         "*, report_scores(*,report_attributes(*)), matches(*), events(*), users(*), players(*)"
       )
-      .eq("player_id", playerId)
-      .not("template_id", "eq", "ace2242f-8893-43eb-a283-6e1813a97985");
+      .eq("player_id", playerId);
+
+    if (templateId) {
+      query.not("template_id", "eq", templateId);
+    }
 
     // Apply scout filtering if not head scout
     if (!isHeadScout && scoutId) {
@@ -59,7 +63,7 @@ export class ReportService {
 
   async getProgressByPlayer(
     playerId: string,
-    templateId: stirng
+    templateId: string
   ): Promise<PlayerReport[]> {
     const { data, error } = await this.client
       .from("player_reports")

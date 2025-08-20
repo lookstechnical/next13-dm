@@ -58,6 +58,7 @@ export const NineBoxForm: React.FC<NineBoxForm> = ({
                       <Field
                         name={`attribute[${attribute.id}]`}
                         label={attribute.name}
+                        tooltip={attribute.description}
                       >
                         <Slider
                           className=""

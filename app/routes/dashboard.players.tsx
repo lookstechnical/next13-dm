@@ -17,6 +17,7 @@ import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { getSupabaseServerClient } from "~/lib/supabase";
+import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { Player } from "~/types";
 import { getAppUser, requireUser } from "~/utils/require-user";
@@ -34,29 +35,41 @@ export const loader: LoaderFunction = async ({ request }) => {
     return redirect("/");
   }
   const playerService = new PlayerService(supabaseClient);
+  const groupService = new GroupService(supabaseClient);
 
   const url = new URL(request.url);
   const order = url.searchParams.get("order");
   const nameFilter = url.searchParams.get("name");
   const ageGroupFilter = url.searchParams.get("age-group");
+  const group = url.searchParams.get("group") || user.team?.defaultGroup;
 
   const players =
     (await playerService.getPlayersByTeam(
-      user.team.id,
+      user.team?.id as string,
       order as string,
       nameFilter as string,
-      ageGroupFilter as string
+      ageGroupFilter as string,
+      group as string
     )) || [];
+
+  const groups = await groupService.getGroupsByTeam(user.team?.id as string);
 
   return {
     players,
     user,
-    appliedFilters: { order, name: nameFilter, ageGroup: ageGroupFilter },
+    groups,
+    appliedFilters: {
+      order,
+      name: nameFilter,
+      ageGroup: ageGroupFilter,
+      group: group,
+    },
   };
 };
 
 export default function Players() {
-  const { players, user, appliedFilters } = useLoaderData<typeof loader>();
+  const { players, user, appliedFilters, groups } =
+    useLoaderData<typeof loader>();
 
   const submit = useSubmit();
 
@@ -71,7 +84,7 @@ export default function Players() {
           title={`${user.team.name} Players`}
           renderFilters={() => (
             <div className="flex flex-row items-center justify-center gap-4">
-              <PlayerFilters appliedFilters={appliedFilters} />
+              <PlayerFilters appliedFilters={appliedFilters} groups={groups} />
               <Form
                 onChange={(event) => {
                   submit(event.currentTarget);
@@ -83,7 +96,6 @@ export default function Players() {
                   placeholder="Order By"
                   options={[
                     { id: "name", name: "Name" },
-                    // { id: "score", name: "Avg Score" },
                     { id: "date_of_birth", name: "Age" },
                   ]}
                 />

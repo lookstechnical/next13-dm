@@ -57,6 +57,7 @@ export interface Player {
   playerAvgScores?: {
     avgOverallScore?: string;
   };
+  playerGroupMembers?: { id: string }[];
 }
 
 export type SkillRating = {
@@ -108,6 +109,7 @@ export interface Team {
   createdAt: string;
   createdBy: string;
   progresTemplateId?: string;
+  defaultGroup?: string;
 }
 
 export interface TeamMembership {

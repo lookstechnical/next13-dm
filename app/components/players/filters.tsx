@@ -6,11 +6,16 @@ import { Field } from "../forms/field";
 import { Input } from "../ui/input";
 import { useState } from "react";
 import { SelectField } from "../forms/select";
+import { PlayerGroup } from "~/types";
 
 type PlayerFilters = {
   appliedFilters: any;
+  groups?: PlayerGroup[];
 };
-export const PlayerFilters: React.FC<PlayerFilters> = ({ appliedFilters }) => {
+export const PlayerFilters: React.FC<PlayerFilters> = ({
+  appliedFilters,
+  groups,
+}) => {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={(val) => setOpen(val)}>
@@ -38,6 +43,15 @@ export const PlayerFilters: React.FC<PlayerFilters> = ({ appliedFilters }) => {
               { id: "U16", name: "U16" },
             ]}
           />
+
+          {groups && (
+            <SelectField
+              name="group"
+              label="Group"
+              defaultValue={appliedFilters?.group}
+              options={groups?.map((g) => ({ id: g.id, name: g.name }))}
+            />
+          )}
 
           <SheetClose asChild>
             <ActionButton title="Apply Filters" />

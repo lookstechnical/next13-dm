@@ -24,6 +24,9 @@ export const AttributeCard: React.FC<AttributeCard> = ({
     return (
       <div className="p-6">
         <h3 className="text-lg font-semibold text-white">{attribute?.name}</h3>
+        <h3 className="text-md font-semibold text-muted capitalize">
+          {attribute?.category}
+        </h3>
       </div>
     );
   };

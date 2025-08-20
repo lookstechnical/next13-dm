@@ -58,6 +58,7 @@ export const ReportForm: React.FC<ReportForm> = ({
                 <Field
                   name={`attribute[${attribute.id}]`}
                   label={attribute.name}
+                  tooltip={attribute.description}
                 >
                   <Slider
                     className=""

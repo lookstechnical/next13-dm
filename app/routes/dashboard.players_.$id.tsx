@@ -42,11 +42,18 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
   let reports = [];
   if (user.role === "ADMIN" || user?.role === "HEAD_OF_DEPARTMENT") {
-    reports = await reportService.getReportsByPlayer(params.id as string);
+    reports = await reportService.getReportsByPlayer(
+      params.id as string,
+      undefined,
+      undefined,
+      user?.team?.progresTemplateId as string
+    );
   } else {
     reports = await reportService.getReportsByPlayer(
       params.id as string,
-      user.id
+      user.id,
+      undefined,
+      user?.team?.progresTemplateId as string
     );
   }
 

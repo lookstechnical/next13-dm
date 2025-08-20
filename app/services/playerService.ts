@@ -141,7 +141,8 @@ export class PlayerService {
     teamId: string,
     orderBy?: string,
     name?: string,
-    ageGroup?: any
+    ageGroup?: any,
+    group?: string
   ): Promise<Player[]> {
     const query = this.client
       .from("players")
@@ -163,8 +164,8 @@ export class PlayerService {
         scout_id,
         created_at,
         updated_at,
-        player_reports(count),
-        player_avg_scores(*)
+        player_avg_scores(*),
+        player_group_members(group_id)
       `
       )
       .eq("team_id", teamId);
@@ -192,8 +193,15 @@ export class PlayerService {
 
     const { data, error } = await query;
 
+    let d = data;
+    if (group) {
+      d = d.filter((p) =>
+        p.player_group_members.find((pgm) => pgm.group_id === group)
+      );
+    }
+
     if (orderBy === "score") {
-      data.sort((a, b) => {
+      d.sort((a, b) => {
         const scoreA = a.player_avg_scores?.avg_overall_score ?? -Infinity;
         const scoreB = b.player_avg_scores?.avg_overall_score ?? -Infinity;
         return scoreB - scoreA;
@@ -201,7 +209,7 @@ export class PlayerService {
     }
 
     if (error) throw error;
-    return convertKeysToCamelCase(data);
+    return convertKeysToCamelCase(d);
   }
 
   async getPlayerAverageScores(playerIds: string[]): Promise<AvScore[]> {
