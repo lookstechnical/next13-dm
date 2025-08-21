@@ -126,7 +126,7 @@ export default function PlayerPage() {
       }}
     >
       <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw] gap-10 flex flex-col">
-        <SheetTitle>9 Box Grid</SheetTitle>
+        <SheetTitle>Progress Report</SheetTitle>
         <Form method="post" encType="multipart/form-data">
           <NineBoxForm player={player} template={template} report={report} />
 

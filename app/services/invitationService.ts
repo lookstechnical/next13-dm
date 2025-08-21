@@ -1,9 +1,22 @@
-import { Invitation, User } from "../types";
-import { supabase } from "../lib/supabase";
+import { convertKeysToCamelCase } from "~/utils/helpers";
+import { Invitation } from "../types";
+
+function randomString(length: number): string {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const array = new Uint32Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, (n) => chars[n % chars.length]).join("");
+}
 
 export class InvitationService {
+  client: any;
+  constructor(client: any) {
+    this.client = client;
+  }
+
   async getAllInvitations(): Promise<Invitation[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("invitations")
       .select("*")
       .order("invited_at", { ascending: false });
@@ -13,7 +26,7 @@ export class InvitationService {
   }
 
   async getInvitationById(id: string): Promise<Invitation | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("invitations")
       .select("*")
       .eq("id", id)
@@ -27,87 +40,39 @@ export class InvitationService {
   }
 
   async getInvitationByToken(token: string): Promise<Invitation | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("invitations")
       .select("*")
       .eq("token", token)
       .single();
 
     if (error) {
+      console.log({ error });
       if (error.code === "PGRST116") return null; // Not found
       throw error;
     }
-    return data;
-  }
-
-  async getInvitationsByInviter(invitedBy: string): Promise<Invitation[]> {
-    const { data, error } = await supabase
-      .from("invitations")
-      .select("*")
-      .eq("invited_by", invitedBy)
-      .order("invited_at", { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  async getPendingInvitations(): Promise<Invitation[]> {
-    const { data, error } = await supabase
-      .from("invitations")
-      .select("*")
-      .eq("status", "pending")
-      .gt("expires_at", new Date().toISOString())
-      .order("invited_at", { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    return convertKeysToCamelCase(data);
   }
 
   async createInvitation(
-    email: string,
-    role: "ADMIN" | "HEAD_OF_DEPARTMENT" | "SCOUT" | "COACH",
-    invitedBy: string,
-    teamId?: string
-  ): Promise<{ success: boolean; message: string; invitation?: Invitation }> {
-    // Get current user's auth token
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      return { success: false, message: "User not authenticated" };
+    playerId: string
+  ): Promise<{ invitation?: Invitation }> {
+    const { data, error } = await this.client
+      .from("invitations")
+      .insert({
+        player_id: playerId,
+        status: "pending",
+        token: randomString(20),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.log({ error });
+      if (error.code === "PGRST116") return null; // Not found
+      throw error;
     }
-
-    // Call the secure edge function to handle invitation creation
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          role,
-          teamId,
-        }),
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: result.error || "Failed to send invitation",
-      };
-    }
-
-    return {
-      success: true,
-      message: `User account created and invitation sent to ${email}! They will receive an email to set up their account. This invitation will expire in 7 days.`,
-      invitation: result.invitation,
-    };
+    return convertKeysToCamelCase(data);
   }
 
   async completeInvitation(
@@ -128,7 +93,7 @@ export class InvitationService {
     }
 
     if (new Date(invitation.expires_at) < new Date()) {
-      await supabase
+      await this.client
         .from("invitations")
         .update({ status: "expired" })
         .eq("id", invitation.id);
@@ -138,7 +103,7 @@ export class InvitationService {
     // Get current user (should be the invited user)
     const {
       data: { user: currentUser },
-    } = await supabase.auth.getUser();
+    } = await this.client.auth.getUser();
 
     if (!currentUser || currentUser.email !== invitation.email) {
       return {
@@ -148,7 +113,7 @@ export class InvitationService {
     }
 
     // Create user profile
-    const { error: profileError } = await supabase.from("users").insert({
+    const { error: profileError } = await this.client.from("users").insert({
       id: currentUser.id,
       name: userData.name,
       email: invitation.email,
@@ -168,7 +133,7 @@ export class InvitationService {
 
     // Add team membership if specified
     if (invitation.team_id) {
-      const { error: membershipError } = await supabase
+      const { error: membershipError } = await this.client
         .from("team_memberships")
         .insert({
           user_id: currentUser.id,
@@ -183,7 +148,7 @@ export class InvitationService {
     }
 
     // Mark invitation as accepted
-    const { error: updateError } = await supabase
+    const { error: updateError } = await this.client
       .from("invitations")
       .update({ status: "accepted" })
       .eq("id", invitation.id);
@@ -205,7 +170,7 @@ export class InvitationService {
     if (updates.email !== undefined) updateData.email = updates.email;
     if (updates.role !== undefined) updateData.role = updates.role;
 
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from("invitations")
       .update(updateData)
       .eq("id", id)
@@ -220,12 +185,12 @@ export class InvitationService {
   }
 
   async deleteInvitation(id: string): Promise<boolean> {
-    const { error } = await supabase.from("invitations").delete().eq("id", id);
+    const { error } = await this.client
+      .from("invitations")
+      .delete()
+      .eq("id", id);
 
     if (error) throw error;
     return true;
   }
 }
-
-// Export singleton instance
-export const invitationService = new InvitationService();

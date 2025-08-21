@@ -14,18 +14,20 @@ export const POSITIONS = [
   "Loose Forward",
 ];
 
-type PositionSelect = { label: string } & SelectProps;
+type PositionSelect = { label: string; placeholder?: string } & SelectProps;
 
 export const PositionSelect: React.FC<PositionSelect> = ({
   defaultValue,
   name,
   label,
+  placeholder,
 }) => {
   return (
     <SelectField
       defaultValue={defaultValue}
       name={name}
       label={label}
+      placeholder={placeholder}
       options={POSITIONS.map((p) => ({ id: p, name: p }))}
     />
   );

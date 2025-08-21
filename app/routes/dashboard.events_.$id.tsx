@@ -6,7 +6,6 @@ import type {
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin, MoreVertical } from "lucide-react";
-import { useState } from "react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
 import {
@@ -17,7 +16,6 @@ import {
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { GroupService } from "~/services/groupService";
-import { EventRegistration } from "~/types";
 import { formatDate } from "~/utils/helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
@@ -84,8 +82,8 @@ export default function EventPage() {
 
   return (
     <>
-      <div className="w-full flex flex-col gap-12 space-y-10 container px-4 mx-auto pt-10 text-foreground">
-        <div className="w-full flex flex-col md:flex-row gap-4 md:justify-between items-end md:items-center mb-6 ">
+      <div className="w-full flex flex-col container px-4 mx-auto pt-10 text-foreground">
+        <div className="w-full flex flex-col md:flex-row gap-0 mg:gap-4 md:justify-between items-end md:items-center mb-6 ">
           <div className="flex flex-row gap-4 w-full md:w-1/2 items-center">
             <div className="flex gap-1 flex-col gap-4">
               <h1 className="text-4xl font-bold text-white flex flex-row gap-2 justify-center items-center">

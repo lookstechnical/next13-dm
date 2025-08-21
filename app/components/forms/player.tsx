@@ -36,32 +36,46 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />
           </Field>
-          <DateField
-            name="dateOfBirth"
-            label="Date of Birth"
-            defaultValue={
-              player?.dateOfBirth ? new Date(player?.dateOfBirth) : undefined
-            }
+          <div className="flex flex-row gap-4">
+            <Field name="phone" label="Mobile Phone">
+              <Input
+                name="phone"
+                placeholder="Enter your mobile number"
+                // defaultValue={player?.mobilePhone}
+                className="bg-card border-gray-600 text-white placeholder:text-gray-400"
+              />
+            </Field>
+            <DateField
+              name="dateOfBirth"
+              label="Date of Birth"
+              defaultValue={
+                player?.dateOfBirth ? new Date(player?.dateOfBirth) : undefined
+              }
+            />
+          </div>
+          <div className="flex flex-col md:flex-row w-full gap-5">
+            <PositionSelect
+              defaultValue={player?.position}
+              placeholder="Select a playing position"
+              name="position"
+              label="Position"
+            />
+            <PositionSelect
+              defaultValue={player?.secondaryPosition}
+              placeholder="Select a secondary playing position"
+              name="secondaryPosition"
+              label="Secondary position"
+            />
+          </div>
+
+          <SelectField
+            name="club"
+            label="Club"
+            defaultValue={player?.club}
+            placeholder="Select a Club"
+            options={clubs?.map((c) => ({ id: c.name, name: c.name })) || []}
           />
         </div>
-      </div>
-      <div className="flex flex-col md:flex-row w-full gap-5">
-        <PositionSelect
-          defaultValue={player?.position}
-          name="position"
-          label="Position"
-        />
-        <PositionSelect
-          defaultValue={player?.secondaryPosition}
-          name="secondaryPosition"
-          label="Secondary position"
-        />
-        <SelectField
-          name="club"
-          label="Club"
-          defaultValue={player?.club}
-          options={clubs?.map((c) => ({ id: c.name, name: c.name })) || []}
-        />
       </div>
     </div>
   );

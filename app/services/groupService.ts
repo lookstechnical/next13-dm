@@ -41,7 +41,7 @@ export class GroupService {
         *,
         player_group_members (
           player_id,
-          players ( name , date_of_birth, position, secondary_position, id, club, photo_url )
+          players ( name , date_of_birth, position, secondary_position, id, club, photo_url, email )
         )
       `
       )
@@ -93,10 +93,10 @@ export class GroupService {
       .from("player_groups")
       .select(
         `
-        *,
+        id, name, type,
         player_group_members (
           player_id,
-          players(*)
+          players(id,name)
         )
       `
       )

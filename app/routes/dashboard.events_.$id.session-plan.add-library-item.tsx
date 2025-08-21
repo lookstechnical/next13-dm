@@ -4,6 +4,7 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Link, redirect, useLoaderData, useNavigate } from "@remix-run/react";
+import { LibraryItemForm } from "~/components/forms/form/lirary-item";
 import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import {
@@ -67,6 +68,8 @@ export default function SessionPlan() {
           <SheetDescription>Add Library Item</SheetDescription>
         </SheetHeader>
         {/* <Form method="POST"> */}
+
+        <LibraryItemForm />
 
         <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
           <Button asChild variant="link">

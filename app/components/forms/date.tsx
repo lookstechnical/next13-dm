@@ -37,6 +37,7 @@ export const DateField: React.FC<DateField> = ({
           <Calendar
             mode="single"
             selected={date}
+            month={date}
             captionLayout="dropdown"
             onSelect={(date) => {
               setDate(date);

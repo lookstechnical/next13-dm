@@ -181,7 +181,7 @@ export interface PlayerGroup {
   createdAt: string;
   type: "selection" | "squad" | "program" | "other";
   status: "active" | "inactive";
-  player_group_members?: Player[];
+  playerGroupMembers?: { players: Player; playerId: string }[];
 }
 
 export interface Club {

@@ -107,7 +107,7 @@ export default function PlayerPage() {
   return (
     <>
       <div className="w-full flex flex-col gap-12 space-y-10 container px-4 mx-auto py-10 text-foreground">
-        <div className="w-full flex flex-col md:flex-row gap-4 md:justify-between items-end md:items-center mb-6 ">
+        <div className="w-full flex flex-col md:flex-row md:gap-4 md:justify-between items-end md:items-center mb-6 ">
           <div className="flex flex-row gap-4 w-full md:w-1/2 items-center">
             <div className="flex gap-1 flex-col gap-4">
               <h1 className="text-4xl font-bold text-white flex flex-row gap-2 justify-center items-center">
@@ -152,6 +152,13 @@ export default function PlayerPage() {
                       Delete Group
                     </Button>
                   </Form>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="p-0">
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to={`/dashboard/groups/${group.id}/send-invites`}>
+                      Send Invites
+                    </Link>
+                  </Button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

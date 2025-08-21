@@ -44,7 +44,7 @@ export class EventService {
   async getEventsByTeam(teamId: string): Promise<Event[]> {
     const { data, error } = await this.client
       .from("events")
-      .select("*")
+      .select("id, name, location, date")
       .eq("team_id", teamId)
       .order("date", { ascending: false });
 

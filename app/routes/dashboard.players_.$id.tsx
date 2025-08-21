@@ -6,9 +6,11 @@ import type {
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { DeleteIcon, Edit2Icon, User } from "lucide-react";
 import RadarAttributes from "~/components/charts/radar";
+import { MoreActions } from "~/components/layout/more-actions";
 import { ProgressCard } from "~/components/progress/progress-card";
 import { ReportCard } from "~/components/reports/report-card";
 import { Button } from "~/components/ui/button copy";
+import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
@@ -117,17 +119,6 @@ export default function PlayerPage() {
             <div className="flex gap-1 flex-col">
               <h1 className="text-4xl font-bold text-white flex flex-row gap-2 justify-center items-center">
                 {player.name}
-                <Button asChild variant="ghost">
-                  <Link to={`/dashboard/players/${player.id}/edit`}>
-                    <Edit2Icon />
-                  </Link>
-                </Button>
-                <Form method="delete">
-                  <input type="hidden" name="playerId" value={player.id} />
-                  <Button variant="ghost">
-                    <DeleteIcon />
-                  </Button>
-                </Form>
               </h1>
               <p className="text-xl">{player.club}</p>
 
@@ -159,13 +150,45 @@ export default function PlayerPage() {
             </div>
           </div>
           <div>
-            {hasProgressTemplate && (
-              <Button asChild>
-                <Link to={`/dashboard/players/${player.id}/nine-box`}>
-                  Progress Report
-                </Link>
-              </Button>
-            )}
+            <MoreActions>
+              <DropdownMenuItem asChild>
+                <Button
+                  asChild
+                  variant={"outline"}
+                  className="hover:ring-0 hover:outline-0"
+                >
+                  <Link to={`/dashboard/players/${player.id}/edit`}>
+                    <Edit2Icon /> Edit
+                  </Link>
+                </Button>
+              </DropdownMenuItem>
+
+              {hasProgressTemplate && (
+                <DropdownMenuItem asChild>
+                  <Button
+                    asChild
+                    variant={"outline"}
+                    className="hover:ring-0 hover:outline-0"
+                  >
+                    <Link to={`/dashboard/players/${player.id}/nine-box`}>
+                      Progress Report
+                    </Link>
+                  </Button>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuItem asChild>
+                <Form
+                  method="delete"
+                  className="w-full h-full hover:bg-destructive p-0 "
+                >
+                  <input type="hidden" name="playerId" value={player.id} />
+                  <Button variant="destructive" className="w-full">
+                    <DeleteIcon /> Delete
+                  </Button>
+                </Form>
+              </DropdownMenuItem>
+            </MoreActions>
           </div>
         </div>
       </div>
