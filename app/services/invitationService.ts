@@ -47,28 +47,32 @@ export class InvitationService {
       .single();
 
     if (error) {
-      console.log({ error });
       if (error.code === "PGRST116") return null; // Not found
       throw error;
     }
     return convertKeysToCamelCase(data);
   }
 
-  async createInvitation(
-    playerId: string
-  ): Promise<{ invitation?: Invitation }> {
+  async createInvitation(playerId: string): Promise<Invitation> {
+    const { data: existingInvite } = await this.client
+      .from("invitations")
+      .select()
+      .eq("player_id", playerId)
+      .single();
+
+    if (existingInvite) return convertKeysToCamelCase(existingInvite);
+
     const { data, error } = await this.client
       .from("invitations")
       .insert({
         player_id: playerId,
         status: "pending",
-        token: randomString(20),
+        token: randomString(40),
       })
       .select()
       .single();
 
     if (error) {
-      console.log({ error });
       if (error.code === "PGRST116") return null; // Not found
       throw error;
     }
@@ -76,75 +80,13 @@ export class InvitationService {
   }
 
   async completeInvitation(
-    token: string,
-    userData: { name: string; avatar?: string }
+    invitation: Invitation
   ): Promise<{ success: boolean; message: string }> {
-    const invitation = await this.getInvitationByToken(token);
-
-    if (!invitation) {
-      return { success: false, message: "Invalid invitation token" };
-    }
-
     if (invitation.status !== "pending") {
       return {
         success: false,
         message: "This invitation has already been used or expired",
       };
-    }
-
-    if (new Date(invitation.expires_at) < new Date()) {
-      await this.client
-        .from("invitations")
-        .update({ status: "expired" })
-        .eq("id", invitation.id);
-      return { success: false, message: "This invitation has expired" };
-    }
-
-    // Get current user (should be the invited user)
-    const {
-      data: { user: currentUser },
-    } = await this.client.auth.getUser();
-
-    if (!currentUser || currentUser.email !== invitation.email) {
-      return {
-        success: false,
-        message: "Please sign in with the invited email address first",
-      };
-    }
-
-    // Create user profile
-    const { error: profileError } = await this.client.from("users").insert({
-      id: currentUser.id,
-      name: userData.name,
-      email: invitation.email,
-      role: invitation.role,
-      avatar: userData.avatar,
-      invited_by: invitation.invited_by,
-      invited_at: invitation.invited_at,
-      status: "active",
-    });
-
-    if (profileError) {
-      return {
-        success: false,
-        message: `Failed to create profile: ${profileError.message}`,
-      };
-    }
-
-    // Add team membership if specified
-    if (invitation.team_id) {
-      const { error: membershipError } = await this.client
-        .from("team_memberships")
-        .insert({
-          user_id: currentUser.id,
-          team_id: invitation.team_id,
-          role: invitation.role,
-        });
-
-      if (membershipError) {
-        console.error("Failed to create team membership:", membershipError);
-        // Don't fail the whole process for this
-      }
     }
 
     // Mark invitation as accepted

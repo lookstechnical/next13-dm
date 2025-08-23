@@ -49,6 +49,11 @@ export const meta: MetaFunction = () => {
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
   const eventService = new GroupService(supabaseClient);
+
+  const playerService = new PlayerService(supabaseClient);
+
+  const players = await playerService.getPlayersByGroup(params.id as string);
+
   const group = await eventService.getGroupById(params.id as string);
 
   const url = new URL(request.url);
@@ -56,24 +61,26 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const nameFilter = url.searchParams.get("name");
   const ageGroup = url.searchParams.get("age-group");
 
-  const playerGroupMembers = group?.playerGroupMembers.filter((pg) => {
-    const val = true;
-    if (nameFilter) {
-      const name = pg.players.name;
-      if (name && name.toLowerCase().includes(nameFilter)) {
-      } else return false;
-    }
+  const playerGroupMembers = players;
 
-    if (ageGroup) {
-      const ag = calculateAgeGroup(pg.players.dateOfBirth);
-      if (ageGroup && ageGroup === ag) {
-      } else {
-        return false;
-      }
-    }
+  // group?.playerGroupMembers.filter((pg) => {
+  //   const val = true;
+  //   if (nameFilter) {
+  //     const name = pg.players.name;
+  //     if (name && name.toLowerCase().includes(nameFilter)) {
+  //     } else return false;
+  //   }
 
-    return val;
-  });
+  //   if (ageGroup) {
+  //     const ag = calculateAgeGroup(pg.players.dateOfBirth);
+  //     if (ageGroup && ageGroup === ag) {
+  //     } else {
+  //       return false;
+  //     }
+  //   }
+
+  //   return val;
+  // });
 
   return { group: { ...group, playerGroupMembers } };
 };
@@ -178,16 +185,9 @@ export default function PlayerPage() {
 
           <CardGrid items={group.playerGroupMembers} name="Players">
             {group.playerGroupMembers.map((player: any) => (
-              <PlayerCard
-                key={`group-player-${player.players.id}`}
-                player={player.players}
-              >
+              <PlayerCard key={`group-player-${player.id}`} player={player}>
                 <Form method="delete">
-                  <input
-                    type="hidden"
-                    name="playerId"
-                    value={player.players.id}
-                  />
+                  <input type="hidden" name="playerId" value={player.id} />
                   <input type="hidden" name="groupId" value={group.id} />
 
                   <ActionButton

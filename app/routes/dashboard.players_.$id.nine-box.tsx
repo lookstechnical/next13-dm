@@ -49,8 +49,6 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     );
   }
 
-  console.log({ report });
-
   return { report, template, player: { id: params.id } };
 };
 

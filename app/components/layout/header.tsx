@@ -11,7 +11,7 @@ export const Header: React.FC<Header> = ({ user }) => {
     <header className="min-h-[80px] flex flex-row items-center">
       <div className="flex flex-row items-center container px-4 mx-auto  justify-between">
         <div className="text-md text-white rounded-full  flex justify-center items-center">
-          <img src="/logo.png" width={60} height={60} />
+          <img src="/logo.png" width={30} height={30} className="pr-2" />
           <h1>
             <span className="text-light text-xs">be</span>
             <strong>Coachable</strong>

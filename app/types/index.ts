@@ -47,10 +47,9 @@ export interface Player {
   club?: string;
   school?: string;
   ageGroup: string;
-  height?: string;
-  foot?: string;
   photoUrl?: string;
   email?: string;
+  mobile?: string;
   scoutId: string;
   createdAt: string;
   updatedAt: string;

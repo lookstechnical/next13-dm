@@ -7,7 +7,7 @@ import {
   calculateRelativeAgeQuartile,
 } from "~/utils/helpers";
 import { cn } from "~/lib/utils";
-import { User } from "lucide-react";
+import { Mail, MailCheck, User } from "lucide-react";
 import { PropsWithChildren } from "react";
 
 type PlayerCard = PropsWithChildren<{
@@ -98,6 +98,17 @@ export const PlayerCard: React.FC<PlayerCard> = ({
             {player.playerAvgScores &&
               player.playerAvgScores.avgOverallScore &&
               Math.round(player.playerAvgScores?.avgOverallScore)}
+          </div>
+          <div>
+            {player?.invitations?.[0] &&
+              player.invitations[0].status === "pending" && (
+                <Mail className="text-foreground" />
+              )}
+
+            {player?.invitations?.[0] &&
+              player.invitations[0].status === "accepted" && (
+                <MailCheck className="text-secondary" />
+              )}
           </div>
         </div>
       </div>

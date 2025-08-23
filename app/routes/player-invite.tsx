@@ -1,11 +1,13 @@
-import { LoaderFunction, redirect } from "@remix-run/node";
-import { Form, useLoaderData } from "@remix-run/react";
+import { ActionFunction, LoaderFunction, redirect } from "@remix-run/node";
+import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import z from "zod";
 import { PlayerForm } from "~/components/forms/player";
 import ActionButton from "~/components/ui/action-button";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { InvitationService } from "~/services/invitationService";
 import { PlayerService } from "~/services/playerService";
+import { inviteRegistration } from "~/validations/player-registration";
 
 export const loader: LoaderFunction = async ({ request }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
@@ -27,8 +29,40 @@ export const loader: LoaderFunction = async ({ request }) => {
   return { clubs, player };
 };
 
+export const action: ActionFunction = async ({ request }) => {
+  const { supabaseClient } = await getSupabaseServerClient(request);
+  let formData = await request.formData();
+  const avatar = formData.get("avatar");
+
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token");
+  if (!token) return redirect("/");
+  const inviteService = new InvitationService(supabaseClient);
+
+  const invite = await inviteService.getInvitationByToken(token);
+  if (!invite) return redirect("/");
+
+  const playerService = new PlayerService(supabaseClient);
+
+  const { data, playerId } = await playerService.getFormFields(formData);
+
+  const validations = inviteRegistration.safeParse({ ...data, avatar });
+  if (validations.error) return { errors: z.treeifyError(validations.error) };
+
+  await playerService.updatePlayer(playerId, data);
+
+  if (playerId && avatar) {
+    await playerService.uploadPlayerProfilePhoto(playerId, avatar);
+  }
+
+  await inviteService.completeInvitation(invite);
+
+  return { status: "complete" };
+};
+
 const PlayerInvite = () => {
   const { clubs, player } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
 
   return (
     <div className="min-h-screen min-w-screen bg-background text-foreground">
@@ -44,12 +78,20 @@ const PlayerInvite = () => {
         </div>
       </div>
       <div className="container mx-auto max-w-[50rem] py-6">
-        <Form>
-          <PlayerForm player={player} clubs={clubs} />
-          <div className="py-4 flex justify-end">
-            <ActionButton title="Accept Invite" />
-          </div>
-        </Form>
+        {actionData?.status === "complete" ? (
+          <div>Thank you</div>
+        ) : (
+          <Form method="POST" encType="multipart/form-data" className="px-4">
+            <PlayerForm
+              player={player}
+              clubs={clubs}
+              errors={actionData?.errors}
+            />
+            <div className="py-4 flex justify-end">
+              <ActionButton title="Accept Invite" />
+            </div>
+          </Form>
+        )}
       </div>
     </div>
   );

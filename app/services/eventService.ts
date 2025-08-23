@@ -104,7 +104,6 @@ export class EventService {
       .select()
       .single();
 
-    console.log({ error, rd: eventData.registrationDeadline });
     if (error) throw error;
     return data;
   }

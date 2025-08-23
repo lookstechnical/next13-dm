@@ -84,8 +84,6 @@ export const action: ActionFunction = async ({ request }) => {
       nationality: formData.get("nationality") as string,
       club: formData.get("club") as string,
       school: formData.get("school") as string,
-      height: formData.get("height") as string,
-      foot: formData.get("foot") as string,
       photoUrl: formData.get("photoUrl") as string,
       email: formData.get("email") as string,
       scoutId: null,

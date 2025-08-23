@@ -79,14 +79,16 @@ export const action: ActionFunction = async ({ request, params }) => {
         );
 
         try {
-          const data = await resend.emails.send({
-            from: "beCoachable <noreply@be-coachable.com>",
-            to: [player.players.email], // can be an array of recipients
-            subject,
-            html: emailTemplate(description, invite, player.players),
-          });
+          if (invite?.status === "pending") {
+            const data = await resend.emails.send({
+              from: "beCoachable <noreply@be-coachable.com>",
+              to: [player.players.email], // can be an array of recipients
+              subject,
+              html: emailTemplate(description, invite, player.players),
+            });
 
-          console.log("Email sent:", data);
+            console.log("Email sent:", data);
+          }
         } catch (error) {
           console.error("Error sending email:", error);
         }

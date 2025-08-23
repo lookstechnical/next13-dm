@@ -2,8 +2,9 @@ import { useState } from "react";
 
 type ImageUploadProps = {
   image: string;
+  errors: any;
 };
-export const ImageUpload: React.FC<ImageUploadProps> = ({ image }) => {
+export const ImageUpload: React.FC<ImageUploadProps> = ({ image, errors }) => {
   const [previewUrl, setPreviewUrl] = useState(image);
 
   const handleFileChange = (e) => {
@@ -14,7 +15,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ image }) => {
   };
 
   return (
-    <>
+    <div className="w-full">
       <div className="relative w-32 h-32  mb-4">
         <img
           src={previewUrl || "https://via.placeholder.com/150"}
@@ -40,12 +41,17 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ image }) => {
             type="file"
             accept="image/*"
             name="avatar"
-            defaultValue={image}
+            // defaultValue={image}
             onChange={handleFileChange}
             className="hidden"
           />
         </label>
       </div>
-    </>
+      {errors && errors?.properties["avatar"] && (
+        <p className="text-sm text-destructive">
+          {errors?.properties["avatar"].errors[0]}
+        </p>
+      )}
+    </div>
   );
 };

@@ -32,7 +32,8 @@ export class PlayerService {
         email,
         scout_id,
         created_at,
-        updated_at
+        updated_at,
+        mobile
       `
       )
       .order("name");
@@ -47,6 +48,7 @@ export class PlayerService {
       .select(
         `
         id,
+        mobile,
         team_id,
         name,
         position,
@@ -71,7 +73,7 @@ export class PlayerService {
       if (error.code === "PGRST116") return null; // Not found
       throw error;
     }
-    return this.transformFromDb(data);
+    return convertKeysToCamelCase(data);
   }
 
   async getPlayerByEmail(email: string): Promise<Player | null> {
@@ -94,7 +96,8 @@ export class PlayerService {
         email,
         scout_id,
         created_at,
-        updated_at
+        updated_at,
+        mobile
       `
       )
       .eq("email", email)
@@ -127,7 +130,8 @@ export class PlayerService {
         email,
         scout_id,
         created_at,
-        updated_at
+        updated_at,
+        mobile
       `
       )
       .eq("scout_id", scoutId)
@@ -135,6 +139,79 @@ export class PlayerService {
 
     if (error) throw error;
     return (data || []).map(this.transformFromDb);
+  }
+
+  async getPlayersByGroup(
+    groupId: string,
+    orderBy?: string,
+    name?: string,
+    ageGroup?: any,
+    group?: string,
+    position?: string
+  ): Promise<Player[]> {
+    const query = this.client
+      .from("players")
+      .select(
+        `
+        id,
+        team_id,
+        name,
+        position,
+        secondary_position,
+        date_of_birth,
+        club,
+        photo_url,
+        mobile,
+        player_group_members!inner(group_id),
+        invitations(status)
+      `
+      )
+      .eq("player_group_members.group_id", groupId);
+
+    if (name) {
+      query.ilike("name", `${name}%`);
+    }
+
+    if (orderBy) {
+      if (orderBy === "score") {
+      } else {
+        query.order(orderBy);
+      }
+    } else {
+      query.order("name");
+    }
+
+    if (position) {
+      query.or(`position.eq.${position},secondary_position.eq.${position}`); //.or("secondary_position", position);
+    }
+
+    if (ageGroup) {
+      const groupFilter = getDateRangeForAgeGroup(ageGroup);
+      if (groupFilter) {
+        query.gte("date_of_birth", groupFilter.start);
+        query.lte("date_of_birth", groupFilter.end);
+      }
+    }
+
+    const { data, error } = await query;
+
+    let d = data;
+    if (group) {
+      d = d.filter((p) =>
+        p.player_group_members.find((pgm) => pgm.group_id === group)
+      );
+    }
+
+    if (orderBy === "score") {
+      d.sort((a, b) => {
+        const scoreA = a.player_avg_scores?.avg_overall_score ?? -Infinity;
+        const scoreB = b.player_avg_scores?.avg_overall_score ?? -Infinity;
+        return scoreB - scoreA;
+      });
+    }
+
+    if (error) throw error;
+    return convertKeysToCamelCase(d);
   }
 
   async getPlayersByTeam(
@@ -157,6 +234,7 @@ export class PlayerService {
         date_of_birth,
         club,
         photo_url,
+        mobile,
         player_group_members(group_id)
       `
       )
@@ -242,6 +320,7 @@ export class PlayerService {
         scout_id,
         created_at,
         updated_at,
+        mobile,
         player_reports(count)
       `
       )
@@ -288,10 +367,9 @@ export class PlayerService {
         nationality: playerData.nationality,
         club: playerData.club,
         school: playerData.school,
-        height: playerData.height,
-        foot: playerData.foot,
         photo_url: playerData.photoUrl,
         email: playerData.email,
+        mobile: playerData.mobile,
         // scout_id: scoutId,
       })
       .select()
@@ -299,6 +377,26 @@ export class PlayerService {
 
     if (error) throw error;
     return data;
+  }
+
+  async getFormFields(formData: FormData) {
+    const playerId = formData.get("playerId") as string;
+
+    const data: Omit<Player, "id"> = {
+      name: formData.get("name") as string,
+      position: formData.get("position") as string,
+      secondaryPosition: formData.get("secondaryPosition") as string,
+      dateOfBirth: formData.get("dateOfBirth") as string,
+      nationality: formData.get("nationality") as string,
+      club: formData.get("club") as string,
+      school: formData.get("school") as string,
+      photoUrl: formData.get("photoUrl") as string,
+      email: formData.get("email") as string,
+      teamId: formData.get("teamId") as string,
+      mobile: formData.get("mobile") as string,
+    };
+
+    return { data, playerId };
   }
 
   async updatePlayer(
@@ -317,10 +415,9 @@ export class PlayerService {
       updateData.nationality = updates.nationality;
     if (updates.club !== undefined) updateData.club = updates.club;
     if (updates.school !== undefined) updateData.school = updates.school;
-    if (updates.height !== undefined) updateData.height = updates.height;
-    if (updates.foot !== undefined) updateData.foot = updates.foot;
     if (updates.photoUrl !== undefined) updateData.photo_url = updates.photoUrl;
     if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.mobile !== undefined) updateData.mobile = updates.mobile;
 
     const { data, error } = await this.client
       .from("players")

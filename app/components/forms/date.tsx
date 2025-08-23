@@ -9,16 +9,18 @@ type DateField = {
   name: string;
   label: string;
   defaultValue?: Date;
+  errors?: any;
 };
 export const DateField: React.FC<DateField> = ({
   name,
   label,
   defaultValue,
+  errors,
 }) => {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(defaultValue);
   return (
-    <Field name={name} label={label}>
+    <Field name={name} label={label} errors={errors}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

@@ -46,8 +46,9 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
 export const action: ActionFunction = async ({ request }) => {
   const { supabaseClient } = await getSupabaseServerClient(request);
+  const formdata = await request.formData();
+  const avatar = formdata.get("avatar");
 
-  let formData = await request.formData();
   const { user: authUser } = await requireUser(supabaseClient);
   const user = await getAppUser(authUser.id, supabaseClient);
 
@@ -57,24 +58,7 @@ export const action: ActionFunction = async ({ request }) => {
 
   const playerService = new PlayerService(supabaseClient);
 
-  const playerId = formData.get("playerId") as string;
-  const avatar = formData.get("avatar");
-
-  const data: Omit<Player, "id"> = {
-    name: formData.get("name") as string,
-    position: formData.get("position") as string,
-    secondaryPosition: formData.get("secondaryPosition") as string,
-    dateOfBirth: formData.get("dateOfBirth") as string,
-    nationality: formData.get("nationality") as string,
-    club: formData.get("club") as string,
-    school: formData.get("school") as string,
-    height: formData.get("height") as string,
-    foot: formData.get("foot") as string,
-    photoUrl: formData.get("photoUrl") as string,
-    email: formData.get("email") as string,
-    scoutId: user.id as string,
-    teamId: formData.get("teamId") as string,
-  };
+  const { data, playerId } = await playerService.getFormFields(formdata);
 
   await playerService.updatePlayer(playerId, data);
 
