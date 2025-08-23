@@ -26,7 +26,7 @@ export const loader: LoaderFunction = async ({ request }) => {
 
   const clubs = await clubService.getAllClubs();
 
-  return { clubs, player };
+  return { clubs, player, invite };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -61,7 +61,7 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 const PlayerInvite = () => {
-  const { clubs, player } = useLoaderData<typeof loader>();
+  const { clubs, player, invite } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
@@ -70,17 +70,24 @@ const PlayerInvite = () => {
         <div className="container mx-auto max-w-[50rem] py-10 flex flex-row gap-3 items-end">
           <img src="/logo.png" className="w-20" width={50} height={50} />
           <div>
-            <h1 className="text-4xl">Player Registration</h1>
-            <p className="text-muted">
-              Please complete the form below to accept your invitation
-            </p>
+            <h1 className="text-4xl">Player Invitation</h1>
+            {invite.status === "pending" && (
+              <p className="text-muted">
+                Please complete the form below to accept your invitation
+              </p>
+            )}
           </div>
         </div>
       </div>
-      <div className="container mx-auto max-w-[50rem] py-6">
-        {actionData?.status === "complete" ? (
-          <div>Thank you</div>
-        ) : (
+      {invite.status === "accepted" && (
+        <div className="container mx-auto max-w-[50rem] py-6">
+          <p className="text-muted">
+            The Invite has expired or has already been completed
+          </p>
+        </div>
+      )}
+      {actionData?.status !== "complete" && invite?.status === "pending" && (
+        <div className="container mx-auto max-w-[50rem] py-6">
           <Form method="POST" encType="multipart/form-data" className="px-4">
             <PlayerForm
               player={player}
@@ -91,8 +98,8 @@ const PlayerInvite = () => {
               <ActionButton title="Accept Invite" />
             </div>
           </Form>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

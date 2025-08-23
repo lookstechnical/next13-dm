@@ -1,15 +1,13 @@
 import { Field } from "~/components/forms/field";
-import { SerializedEditorState } from "lexical";
-import { useState } from "react";
 import { SelectField } from "../select";
-import { Textarea } from "~/components/ui/textarea";
 import { Input } from "~/components/ui/input";
+import { RichTextField } from "../rich-text";
 
-type LibraryItemForm = {
+type GroupEmailForm = {
   libraryItem?: any;
 };
 
-export const GroupEmailForm: React.FC<LibraryItemForm> = ({ libraryItem }) => {
+export const GroupEmailForm: React.FC<GroupEmailForm> = ({ libraryItem }) => {
   return (
     <div className="flex gap-4 flex-col p-4">
       {libraryItem && (
@@ -35,7 +33,12 @@ export const GroupEmailForm: React.FC<LibraryItemForm> = ({ libraryItem }) => {
 
         <div className="text-foreground text-sm">
           <Field name="description" label="Description">
-            <Textarea
+            <RichTextField
+              name="description"
+              label="email Content"
+              variables={{ name: "", email: "" }}
+            />
+            {/* <Textarea
               name="description"
               className="h-60"
               defaultValue={`<p>Dear Parent/Guardian,</p>
@@ -46,7 +49,7 @@ export const GroupEmailForm: React.FC<LibraryItemForm> = ({ libraryItem }) => {
 
 <p>Please Click the link below to accept the invitation to join the programme and provide us with some key information.</p>
 `}
-            />
+            /> */}
           </Field>
         </div>
       </div>

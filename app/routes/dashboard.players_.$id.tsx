@@ -104,11 +104,10 @@ export default function PlayerPage() {
       <div className="w-full flex flex-col gap-12 space-y-10 container px-4 mx-auto py-10 text-foreground">
         <div className="w-full flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-4 ">
           <div className="flex flex-col lg:flex-row gap-4 w-full lg:w-1/2 items-center">
-            <div className="w-[130px] h-[130px] flex items-center justify-center overflow-hidden rounded-full object-cover bg-white">
+            <div className="relative w-[130px] h-[130px] flex items-center justify-center overflow-hidden rounded-full object-cover bg-white">
               {player?.photoUrl ? (
                 <img
-                  width={120}
-                  height={120}
+                  className="w-full object-fit h-full a"
                   alt={player.name}
                   src={player.photoUrl}
                 />
