@@ -19,3 +19,33 @@ body {
     @apply text-foreground;
   }
 }
+
+.tiptap {
+  p {
+    @apply my-4 first:mt-0 last:mb-0 text-base leading-relaxed;
+  }
+
+  h1 {
+    @apply text-3xl font-bold mt-8 mb-4 first:mt-0 last:mb-0;
+  }
+
+  h2 {
+    @apply text-2xl font-bold mt-8 mb-4 first:mt-0 last:mb-0;
+  }
+
+  h1 {
+    @apply text-xl font-bold mt-8 mb-4 first:mt-0 last:mb-0;
+  }
+
+  ul {
+    @apply ml-6 list-disc;
+  }
+
+  ol {
+    @apply ml-6 list-decimal;
+  }
+
+  blockquote {
+    @apply relative pl-4 italic before:content-['“'] after:content-['”'] before:text-3xl after:text-3xl before:align-middle after:align-middle before:mr-1 after:ml-1;
+  }
+}

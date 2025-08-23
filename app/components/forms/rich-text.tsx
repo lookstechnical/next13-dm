@@ -14,12 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "../ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../ui/tooltip";
+import { TooltipProvider } from "../ui/tooltip";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import { Field } from "./field";
@@ -346,7 +341,7 @@ export function RichTextEditor({
         <div className="rounded-md border">
           <EditorContent
             editor={editor}
-            className="prose prose-sm max-w-none dark:prose-invert px-3 py-2 min-h-[160px] focus:outline-none"
+            className="prose prose-sm max-w-none dark:prose-invert px-3 py-2 min-h-[260px] *:min-h-[260px]  focus:outline-none"
           />
         </div>
       </div>
@@ -359,17 +354,24 @@ export const RichTextField = ({
   label,
   variables,
   placeholder,
+  defaultValue = "",
 }: {
   placeholder?: string;
   name: string;
   label: string;
   variables?: object;
+  defaultValue?: string;
 }) => {
-  const [html, setHtml] = React.useState<string>("");
+  const [html, setHtml] = React.useState<string>(defaultValue);
 
   return (
     <Field name={name} label={label}>
-      <input type="hidden" name={name} value={html} />
+      <input
+        type="hidden"
+        defaultValue={defaultValue}
+        name={name}
+        value={html}
+      />
       <RichTextEditor
         html={html}
         onChange={setHtml}
