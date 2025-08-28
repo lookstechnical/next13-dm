@@ -3,7 +3,13 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Link, redirect, useLoaderData, useNavigate } from "@remix-run/react";
+import {
+  Form,
+  Link,
+  redirect,
+  useLoaderData,
+  useNavigate,
+} from "@remix-run/react";
 import { LibraryItemForm } from "~/components/forms/form/lirary-item";
 import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
@@ -17,6 +23,7 @@ import {
 } from "~/components/ui/sheet";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
+import { SessionService } from "~/services/sessionService";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -43,10 +50,21 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
 export const action: ActionFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
+  const sessionService = new SessionService(supabaseClient);
+
   const formData = await request.formData();
 
-  return {};
+  const data = {
+    description: formData.get("description") as string,
+    assigned_to: formData.get("assignedTo") as string,
+    duration: formData.get("duration") as string,
+    drill_id: formData.get("drillId") as string,
+    event_id: params.id,
+  };
+
+  await sessionService.addSessionItem(data);
+
+  return redirect(`/dashboard/events/${params.id}/session-plan`);
 };
 
 export default function SessionPlan() {
@@ -67,20 +85,19 @@ export default function SessionPlan() {
           <SheetTitle>Add Library Item</SheetTitle>
           <SheetDescription>Add Library Item</SheetDescription>
         </SheetHeader>
-        {/* <Form method="POST"> */}
+        <Form method="POST">
+          <LibraryItemForm />
 
-        <LibraryItemForm />
+          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
+            <Button asChild variant="link">
+              <Link to={`/dashboard/events/${event.id}/session-plan`}>
+                Cancel
+              </Link>
+            </Button>
 
-        <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-          <Button asChild variant="link">
-            <Link to={`/dashboard/events/${event.id}/session-plan`}>
-              Cancel
-            </Link>
-          </Button>
-
-          <ActionButton title="Add Library Item" />
-        </SheetFooter>
-        {/* </Form> */}
+            <ActionButton title="Add Library Item" />
+          </SheetFooter>
+        </Form>
       </SheetContent>
     </Sheet>
   );

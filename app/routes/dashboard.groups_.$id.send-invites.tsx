@@ -29,6 +29,7 @@ import { PlayerService } from "~/services/playerService";
 import { getAppUser, requireUser } from "~/utils/require-user";
 import { Resend } from "resend";
 import { emailTemplate } from "~/services/email";
+import { delay } from "~/utils/helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
@@ -80,14 +81,25 @@ export const action: ActionFunction = async ({ request, params }) => {
 
         try {
           if (invite?.status === "pending") {
-            const data = await resend.emails.send({
-              from: "beCoachable <noreply@be-coachable.com>",
-              to: [player.players.email], // can be an array of recipients
-              subject,
-              html: emailTemplate(description, invite, player.players),
-            });
+            if (process.env.VITE_ENABLE_INVITE_EMAILS === "1") {
+              const data = await resend.emails.send({
+                from: "St Helens RLFC - beCoachable <noreply@be-coachable.com>",
+                to: [player.players.email],
+                subject,
+                html: emailTemplate(description, invite, player.players),
+              });
+              console.log("Email sent:", data);
+            } else {
+              const data = await resend.emails.send({
+                from: "St Helens RLFC - beCoachable <noreply@be-coachable.com>",
+                to: ["info@lookstechnical.co.uk"],
+                subject,
+                html: emailTemplate(description, invite, player.players),
+              });
+              console.log("Email sent:", data);
 
-            console.log("Email sent:", data);
+              await delay(500);
+            }
           }
         } catch (error) {
           console.error("Error sending email:", error);

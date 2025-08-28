@@ -19,7 +19,7 @@ export const Field: React.FC<Field> = ({
   errors,
 }) => {
   return (
-    <div className="space-y-2 w-full flex flex-col">
+    <div className="space-y-2 w-full flex flex-col text-foreground">
       <label
         htmlFor={name}
         className="text-sm font-medium text-gray-300 flex flex-row justify-between items-center gap-2"

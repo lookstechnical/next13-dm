@@ -58,8 +58,8 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
   const url = new URL(request.url);
   // const order = url.searchParams.get("order");
-  const nameFilter = url.searchParams.get("name");
-  const ageGroup = url.searchParams.get("age-group");
+  // const nameFilter = url.searchParams.get("name");
+  // const ageGroup = url.searchParams.get("age-group");
 
   const playerGroupMembers = players;
 
@@ -142,9 +142,7 @@ export default function PlayerPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">
                   <DownloadButton
-                    players={group.playerGroupMembers.map(
-                      (p: any) => p.players
-                    )}
+                    players={group.playerGroupMembers}
                     teamName={group.name}
                   />
                 </DropdownMenuItem>

@@ -55,6 +55,13 @@ const MenuItems = ({ close }: { close?: boolean }) => {
       <MenuLink close={close} to="/dashboard/groups" data-discover="true">
         Groups
       </MenuLink>
+      <MenuLink
+        close={close}
+        to="/dashboard/drills-library"
+        data-discover="true"
+      >
+        Drills library
+      </MenuLink>
     </nav>
   );
 };

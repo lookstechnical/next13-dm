@@ -64,33 +64,53 @@ const PlayerInvite = () => {
   const { clubs, player, invite } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
-  return (
-    <div className="min-h-screen min-w-screen bg-background text-foreground">
-      <div className="w-full py-10 bg-wkbackground">
-        <div className="container mx-auto max-w-[50rem] py-10 flex flex-row gap-3 items-end">
-          <img src="/logo.png" className="w-20" width={50} height={50} />
-          <div>
-            <h1 className="text-4xl">Player Invitation</h1>
-            {invite.status === "pending" && (
-              <p className="text-muted">
-                Please complete the form below to accept your invitation
-              </p>
-            )}
-          </div>
+  if (actionData?.status === "complete") {
+    return (
+      <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
+        <div className="w-full py-6 flex flex-col w-[50rem] items-center">
+          <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
+
+          <h1 className="text-4xl">Player Invitation</h1>
+          <p className="text-muted">
+            Thank you we will be in touch soon with more details!
+          </p>
         </div>
       </div>
-      {invite.status === "accepted" && (
-        <div className="container mx-auto max-w-[50rem] py-6">
+    );
+  }
+
+  if (invite?.status === "accepted") {
+    return (
+      <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
+        <div className="w-full py-6 flex flex-col w-[50rem] items-center">
+          <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
+
+          <h1 className="text-4xl">Player Invitation</h1>
           <p className="text-muted">
             The Invite has expired or has already been completed
           </p>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen min-w-screen bg-background text-foreground">
+      <div className="w-full py-10 bg-wkbackground">
+        <div className="container mx-auto max-w-[50rem] py-10 flex flex-row gap-3 flex flex-col items-center">
+          <img src="/logo.png" className="w-20" width={50} height={50} />
+          <h1 className="text-4xl">Player Invitation</h1>
+          <p className="text-muted">
+            Please complete the form below to accept your invitation
+          </p>
+        </div>
+      </div>
+
       {actionData?.status !== "complete" && invite?.status === "pending" && (
         <div className="container mx-auto max-w-[50rem] py-6">
           <Form method="POST" encType="multipart/form-data" className="px-4">
             <PlayerForm
-              player={player}
+              player={{ ...player, dateOfBirth: undefined }}
               clubs={clubs}
               errors={actionData?.errors}
             />

@@ -152,7 +152,7 @@ export function RichTextEditor({
         className={["flex flex-col gap-2", className].filter(Boolean).join(" ")}
       >
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-1 rounded-md border bg-background p-1">
+        <div className="flex flex-wrap items-center gap-1 rounded-md border border-muted bg-background p-1">
           <Toggle
             size="sm"
             pressed={isActive("bold")}
@@ -192,7 +192,12 @@ export function RichTextEditor({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="gap-1"
+              >
                 <IconH /> Heading
               </Button>
             </DropdownMenuTrigger>
@@ -265,6 +270,7 @@ export function RichTextEditor({
           <Separator orientation="vertical" className="mx-1 h-6" />
 
           <Button
+            type="button"
             size="sm"
             variant="outline"
             onClick={setLink}
@@ -277,6 +283,7 @@ export function RichTextEditor({
 
           <Button
             size="sm"
+            type="button"
             variant="outline"
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().chain().focus().undo().run()}
@@ -286,6 +293,7 @@ export function RichTextEditor({
           </Button>
           <Button
             size="sm"
+            type="button"
             variant="outline"
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().chain().focus().redo().run()}
@@ -298,6 +306,7 @@ export function RichTextEditor({
 
           <Button
             size="sm"
+            type="button"
             variant="ghost"
             onClick={() => editor.commands.clearContent(true)}
             aria-label="Clear"
@@ -311,7 +320,12 @@ export function RichTextEditor({
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
                     <span>➕</span> Insert Var
                   </Button>
                 </DropdownMenuTrigger>
@@ -338,10 +352,10 @@ export function RichTextEditor({
         </div>
 
         {/* Editor surface */}
-        <div className="rounded-md border">
+        <div className="rounded-md border border-muted">
           <EditorContent
             editor={editor}
-            className="prose prose-sm max-w-none dark:prose-invert px-3 py-2 min-h-[260px] *:min-h-[260px]  focus:outline-none"
+            className="prose border-muted prose-sm max-w-none dark:prose-invert px-3 py-2 min-h-[200px] *:min-h-[200px]  focus:outline-none"
           />
         </div>
       </div>

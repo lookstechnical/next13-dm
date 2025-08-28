@@ -32,8 +32,10 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
   // Group players by position
   const grouped: Record<string, Player[]> = {};
   for (const p of players) {
-    if (!grouped[p.position]) grouped[p.position] = [];
-    grouped[p.position].push(p);
+    if (p?.position) {
+      if (!grouped[p?.position]) grouped[p?.position] = [];
+      grouped[p?.position].push(p);
+    }
   }
 
   let y = height - 40;

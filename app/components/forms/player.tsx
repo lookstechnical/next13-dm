@@ -12,10 +12,15 @@ type PlayerForm = {
   errors?: any[];
 };
 
+const sizes = ["XS", "SM", "MD", "LG", "XL", "XXL", "XXXL"];
+
 export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs, errors }) => {
   return (
     <div className="flex gap-4 flex-col">
       {player && <input type="hidden" name="playerId" value={player.id} />}
+      {player?.photoUrl && (
+        <input type="hidden" name="photoUrl" value={player.photoUrl} />
+      )}
       <div className="flex flex-col lg:flex-row w-full gap-5">
         <div className="w-1/3 flex items-center justify-center">
           <ImageUpload image={player?.photoUrl as string} errors={errors} />
@@ -80,6 +85,24 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs, errors }) => {
             options={clubs?.map((c) => ({ id: c.name, name: c.name })) || []}
             errors={errors}
           />
+
+          <div className="flex flex-col lg:flex-row w-full gap-5">
+            <SelectField
+              name="shirt"
+              label="Shirt Size"
+              defaultValue={player?.shirt}
+              errors={errors}
+              options={sizes?.map((c) => ({ id: c, name: c })) || []}
+            />
+
+            <SelectField
+              name="shorts"
+              label="Shorts Size"
+              defaultValue={player?.shorts}
+              errors={errors}
+              options={sizes?.map((c) => ({ id: c, name: c })) || []}
+            />
+          </div>
         </div>
       </div>
     </div>

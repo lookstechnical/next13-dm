@@ -6,6 +6,7 @@ import type {
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin, MoreVertical } from "lucide-react";
+import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
 import {
@@ -115,12 +116,12 @@ export default function EventPage() {
                     </Link>
                   </Button>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="p-0">
-                  <Form method="DELETE" className="w-full">
+                <DropdownMenuItem asChild className="p-0">
+                  <DeleteConfirm name="Event" id={event.id}>
                     <Button variant="destructive" className="w-full">
                       Delete
                     </Button>
-                  </Form>
+                  </DeleteConfirm>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

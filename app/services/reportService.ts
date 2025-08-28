@@ -45,7 +45,7 @@ export class ReportService {
       .eq("player_id", playerId);
 
     if (templateId) {
-      query.not("template_id", "eq", templateId);
+      query.or(`template_id.neq.${templateId},template_id.is.null`);
     }
 
     // Apply scout filtering if not head scout

@@ -10,6 +10,7 @@ import {
   useLoaderData,
   useNavigate,
 } from "@remix-run/react";
+import z from "zod";
 import { PlayerForm } from "~/components/forms/player";
 import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
@@ -26,6 +27,7 @@ import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
 import { Player } from "~/types";
 import { requireUser, getAppUser } from "~/utils/require-user";
+import { inviteRegistration } from "~/validations/player-registration";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

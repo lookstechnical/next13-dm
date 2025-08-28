@@ -63,7 +63,9 @@ export class PlayerService {
         email,
         scout_id,
         created_at,
-        updated_at
+        updated_at,
+        shirt,
+        shorts
       `
       )
       .eq("id", id)
@@ -131,7 +133,9 @@ export class PlayerService {
         scout_id,
         created_at,
         updated_at,
-        mobile
+        mobile,
+        shirt,
+        shorts
       `
       )
       .eq("scout_id", scoutId)
@@ -394,6 +398,8 @@ export class PlayerService {
       email: formData.get("email") as string,
       teamId: formData.get("teamId") as string,
       mobile: formData.get("mobile") as string,
+      shirt: formData.get("shirt") as string,
+      shorts: formData.get("shorts") as string,
     };
 
     return { data, playerId };
@@ -418,6 +424,8 @@ export class PlayerService {
     if (updates.photoUrl !== undefined) updateData.photo_url = updates.photoUrl;
     if (updates.email !== undefined) updateData.email = updates.email;
     if (updates.mobile !== undefined) updateData.mobile = updates.mobile;
+    if (updates.shorts !== undefined) updateData.shorts = updates.shorts;
+    if (updates.shirt !== undefined) updateData.shirt = updates.shirt;
 
     const { data, error } = await this.client
       .from("players")

@@ -73,7 +73,7 @@ export default function RadarAttributes({ attributes, averages }) {
         label: "Team average",
         data: attributes.map(
           (a) =>
-            averages?.find((av) => av.attributeId === a.attributeId).avgScore
+            averages?.find((av) => av.attributeId === a.attributeId)?.avgScore
         ),
         fill: true,
         backgroundColor: "rgba(54, 162, 235, 0.2)",

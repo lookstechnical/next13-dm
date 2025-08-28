@@ -30,7 +30,7 @@ export const emailTemplate = (
         ${
           invite &&
           `<a href="${process.env.VITE_URL}/player-invite?token=${invite.token}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
-          Sign In
+          Accept Invite
         </a>`
         }
       </div>

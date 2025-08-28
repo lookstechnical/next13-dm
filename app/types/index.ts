@@ -36,6 +36,21 @@ export interface TemplateAttribute {
   order?: string;
 }
 
+export interface DrillCategory {
+  id: string;
+  name: string;
+}
+
+export interface Drill {
+  id: string;
+  name: string;
+  description: string;
+  intensity: string;
+  categories?: DrillCategory[];
+  videoUrl?: string;
+  imageUrl?: string;
+}
+
 export interface Player {
   id: string;
   teamId: string;
@@ -53,11 +68,26 @@ export interface Player {
   scoutId: string;
   createdAt: string;
   updatedAt: string;
+  shirt?: string;
+  shorts?: string;
   playerAvgScores?: {
     avgOverallScore?: string;
   };
   playerGroupMembers?: { id: string }[];
 }
+
+export type SessionItem = {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  assignedTo: string;
+  eventId: string;
+  drillId?: string;
+  responsible?: string;
+  events?: Event;
+  drills?: Drill;
+};
 
 export type SkillRating = {
   technique: number;

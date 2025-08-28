@@ -11,6 +11,8 @@ type PlayerForm = {
   clubs?: Club[];
 };
 
+const sizes = ["SM", "MD", "LG", "XL", "XXL", "XXXL"];
+
 export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
   return (
     <div className="flex gap-4 flex-col">
@@ -60,6 +62,21 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
           label="Club"
           defaultValue={player?.club}
           options={clubs?.map((c) => ({ id: c.name, name: c.name })) || []}
+        />
+      </div>
+      <div className="flex flex-col lg:flex-row w-full gap-5">
+        <SelectField
+          name="shirt"
+          label="Shirt Sizr"
+          defaultValue={player?.shirt}
+          options={sizes?.map((c) => ({ id: c, name: c })) || []}
+        />
+
+        <SelectField
+          name="shorts"
+          label="Shorts Size"
+          defaultValue={player?.shorts}
+          options={sizes?.map((c) => ({ id: c, name: c })) || []}
         />
       </div>
     </div>

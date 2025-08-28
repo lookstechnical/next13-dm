@@ -1,0 +1,77 @@
+import { SessionItem } from "~/types";
+import { convertKeysToCamelCase } from "../utils/helpers";
+
+export class SessionService {
+  client;
+  constructor(client: any) {
+    this.client = client;
+  }
+
+  async addSessionItem(sessionData: Omit<SessionItem, "id" | "eventId">) {
+    const { data, error } = await this.client
+      .from("session_items")
+      .insert(sessionData)
+      .select()
+      .single();
+
+    if (error) {
+      console.log(error);
+      throw error;
+    }
+    return convertKeysToCamelCase(data);
+  }
+
+  async updateSessionItem(sessionData: SessionItem, sessionItemId: string) {
+    const { data, error } = await this.client
+      .from("session_items")
+      .update(sessionData)
+      .eq("id", sessionItemId)
+      .select()
+      .single();
+
+    return convertKeysToCamelCase(data);
+  }
+
+  async getSessionItemsByEvent(eventId: string) {
+    const { data, error } = await this.client
+      .from("session_items")
+      .select("*, drills(*)")
+      .eq("event_id", eventId);
+
+    return convertKeysToCamelCase(data);
+  }
+
+  async getSessionItemsById(itemId: string) {
+    const { data, error } = await this.client
+      .from("session_items")
+      .select("*, drills(*, categories(*))")
+      .eq("id", itemId)
+      .single();
+
+    if (data?.drills?.image_url) {
+      const { data: imageData, error } = await this.client.storage
+        .from("drill-images")
+        .createSignedUrl(data?.drills?.image_url, 30);
+
+      data.drills = { ...data.drills, image_url: imageData?.signedUrl };
+
+      if (error) {
+        console.log({ error });
+      }
+    }
+
+    return convertKeysToCamelCase(data);
+  }
+
+  async deleteSessionItemsById(itemId: string) {
+    const { data, error } = await this.client
+      .from("session_items")
+      .delete()
+      .eq("id", itemId);
+
+    if (error) {
+      console.log(error);
+    }
+    return { status: "success" };
+  }
+}
