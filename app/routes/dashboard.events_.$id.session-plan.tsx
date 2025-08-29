@@ -79,6 +79,7 @@ export default function SessionPlan() {
           >
             {sessionItems?.map((item: SessionItem) => (
               <SessionItemCard
+                key={item.id}
                 sessionItem={item}
                 to={`/dashboard/events/${event.id}/session-plan/${item.id}`}
               />

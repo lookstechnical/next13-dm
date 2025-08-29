@@ -202,16 +202,22 @@ export const MultiSelectField = ({
   name,
   defaultValue,
   options,
+  onChange,
   ...props
-}: Omit<MultiSelectFieldProps, "onChange" | "value">) => {
+}: Omit<MultiSelectFieldProps, "value">) => {
   const [value, setValue] = React.useState<string[]>(defaultValue || []);
+
+  const handleChange = (value: string[]) => {
+    setValue(value);
+    if (onChange) onChange(value);
+  };
   return (
     <Field name={name} label={label}>
       <input type="hidden" name={name} value={value} />
       <MultiSelectInput
         {...props}
         options={options}
-        onChange={setValue}
+        onChange={handleChange}
         value={value}
       />
     </Field>

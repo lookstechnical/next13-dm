@@ -7,105 +7,241 @@ type DownloadButton = {
   sessionItems: SessionItem[];
 };
 
-// Helper to remove HTML tags
-function stripHTML(html: string) {
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  return div.innerText;
+function stripHtml(html) {
+  return html
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n\s*\n/g, "\n")
+    .trim();
 }
-async function generatePDF(items: SessionItem[]) {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage();
-  const { width, height } = page.getSize();
-  let y = height - 40;
 
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  const cardMargin = 20;
-  const cardPadding = 10;
-  const cardWidth = width - cardMargin * 2;
-
-  for (const item of items) {
-    const cardHeight = 100 + item.description.split("\n").length * 14; // rough estimate
-    if (y - cardHeight < 40) {
-      // new page
-      pdfDoc.addPage();
-      y = height - 40;
+function wrapText(text, font, fontSize, maxWidth) {
+  if (!text) return [];
+  const words = text.split(/\s+/);
+  let line = "";
+  const lines = [];
+  for (let word of words) {
+    const testLine = line ? line + " " + word : word;
+    const width = font.widthOfTextAtSize(testLine, fontSize);
+    if (width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = testLine;
     }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
 
-    // Draw card background
-    page.drawRectangle({
-      x: cardMargin,
-      y: y - cardHeight,
-      width: cardWidth,
-      height: cardHeight,
-      color: rgb(1, 1, 1),
-      borderColor: rgb(0.3, 0.3, 0.4),
-      borderWidth: 1,
-    });
+export async function generateSessionPlanPDF(items) {
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([595.28, 841.89]); // A4
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    let textX = cardMargin + cardPadding;
-    let textY = y - cardPadding - 6;
+  const fontSize = 11;
+  const margin = 40;
+  const usableWidth = page.getWidth() - margin * 2;
+  const baseWidths = [145, 250, 120, 60]; // proportions
+  const totalBase = baseWidths.reduce((a, b) => a + b, 0);
+  const scale = usableWidth / totalBase;
+  const colWidths = baseWidths.map((w) => w * scale);
+  const rowMinHeight = 22;
+  const cellPadding = 5;
+  let y = page.getHeight() - margin;
 
-    // Title
-    page.drawText(`Title: ${item?.drills?.name}`, {
-      x: textX,
-      y: textY,
-      font: fontBold,
-      size: 12,
-      color: rgb(0, 0, 0),
-    });
-    textY -= 16;
-
-    // Description (wrap lines)
-    const descLines = stripHTML(item?.drills?.description.split("\n") || "");
-    page.drawText(`Description:`, {
-      x: textX,
-      y: textY,
-      font: fontBold,
-      size: 12,
-      color: rgb(0, 0, 0),
-    });
-    textY -= 14;
-    for (let line of descLines) {
-      page.drawText(line, {
-        x: textX + 10,
-        y: textY,
-        font,
-        size: 12,
+  // --- Draw Header ---
+  function drawHeader() {
+    let x = margin;
+    const headers = ["Title", "Description", "Responsible", "Duration"];
+    headers.forEach((header, i) => {
+      page.drawRectangle({
+        x,
+        y: y - rowMinHeight,
+        width: colWidths[i],
+        height: rowMinHeight,
+        borderColor: rgb(0, 0, 0),
+        borderWidth: 1,
+      });
+      page.drawText(header, {
+        x: x + cellPadding,
+        y: y - fontSize - 5,
+        font: boldFont,
+        size: fontSize,
         color: rgb(0, 0, 0),
       });
-      textY -= 14;
+      x += colWidths[i];
+    });
+    y -= rowMinHeight;
+  }
+
+  drawHeader();
+
+  // --- Draw Row ---
+  function drawRow(item) {
+    const drillName = item.drills?.name || "";
+    const drillDescription = stripHtml(item.drills?.description || "");
+    const rootDescription = item.description || "";
+    const intensity = item.drills?.intensity || "";
+    const responsible = item.assignedTo || "";
+    const duration = item.duration || "";
+
+    // Wrap text
+    const descriptionLines = wrapText(
+      drillDescription,
+      font,
+      fontSize,
+      colWidths[1] - cellPadding * 2
+    );
+    const rootLines = wrapText(
+      rootDescription,
+      font,
+      fontSize,
+      colWidths[1] - cellPadding * 2
+    );
+    const intensityLines = wrapText(
+      intensity,
+      boldFont,
+      fontSize,
+      colWidths[1] - cellPadding * 2
+    );
+    const responsibles = responsible.split(/[,|-]/).map((r) => r.trim());
+
+    let responsibleLines: string[] = [];
+    responsibles.forEach((r) => {
+      const wrapped = wrapText(
+        r,
+        font,
+        fontSize,
+        colWidths[2] - cellPadding * 2
+      ); // fit to col width
+      responsibleLines = responsibleLines.concat(wrapped);
+    });
+
+    // Compute row height
+    const descCount =
+      descriptionLines.length + rootLines.length + intensityLines.length;
+    const maxLines = Math.max(descCount, responsibleLines.length, 1);
+    const rowHeight = Math.max(maxLines * (fontSize + 3) + 10, rowMinHeight);
+
+    // Page break if needed
+    if (y - rowHeight < margin) {
+      page = pdfDoc.addPage([595.28, 841.89]);
+      y = page.getHeight() - margin;
+      drawHeader();
     }
 
-    // Intensity, Responsible, Duration
-    page.drawText(`Intensity: ${item?.drills?.intensity}`, {
-      x: textX,
-      y: textY,
+    let x = margin;
+
+    // Title cell
+    page.drawRectangle({
+      x,
+      y: y - rowHeight,
+      width: colWidths[0],
+      height: rowHeight,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1,
+    });
+    page.drawText(drillName, {
+      x: x + cellPadding,
+      y: y - fontSize - 5,
       font,
-      size: 12,
+      size: fontSize,
       color: rgb(0, 0, 0),
     });
-    textY -= 14;
-    page.drawText(`Responsible: ${item.responsible}`, {
-      x: textX,
-      y: textY,
-      font,
-      size: 12,
-      color: rgb(0, 0, 0),
+    x += colWidths[0];
+
+    // Description cell
+    page.drawRectangle({
+      x,
+      y: y - rowHeight,
+      width: colWidths[1],
+      height: rowHeight,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1,
     });
-    textY -= 14;
-    page.drawText(`Duration: ${item.duration}`, {
-      x: textX,
-      y: textY,
-      font,
-      size: 12,
+    let textY = y - fontSize - 5;
+    descriptionLines.forEach((line) => {
+      page.drawText(line, {
+        x: x + cellPadding,
+        y: textY,
+        font,
+        size: fontSize,
+        color: rgb(0, 0, 0),
+      });
+      textY -= fontSize + 3;
+    });
+    rootLines.forEach((line) => {
+      page.drawText(line, {
+        x: x + cellPadding,
+        y: textY,
+        font,
+        size: fontSize,
+        color: rgb(0, 0, 1),
+      });
+      textY -= fontSize + 3;
+    });
+    intensityLines.forEach((line) => {
+      page.drawText(line, {
+        x: x + cellPadding,
+        y: textY,
+        font: boldFont,
+        size: fontSize,
+        color: rgb(1, 0, 0),
+      });
+      textY -= fontSize + 3;
+    });
+    x += colWidths[1];
+
+    // Responsible cell
+    page.drawRectangle({
+      x,
+      y: y - rowHeight,
+      width: colWidths[2],
+      height: rowHeight,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1,
+    });
+    textY = y - fontSize - 5;
+    responsibleLines.forEach((name) => {
+      page.drawText(name, {
+        x: x + cellPadding,
+        y: textY,
+        font,
+        size: fontSize,
+        color: rgb(0, 0, 0),
+      });
+      textY -= fontSize + 3;
+    });
+    x += colWidths[2];
+
+    // Duration cell (right-aligned)
+    page.drawRectangle({
+      x,
+      y: y - rowHeight,
+      width: colWidths[3],
+      height: rowHeight,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1,
+    });
+    const durationWidth = boldFont.widthOfTextAtSize(duration, fontSize);
+    page.drawText(duration, {
+      x: x + colWidths[3] - durationWidth - cellPadding,
+      y: y - fontSize - 5,
+      font: boldFont,
+      size: fontSize,
       color: rgb(0, 0, 0),
     });
 
-    y -= cardHeight + 20; // spacing between cards
+    y -= rowHeight;
   }
+
+  // --- Draw all items ---
+  items.forEach((item) => {
+    drawRow(item);
+  });
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
@@ -122,7 +258,7 @@ export const SessionDownloadButton: React.FC<DownloadButton> = ({
     <Button
       variant="outline"
       className="text-foreground"
-      onClick={() => generatePDF(sessionItems)}
+      onClick={() => generateSessionPlanPDF(sessionItems)}
     >
       <DownloadIcon />
       <span>Download PDF</span>

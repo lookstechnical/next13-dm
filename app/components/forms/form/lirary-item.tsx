@@ -1,17 +1,11 @@
 import { Input } from "~/components/ui/input";
 import { Field } from "~/components/forms/field";
-import { Editor } from "~/components/ui/blocks/editor-00/editor";
-import { SerializedEditorState } from "lexical";
-import { useState } from "react";
-import { Textarea } from "~/components/ui/textarea";
 import { RichTextField } from "../rich-text";
 import { DrillField } from "../drill";
 
 type LibraryItemForm = {
   libraryItem?: any;
 };
-
-const initialValue = undefined;
 
 export const LibraryItemForm: React.FC<LibraryItemForm> = ({ libraryItem }) => {
   return (

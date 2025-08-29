@@ -86,7 +86,9 @@ export default function SessionPlan() {
           <SheetDescription>Add Library Item</SheetDescription>
         </SheetHeader>
         <Form method="POST">
-          <LibraryItemForm />
+          <div className="max-h-[70vh] overflow-scroll pb-10">
+            <LibraryItemForm />
+          </div>
 
           <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
             <Button asChild variant="link">
