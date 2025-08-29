@@ -7,7 +7,7 @@ import {
   calculateRelativeAgeQuartile,
 } from "~/utils/helpers";
 import { cn } from "~/lib/utils";
-import { Mail, MailCheck, User } from "lucide-react";
+import { Mail, MailCheck, Phone, User } from "lucide-react";
 import { PropsWithChildren } from "react";
 
 type PlayerCard = PropsWithChildren<{
@@ -86,6 +86,12 @@ export const PlayerCard: React.FC<PlayerCard> = ({
                 title="Oldest in year group (Sept-Nov births) - potential relative age advantage"
               >
                 {calculateRelativeAgeQuartile(player?.dateOfBirth).label}
+              </div>
+              <div>
+                {player?.email && <Mail className="text-white size-3" />}
+              </div>
+              <div>
+                {player?.mobile && <Phone className="text-white size-3" />}
               </div>
             </div>
           </div>

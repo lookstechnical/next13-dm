@@ -47,7 +47,9 @@ export const DrillCard: React.FC<DrillCard> = ({
         </div>
         <div className="flex flex-row gap-2 pt-4">
           {drill?.categories?.map((c) => (
-            <Badge variant="outline">{c.name}</Badge>
+            <Badge variant="outline" className="rounded-lg">
+              {c.name}
+            </Badge>
           ))}
         </div>
       </div>

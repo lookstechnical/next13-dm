@@ -119,7 +119,12 @@ export function MultiSelectInput({
   };
 
   return (
-    <div className={cn("flex flex-col gap-2 relative", className)}>
+    <div
+      className={cn(
+        "flex flex-row flex-wrap gap-2 relative border-2 border-muted p-2",
+        className
+      )}
+    >
       {/* Selected chips */}
       {value.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -127,7 +132,7 @@ export function MultiSelectInput({
             <Badge
               key={id}
               variant="secondary"
-              className="flex items-center gap-1 rounded-full px-2 py-1"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 "
             >
               {selectedLabels.get(id) ?? id}
               <Button
@@ -155,7 +160,7 @@ export function MultiSelectInput({
         }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="text-foreground"
+        className="text-foreground flex-0"
       />
 
       {/* Dropdown */}

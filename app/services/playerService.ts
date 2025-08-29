@@ -239,6 +239,7 @@ export class PlayerService {
         club,
         photo_url,
         mobile,
+        email,
         player_group_members(group_id)
       `
       )

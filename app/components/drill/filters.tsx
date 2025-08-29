@@ -22,6 +22,8 @@ export const DrillFilters: React.FC<DrillFilters> = ({
   categories,
 }) => {
   const [open, setOpen] = useState(false);
+
+  console.log(appliedFilters.categoryFilter);
   return (
     <Sheet open={open} onOpenChange={(val) => setOpen(val)}>
       <SheetTrigger asChild onClick={() => setOpen(true)}>
@@ -44,7 +46,7 @@ export const DrillFilters: React.FC<DrillFilters> = ({
             name="categories"
             label="Categories"
             placeholder="Enter Description"
-            defaultValue={appliedFilters.categoryFilter}
+            defaultValue={appliedFilters.categoryFilter?.split(",")}
             options={categories.map((c) => ({ id: c.id, label: c.name }))}
           />
 
