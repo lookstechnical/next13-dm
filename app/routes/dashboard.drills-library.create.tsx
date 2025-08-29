@@ -33,7 +33,10 @@ export const meta: MetaFunction = () => {
 export const loader: LoaderFunction = async ({ request }) => {
   const { supabaseClient } = await getSupabaseServerClient(request);
 
-  return {};
+  const drillService = new DrillsService(supabaseClient);
+  const categories = await drillService.getAllDrillCategories();
+
+  return { categories };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -49,7 +52,7 @@ export const action: ActionFunction = async ({ request }) => {
 
   const drillService = new DrillsService(supabaseClient);
 
-  const categories = formData.get("imageUrl");
+  const categories = formData.get("categories") as string;
 
   const data: Omit<Drill, "id"> = {
     name: formData.get("name") as string,
@@ -59,14 +62,31 @@ export const action: ActionFunction = async ({ request }) => {
     imageUrl: formData.get("imageUrl") as string,
   };
 
-  await drillService.addDrill(data);
+  const drill = await drillService.addDrill(data);
+
+  const image = formData.get("image");
+  if (image) {
+    await drillService.uploadDrillImage(image, drill.id);
+  }
+  const video = formData.get("video");
+  if (video) {
+    await drillService.uploadDrillImage(video, drill.id);
+  }
+
+  if (categories) {
+    console.log({ categories });
+    await drillService.updateDrillCategories(
+      drill.id,
+      categories?.split(",") || []
+    );
+  }
 
   return redirect(`/dashboard/drills-library`);
 };
 
 export default function DrillsCreate() {
   const navigate = useNavigate();
-  const {} = useLoaderData<typeof loader>();
+  const { categories } = useLoaderData<typeof loader>();
 
   return (
     <Sheet
@@ -84,7 +104,7 @@ export default function DrillsCreate() {
             <SheetDescription>Add Drill, Skill or Game</SheetDescription>
           </SheetHeader>
           <div className="h-[80vh] overflow-scroll p-4 pb-20">
-            <DrillForm />
+            <DrillForm categories={categories} />
           </div>
           <SheetFooter className="absolute bottom-0 w-full pb-10 pt-2 px-10 flex flex-row gap-2 bg-background">
             <Button asChild variant="link">

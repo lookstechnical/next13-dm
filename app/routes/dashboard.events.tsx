@@ -34,6 +34,42 @@ export const loader: LoaderFunction = async ({ request }) => {
 
 export default function Events() {
   const { events, user } = useLoaderData<typeof loader>();
+
+  console.log(events);
+
+  function getNextUpcomingEvent(events: Event[]): Event | null {
+    const now = new Date();
+
+    // Filter only future events
+    const upcoming = events.filter((e) => new Date(e.date) > now);
+
+    if (upcoming.length === 0) return null;
+
+    // Sort by date ascending and take the first
+    upcoming.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    return upcoming[0];
+  }
+
+  function getPreviousEvent(events: Event[]): Event | null {
+    const now = new Date();
+
+    const past = events.filter((e) => new Date(e.date) < now);
+
+    if (past.length === 0) return null;
+
+    past.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    return past[0];
+  }
+
+  const nextEvent = getNextUpcomingEvent(events);
+  const prevEvent = getPreviousEvent(events);
+
   return (
     <div className="flex flex-column space-y-10 container px-4 mx-auto py-10 text-foreground">
       <div className="w-full">
@@ -59,6 +95,28 @@ export default function Events() {
             return null;
           }}
         />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {nextEvent && (
+            <div>
+              <h2 className="text-xl text-muted bold mb-2">Next Event</h2>
+              <EventCard
+                key={nextEvent.id}
+                event={nextEvent}
+                to={(id) => `/dashboard/events/${id}`}
+              />
+            </div>
+          )}
+          {prevEvent && (
+            <div>
+              <h2 className="text-xl text-muted bold  mb-2">Previous Event</h2>
+              <EventCard
+                key={prevEvent.id}
+                event={prevEvent}
+                to={(id) => `/dashboard/events/${id}`}
+              />
+            </div>
+          )}
+        </div>
         <CardGrid name={`${user.team.name} has 0 events`} items={events}>
           {events?.map((event: Event) => (
             <EventCard

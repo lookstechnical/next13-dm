@@ -1,11 +1,19 @@
-import { User } from "lucide-react";
+import { User, Volleyball } from "lucide-react";
 import { useState } from "react";
+import { cn } from "~/lib/utils";
 
 type ImageUploadProps = {
   image: string;
-  errors: any;
+  isProfile?: boolean;
+  name?: string;
+  errors?: any;
 };
-export const ImageUpload: React.FC<ImageUploadProps> = ({ image, errors }) => {
+export const ImageUpload: React.FC<ImageUploadProps> = ({
+  image,
+  errors,
+  isProfile,
+  name = "avatar",
+}) => {
   const [previewUrl, setPreviewUrl] = useState(image);
 
   const handleFileChange = (e) => {
@@ -17,20 +25,32 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ image, errors }) => {
 
   return (
     <div className="w-full">
-      <div className="relative w-32 h-32 mb-4">
+      <div className={cn("relative mb-4", isProfile ? "w-32 h-32" : "w-full ")}>
         <label
-          htmlFor="file-upload"
+          htmlFor={name}
           className="text-white p-2 rounded-full cursor-pointer shadow-lg transition "
         >
           {previewUrl ? (
             <img
               src={previewUrl}
               alt="Profile preview"
-              className="w-32 h-32 rounded-full object-cover border-4 border-gray-300 shadow"
+              className={cn(
+                "object-cover border-4 border-gray-300 shadow",
+                isProfile ? "w-32 h-32 rounded-full" : "aspect-video w-full "
+              )}
             />
           ) : (
-            <div className="w-32 h-32 rounded-full object-cover border-4 border-gray-300 shadow items-center justify-center flex hover:bg-wkbackground">
-              <User className="text-muted" />
+            <div
+              className={cn(
+                "object-cover border-4 border-gray-300 shadow items-center justify-center flex hover:bg-wkbackground",
+                isProfile ? "w-32 h-32 rounded-full" : "aspect-video w-full "
+              )}
+            >
+              {isProfile ? (
+                <User className="text-muted" />
+              ) : (
+                <Volleyball className="text-muted" />
+              )}
             </div>
           )}
 
@@ -47,10 +67,10 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ image, errors }) => {
             </svg>
           </div>
           <input
-            id="file-upload"
+            id={name}
             type="file"
             accept="image/*"
-            name="avatar"
+            name={name}
             // defaultValue={image}
             onChange={handleFileChange}
             className="hidden"
@@ -59,7 +79,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ image, errors }) => {
       </div>
       {errors && errors?.properties["avatar"] && (
         <p className="text-sm text-destructive">
-          {errors?.properties["avatar"].errors[0]}
+          {errors?.properties[name].errors[0]}
         </p>
       )}
     </div>

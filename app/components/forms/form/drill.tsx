@@ -3,20 +3,14 @@ import { Input } from "../../ui/input";
 import { Field } from "../field";
 import { RichTextField } from "../rich-text";
 import { CategoryOption, MultiSelectField } from "../multi-select";
+import { ImageUpload } from "../image-upload";
 
 type DrillForm = {
   drill?: any;
+  categories?: any[];
 };
 
-const allCategories: CategoryOption[] = [
-  { id: "1", label: "Marketing" },
-  { id: "2", label: "Sales" },
-  { id: "3", label: "Tech" },
-  { id: "4", label: "HR" },
-  { id: "5", label: "Design" },
-];
-
-export const DrillForm: React.FC<DrillForm> = ({ drill }) => {
+export const DrillForm: React.FC<DrillForm> = ({ drill, categories }) => {
   return (
     <div className="flex gap-4 flex-col">
       {drill && <input type="hidden" name="playerId" value={drill.id} />}
@@ -46,6 +40,7 @@ export const DrillForm: React.FC<DrillForm> = ({ drill }) => {
           </Field>
           <div className="flex flex-row gap-4">
             <Field name="videoUrl" label="Video Url">
+              <ImageUpload name="video" image={drill?.imageUrl} />
               <Input
                 name="videoUrl"
                 placeholder="Enter Video Url"
@@ -53,11 +48,13 @@ export const DrillForm: React.FC<DrillForm> = ({ drill }) => {
                 className="bg-card border-gray-600 text-white placeholder:text-gray-400"
               />
             </Field>
+
             <Field name="imageUrl" label="Image Url">
+              <ImageUpload name="image" image={drill?.imageUrl} />
               <Input
                 name="imageUrl"
-                placeholder="Enter Video Url"
-                defaultValue={drill?.videoUrl}
+                placeholder="Enter Image Url"
+                defaultValue={drill?.imageUrl}
                 className="bg-card border-gray-600 text-white placeholder:text-gray-400"
               />
             </Field>
@@ -66,7 +63,8 @@ export const DrillForm: React.FC<DrillForm> = ({ drill }) => {
             name="categories"
             label="Categories"
             placeholder="Enter Description"
-            options={allCategories}
+            canCreate
+            options={categories?.map((c) => ({ id: c.id, label: c.name }))}
           />
         </div>
       </div>

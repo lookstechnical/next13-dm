@@ -27,18 +27,47 @@ export class DrillsService {
     return convertKeysToCamelCase(data);
   }
 
+  async updateDrill(drillId: string, drillData: Omit<Drill, "id" | "eventId">) {
+    const { data, error } = await this.client
+      .from("drills")
+      .update(drillData)
+      .eq("id", drillId)
+      .select()
+      .single();
+
+    if (error) {
+      console.log(error);
+      throw error;
+    }
+    return convertKeysToCamelCase(data);
+  }
+
   async updateDrillCategories(drillId: string, categories: string[]) {
     const { data: deleteData, error: deleteError } = await this.client
       .from("drill_categories")
       .delete()
       .eq("drill_id", drillId);
 
-    for (const category in categories) {
+    for (const category of categories) {
+      console.log({ category });
       if (category.includes("new")) {
+        const { data: categoryData } = await this.client
+          .from("categories")
+          .insert({ name: category.replace("new:", "") })
+          .select()
+          .single();
+
+        if (categoryData) {
+          const { data, error } = await this.client
+            .from("drill_categories")
+            .insert({ drill_id: drillId, category_id: categoryData.id });
+        }
       } else {
         const { data, error } = await this.client
-          .from("drills")
+          .from("drill_categories")
           .insert({ drill_id: drillId, category_id: category });
+
+        if (error) console.log({ error });
       }
     }
 
@@ -85,6 +114,62 @@ export class DrillsService {
     }
 
     return convertKeysToCamelCase(data);
+  }
+
+  async uploadDrillImage(image: any, drillId: string) {
+    if (image) {
+      if (!(image instanceof File)) {
+        return { error: "Invalid file upload." };
+      }
+
+      if (image.size === 0) {
+        return { error: "empty file" };
+      }
+
+      const fileExt = image.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error } = await this.client.storage
+        .from("drill-images")
+        .upload(filePath, image);
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return await this.updateDrill(drillId, {
+        image_url: filePath,
+      });
+    }
+  }
+
+  async uploadDrillVideo(image: any, drillId: string) {
+    if (image) {
+      if (!(image instanceof File)) {
+        return { error: "Invalid file upload." };
+      }
+
+      if (image.size === 0) {
+        return { error: "empty file" };
+      }
+
+      const fileExt = image.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error } = await this.client.storage
+        .from("drill-images")
+        .upload(filePath, image);
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return await this.updateDrill(drillId, {
+        video_url: filePath,
+      });
+    }
   }
 
   async getAllDrillCategories() {

@@ -23,7 +23,11 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs, errors }) => {
       )}
       <div className="flex flex-col lg:flex-row w-full gap-5">
         <div className="w-1/3 flex items-center justify-center">
-          <ImageUpload image={player?.photoUrl as string} errors={errors} />
+          <ImageUpload
+            isProfile
+            image={player?.photoUrl as string}
+            errors={errors}
+          />
         </div>
         <div className="flex flex-col w-full gap-5">
           <Field name="name" label="Name" errors={errors}>
