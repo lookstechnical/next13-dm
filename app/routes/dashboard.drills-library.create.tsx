@@ -59,7 +59,6 @@ export const action: ActionFunction = async ({ request }) => {
   }
 
   if (categories) {
-    console.log({ categories });
     await drillService.updateDrillCategories(
       drill.id,
       categories?.split(",") || []

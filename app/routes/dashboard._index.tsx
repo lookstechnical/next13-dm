@@ -46,7 +46,6 @@ export const loader: LoaderFunction = async ({ request }) => {
 export default function Index() {
   const { quote, event, teamProgress } = useLoaderData<typeof loader>();
 
-  console.log({ teamProgress });
   return (
     <div className="container mx-auto p-4">
       <CardGrid items={[{ test: "" }]} title="Dashboard">

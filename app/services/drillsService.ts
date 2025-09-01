@@ -49,7 +49,6 @@ export class DrillsService {
       .eq("drill_id", drillId);
 
     for (const category of categories) {
-      console.log({ category });
       if (category.includes("new")) {
         const { data: categoryData } = await this.client
           .from("categories")
