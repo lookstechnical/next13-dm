@@ -53,6 +53,7 @@ export const action: ActionFunction = async ({ request, params }) => {
   let formData = await request.formData();
   const subject = formData.get("subject") as string;
   const description = formData.get("description") as string;
+  const footer = formData.get("footer") as string;
   const type = formData.get("type") as string;
 
   for (const player of group.playerGroupMembers) {
@@ -69,7 +70,12 @@ export const action: ActionFunction = async ({ request, params }) => {
                 from: "St Helens RLFC - beCoachable <noreply@be-coachable.com>",
                 to: [player.players.email],
                 subject,
-                html: emailTemplate(description, invite, player.players),
+                html: emailTemplate(
+                  description,
+                  footer,
+                  invite,
+                  player.players
+                ),
               });
               console.log("Email sent:", data);
             } else {
@@ -77,7 +83,12 @@ export const action: ActionFunction = async ({ request, params }) => {
                 from: "St Helens RLFC - beCoachable <noreply@be-coachable.com>",
                 to: ["info@lookstechnical.co.uk"],
                 subject,
-                html: emailTemplate(description, invite, player.players),
+                html: emailTemplate(
+                  description,
+                  footer,
+                  invite,
+                  player.players
+                ),
               });
               console.log("Email sent:", data);
 

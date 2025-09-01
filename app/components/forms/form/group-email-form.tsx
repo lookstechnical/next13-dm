@@ -32,11 +32,10 @@ export const GroupEmailForm: React.FC<GroupEmailForm> = ({ libraryItem }) => {
         </div>
 
         <div className="text-foreground text-sm">
-          <Field name="description" label="Description">
-            <RichTextField
-              name="description"
-              label="email Content"
-              defaultValue={`<p>Dear Parent/Guardian,</p>
+          <RichTextField
+            name="description"
+            label="Email Body"
+            defaultValue={`<p>Dear Parent/Guardian,</p>
 
 <p>We are excited to invite your son {{name}} to take part in our Excel Programme, running from October through February.</p>
 
@@ -44,21 +43,15 @@ export const GroupEmailForm: React.FC<GroupEmailForm> = ({ libraryItem }) => {
 
 <p>Please Click the link below to accept the invitation to join the programme and provide us with some key information.</p>
 `}
-              variables={{ name: "", email: "" }}
-            />
-            {/* <Textarea
-              name="description"
-              className="h-60"
-              defaultValue={`<p>Dear Parent/Guardian,</p>
-
-<p>We are excited to invite your son {{name}} to take part in our Excel Programme, running from October through February.</p>
-
-<p>This programme is designed specifically to bridge the gap between community rugby and scholarship level performance, providing players with the technical skills, game understanding, and physical development needed to succeed at the next stage of their rugby journey.</p>
-
-<p>Please Click the link below to accept the invitation to join the programme and provide us with some key information.</p>
-`}
-            /> */}
-          </Field>
+            variables={{ name: "", email: "" }}
+          />
+        </div>
+        <div className="text-foreground text-sm">
+          <RichTextField
+            name="footer"
+            label="Email Footer"
+            variables={{ name: "", email: "" }}
+          />
         </div>
       </div>
     </div>

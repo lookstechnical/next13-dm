@@ -2,6 +2,7 @@ import { Invitation, Player } from "~/types";
 
 export const emailTemplate = (
   message: string,
+  footer: string,
   invite?: Invitation,
   player?: Player
 ) => {
@@ -35,6 +36,12 @@ export const emailTemplate = (
         }
       </div>
 
+      ${footer
+        .replaceAll("{{name}}", player?.name)
+        .replaceAll(
+          "<p>",
+          '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
+        )}
 
       <hr style="border: none; border-top: 1px solid #2a2d3b; margin: 40px 0;" />
     </div>
