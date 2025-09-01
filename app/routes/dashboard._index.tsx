@@ -77,17 +77,19 @@ export default function Index() {
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-lg">Top Performers</h3>
-              <ul className="py-4">
+              {/* <ul className="py-4">
                 <li>Jimmy Smith</li>
                 <li>Peter Williams</li>
-              </ul>
+              </ul> */}
+              <p className="text-sm">Awaiting data</p>
             </div>
             <div>
               <h3 className="text-lg">Worst Performers</h3>
-              <ul className="py-4">
+              <p className="text-sm">Awaiting data</p>
+              {/* <ul className="py-4">
                 <li>Jimmy Smith</li>
                 <li>Peter Williams</li>
-              </ul>
+              </ul> */}
             </div>
           </CardContent>
         </Card>
