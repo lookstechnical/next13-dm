@@ -5,6 +5,7 @@ import type {
 } from "@remix-run/node";
 import { Form, redirect, useLoaderData, useNavigate } from "@remix-run/react";
 import { NineBoxForm } from "~/components/forms/form/nine-box";
+import SheetPage from "~/components/sheet-page";
 import ActionButton from "~/components/ui/action-button";
 import {
   Sheet,
@@ -115,24 +116,14 @@ export default function PlayerPage() {
   const { report, template, player } = useLoaderData<typeof loader>();
 
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate(`/dashboard/players/${player.id}`);
-        }
-      }}
+    <SheetPage
+      backLink={`/dashboard/players/${player.id}`}
+      title="Progress Report"
+      description="Progress Report"
+      updateButton="Save Report"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw] gap-10 flex flex-col">
-        <SheetTitle>Progress Report</SheetTitle>
-        <Form method="post" encType="multipart/form-data">
-          <NineBoxForm player={player} template={template} report={report} />
-
-          <SheetFooter>
-            <ActionButton title="Save" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <NineBoxForm player={player} template={template} report={report} />
+    </SheetPage>
   );
 }

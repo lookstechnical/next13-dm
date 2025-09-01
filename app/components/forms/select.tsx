@@ -48,7 +48,7 @@ export const SelectField: React.FC<SelectField> = ({
             <Button
               type="button"
               variant="outline"
-              className="w-full text-foreground border-muted"
+              className="w-full text-foreground border-input"
             >
               {selectedOption?.name || placeholder || label}
             </Button>
@@ -89,7 +89,7 @@ export const SelectField: React.FC<SelectField> = ({
           value={value}
           onValueChange={(val) => setValue(val)}
         >
-          <SelectTrigger className="w-full text-foreground border-muted outline-none focus:ring-offset-0">
+          <SelectTrigger className="w-full text-foreground border-input outline-none focus:ring-offset-0">
             <SelectValue placeholder={placeholder} className="flex-1" />
           </SelectTrigger>
           <SelectContent className="text-foreground outline-none">
@@ -111,7 +111,7 @@ export const SelectField: React.FC<SelectField> = ({
           <Button
             type="button"
             variant="outline"
-            className="text-foreground border-muted"
+            className="text-foreground border-input"
             onClick={() => setValue("")}
           >
             <X />

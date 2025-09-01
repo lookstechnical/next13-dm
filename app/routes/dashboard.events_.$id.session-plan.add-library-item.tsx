@@ -3,24 +3,9 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { LibraryItemForm } from "~/components/forms/form/lirary-item";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { SessionService } from "~/services/sessionService";
@@ -45,7 +30,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     ? await eventService.getEventById(params.id)
     : undefined;
 
-  return { event };
+  return { event, user };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -68,39 +53,17 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function SessionPlan() {
-  const { event } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
+  const { event, user } = useLoaderData<typeof loader>();
 
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate(`/dashboard/events/${event.id}/session-plan`);
-        }
-      }}
+    <SheetPage
+      backLink={`/dashboard/events/${event.id}/session-plan`}
+      title={sessionItem.drills?.name}
+      description="Add Library Item"
+      updateButton="Add Library Item"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Library Item</SheetTitle>
-          <SheetDescription>Add Library Item</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <div className="max-h-[70vh] overflow-scroll pb-10">
-            <LibraryItemForm />
-          </div>
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/events/${event.id}/session-plan`}>
-                Cancel
-              </Link>
-            </Button>
-
-            <ActionButton title="Add Library Item" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <LibraryItemForm />
+    </SheetPage>
   );
 }

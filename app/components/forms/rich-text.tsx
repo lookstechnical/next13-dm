@@ -355,7 +355,7 @@ export function RichTextEditor({
         <div className="rounded-md border border-muted">
           <EditorContent
             editor={editor}
-            className="prose border-muted prose-sm max-w-none dark:prose-invert px-3 py-2 min-h-[200px] *:min-h-[200px]  focus:outline-none"
+            className="prose border-muted bg-background prose-sm max-w-none dark:prose-invert *:px-3 *:py-2 min-h-[200px] *:min-h-[200px]  focus:outline-none"
           />
         </div>
       </div>

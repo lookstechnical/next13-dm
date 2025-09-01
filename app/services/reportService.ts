@@ -329,7 +329,7 @@ export class ReportService {
     const { error } = await this.client.rpc(
       "calculate_and_store_team_avg_scores",
       {
-        target_team_id: teamId,
+        team_input_id: teamId,
       }
     );
 

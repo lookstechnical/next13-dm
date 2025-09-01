@@ -31,7 +31,7 @@ export const Field: React.FC<Field> = ({
               <Button
                 type="button"
                 variant="outline"
-                className="w-fit h-fit bg-transparent hover:bg-transparent border-none focus:outline-0 focus:ring-0 user-select-0"
+                className="w-fit h-fit bg-transparent hover:bg-transparent border-input focus:outline-0 focus:ring-0 user-select-0"
               >
                 <InfoIcon />
               </Button>

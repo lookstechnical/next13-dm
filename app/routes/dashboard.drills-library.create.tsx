@@ -3,24 +3,9 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { DrillForm } from "~/components/forms/form/drill";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { DrillsService } from "~/services/drillsService";
 import { Drill } from "~/types";
@@ -85,36 +70,16 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function DrillsCreate() {
-  const navigate = useNavigate();
   const { categories } = useLoaderData<typeof loader>();
 
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/drills-library");
-        }
-      }}
+    <SheetPage
+      backLink="/dashboard/drills-library"
+      title="Add Drill/Game"
+      description="Add a new skill drill or game"
+      updateButton="Add drill"
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw] gap-10 flex flex-col">
-        <Form method="post" encType="multipart/form-data">
-          <SheetHeader className="">
-            <SheetTitle>Add Drill, Skill or Game</SheetTitle>
-            <SheetDescription>Add Drill, Skill or Game</SheetDescription>
-          </SheetHeader>
-          <div className="h-[80vh] overflow-scroll p-4 pb-20">
-            <DrillForm categories={categories} />
-          </div>
-          <SheetFooter className="absolute bottom-0 w-full pb-10 pt-2 px-10 flex flex-row gap-2 bg-background">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/drills-library`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Add Drill" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <DrillForm categories={categories} />
+    </SheetPage>
   );
 }

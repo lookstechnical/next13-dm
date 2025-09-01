@@ -3,24 +3,9 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { InviteUserForm } from "~/components/forms/form/invite-user";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ScoutService } from "~/services/scoutService";
 import { TeamService } from "~/services/teamService";
@@ -122,33 +107,16 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function InviteUser() {
-  const navigate = useNavigate();
   const { teams } = useLoaderData<typeof loader>();
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/team");
-        }
-      }}
+    <SheetPage
+      backLink="/dashboard/team"
+      title="Invite User"
+      description="Invite User"
+      updateButton="Invite User"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Invite User</SheetTitle>
-          <SheetDescription>Invite a User</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <InviteUserForm teams={teams} />
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/team`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Invite User" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <InviteUserForm teams={teams} />
+    </SheetPage>
   );
 }

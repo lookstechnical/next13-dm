@@ -20,7 +20,7 @@ export const AccountMenu: React.FC<AccountMenu> = ({ player }) => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="h-full hover:bg-transparent text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-full border-none hover:bg-transparent text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           <MoreVertical />
         </Button>

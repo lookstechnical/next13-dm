@@ -88,6 +88,12 @@ export async function generateSessionPlanPDF(items) {
     const responsible = item.assignedTo || "";
     const duration = item.duration || "";
 
+    const drillNameLines = wrapText(
+      drillName,
+      font,
+      fontSize,
+      colWidths[0] - cellPadding * 2
+    );
     // Wrap text
     const descriptionLines = wrapText(
       drillDescription,
@@ -144,12 +150,23 @@ export async function generateSessionPlanPDF(items) {
       borderColor: rgb(0, 0, 0),
       borderWidth: 1,
     });
-    page.drawText(drillName, {
-      x: x + cellPadding,
-      y: y - fontSize - 5,
-      font,
-      size: fontSize,
-      color: rgb(0, 0, 0),
+    // page.drawText(drillName, {
+    //   x: x + cellPadding,
+    //   y: y - fontSize - 5,
+    //   font,
+    //   size: fontSize,
+    //   color: rgb(0, 0, 0),
+    // });
+    let textY = y - fontSize - 5;
+    drillNameLines.forEach((line) => {
+      page.drawText(line, {
+        x: x + cellPadding,
+        y: textY,
+        font,
+        size: fontSize,
+        color: rgb(0, 0, 0),
+      });
+      textY -= fontSize + 3;
     });
     x += colWidths[0];
 
@@ -162,7 +179,8 @@ export async function generateSessionPlanPDF(items) {
       borderColor: rgb(0, 0, 0),
       borderWidth: 1,
     });
-    let textY = y - fontSize - 5;
+
+    textY = y - fontSize - 5;
     descriptionLines.forEach((line) => {
       page.drawText(line, {
         x: x + cellPadding,

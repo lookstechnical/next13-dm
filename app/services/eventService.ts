@@ -52,6 +52,20 @@ export class EventService {
     return data || [];
   }
 
+  async getNextEvent(teamId: string): Promise<Event[]> {
+    const { data, error } = await this.client
+      .from("events")
+      .select("*")
+      .eq("team_id", teamId)
+      // .
+      .order("date", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) throw error;
+    return data || [];
+  }
+
   async getVisibleEvents(
     scoutId?: string,
     isHeadScout?: boolean

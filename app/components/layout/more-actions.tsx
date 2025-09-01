@@ -15,7 +15,7 @@ export const MoreActions: React.FC<MoreActions> = ({ children, title }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex flex-row">
-        <Button variant="outline" className="border-muted text-foreground">
+        <Button variant="outline" className="border-input text-foreground">
           {title}
           <MoreVertical />
         </Button>

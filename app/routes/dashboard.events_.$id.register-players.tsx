@@ -3,27 +3,14 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { useState } from "react";
 import { GroupCard } from "~/components/groups/group-card";
 import { PlayerCard } from "~/components/players/player-card";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
+import SheetPage from "~/components/sheet-page";
+
 import { CardGrid } from "~/components/ui/card-grid";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
@@ -116,8 +103,6 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function AddPlayersToGroup() {
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(true);
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
@@ -141,81 +126,61 @@ export default function AddPlayersToGroup() {
   };
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(open) => {
-        if (!open) {
-          setOpen(open);
-          setTimeout(() => {
-            navigate(`/dashboard/events/${event.id}`);
-          }, 500);
-        }
-      }}
+    <SheetPage
+      backLink={`/dashboard/events/${event.id}`}
+      title="Register Players for Event"
+      description="Register Players for Event"
+      updateButton="Add players to Event"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Register Players for Event</SheetTitle>
-          <SheetDescription>Add a player</SheetDescription>
-        </SheetHeader>
-
-        <div className="h-[80vh] overflow-scroll">
-          <Tabs defaultValue="players">
-            <TabsList>
-              <TabsTrigger value="players">Players</TabsTrigger>
-              <TabsTrigger value="groups">Player Groups</TabsTrigger>
-            </TabsList>
-            <TabsContent value="players">
-              <CardGrid
-                name="All players are already registered"
-                items={availablePlayers}
-              >
-                {availablePlayers?.map((player: Player) => (
-                  <PlayerCard
-                    key={`available-player-card-${player.id}`}
-                    player={player}
-                    isSelected={selectedPlayers.includes(player.id)}
-                    onSelect={toggleSelection}
-                  />
-                ))}
-              </CardGrid>
-            </TabsContent>
-            <TabsContent value="groups">
-              <CardGrid
-                name="All Groups are already registered"
-                items={playerGroups}
-              >
-                {playerGroups.map((group: PlayerGroup) => (
-                  <GroupCard
-                    group={group}
-                    onSelect={toggleGroupSelection}
-                    isSelected={selectedGroups.includes(group.id)}
-                  />
-                ))}
-              </CardGrid>
-            </TabsContent>
-          </Tabs>
-        </div>
-        <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-          <Button asChild variant="link">
-            <Link to={`/dashboard/events/${event.id}`}>Cancel</Link>
-          </Button>
-          <Form method="POST">
-            <input
-              type="hidden"
-              name="playerIds"
-              value={JSON.stringify(selectedPlayers)}
-            />
-            <input
-              type="hidden"
-              name="groupIds"
-              value={JSON.stringify(selectedGroups)}
-            />
-            <input type="hidden" name="eventId" value={event.id} />
-
-            <ActionButton title="Add players to Event" />
-          </Form>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      <>
+        <Tabs defaultValue="players">
+          <TabsList>
+            <TabsTrigger value="players">Players</TabsTrigger>
+            <TabsTrigger value="groups">Player Groups</TabsTrigger>
+          </TabsList>
+          <TabsContent value="players">
+            <CardGrid
+              name="All players are already registered"
+              items={availablePlayers}
+            >
+              {availablePlayers?.map((player: Player) => (
+                <PlayerCard
+                  key={`available-player-card-${player.id}`}
+                  player={player}
+                  isSelected={selectedPlayers.includes(player.id)}
+                  onSelect={toggleSelection}
+                />
+              ))}
+            </CardGrid>
+          </TabsContent>
+          <TabsContent value="groups">
+            <CardGrid
+              name="All Groups are already registered"
+              items={playerGroups}
+            >
+              {playerGroups.map((group: PlayerGroup) => (
+                <GroupCard
+                  group={group}
+                  onSelect={toggleGroupSelection}
+                  isSelected={selectedGroups.includes(group.id)}
+                />
+              ))}
+            </CardGrid>
+          </TabsContent>
+        </Tabs>
+        <input
+          type="hidden"
+          name="playerIds"
+          value={JSON.stringify(selectedPlayers)}
+        />
+        <input
+          type="hidden"
+          name="groupIds"
+          value={JSON.stringify(selectedGroups)}
+        />
+        <input type="hidden" name="eventId" value={event.id} />
+      </>
+    </SheetPage>
   );
 }

@@ -5,9 +5,11 @@ import {
   type MetaFunction,
 } from "@remix-run/node";
 import { Link, Outlet, useLoaderData } from "@remix-run/react";
+import { ActionProtection } from "~/components/action-protection";
 import { EventCard } from "~/components/events/event-card";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
+import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import { getSupabaseServerClient } from "~/lib/supabase";
@@ -34,8 +36,6 @@ export const loader: LoaderFunction = async ({ request }) => {
 
 export default function Events() {
   const { events, user } = useLoaderData<typeof loader>();
-
-  console.log(events);
 
   function getNextUpcomingEvent(events: Event[]): Event | null {
     const now = new Date();
@@ -76,8 +76,11 @@ export default function Events() {
         <ListingHeader
           title="Events"
           renderActions={() => {
-            if (user.role === "ADMIN" || user.role === "HEAD_OF_DEPARTMENT") {
-              return (
+            return (
+              <ActionProtection
+                allowedRoles={AllowedRoles.headOfDept}
+                user={user}
+              >
                 <MoreActions>
                   <DropdownMenuItem asChild>
                     <Button
@@ -89,10 +92,8 @@ export default function Events() {
                     </Button>
                   </DropdownMenuItem>
                 </MoreActions>
-              );
-            }
-
-            return null;
+              </ActionProtection>
+            );
           }}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

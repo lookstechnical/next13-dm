@@ -1,16 +1,7 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
-import { Form, Link, redirect, useNavigate } from "@remix-run/react";
+import { redirect, useNavigate } from "@remix-run/react";
 import { GroupForm } from "~/components/forms/form/group";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { GroupService } from "~/services/groupService";
 import { PlayerGroup } from "~/types";
@@ -56,31 +47,14 @@ export const action: ActionFunction = async ({ request }) => {
 export default function PlayersCreate() {
   const navigate = useNavigate();
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/groups");
-        }
-      }}
+    <SheetPage
+      backLink="/dashboard/groups"
+      title="Add Group"
+      description="Add Group"
+      updateButton="Add Group"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Group</SheetTitle>
-          <SheetDescription>Add a player</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <GroupForm />
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/groups`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Add Group" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <GroupForm />
+    </SheetPage>
   );
 }

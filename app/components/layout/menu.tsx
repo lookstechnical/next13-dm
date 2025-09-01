@@ -5,6 +5,8 @@ import { PropsWithChildren } from "react";
 import { User } from "~/types";
 import { MobileUserMenu } from "./user-menu";
 import { cn } from "~/lib/utils";
+import { ActionProtection } from "../action-protection";
+import { AllowedRoles } from "../route-protections";
 
 type MenuLink = PropsWithChildren<{
   to: string;
@@ -39,7 +41,7 @@ const MenuLink: React.FC<MenuLink> = ({ children, to, close, level = 0 }) => {
   );
 };
 
-const MenuItems = ({ close }: { close?: boolean }) => {
+const MenuItems = ({ close, user }: { close?: boolean; user: User }) => {
   return (
     <nav className="flex flex-col lg:flex-row lg:flex  w-full lg:w-fit">
       <MenuLink close={close} to="/dashboard">
@@ -52,9 +54,11 @@ const MenuItems = ({ close }: { close?: boolean }) => {
       <MenuLink close={close} to="/dashboard/events">
         Events
       </MenuLink>
-      <MenuLink close={close} to="/dashboard/groups" data-discover="true">
-        Groups
-      </MenuLink>
+      <ActionProtection allowedRoles={AllowedRoles.headOfDept} user={user}>
+        <MenuLink close={close} to="/dashboard/groups" data-discover="true">
+          Groups
+        </MenuLink>
+      </ActionProtection>
       <MenuLink
         close={close}
         to="/dashboard/drills-library"
@@ -92,7 +96,7 @@ export const Menu: React.FC<{ className?: string; user?: User }> = ({
   return (
     <div className={className}>
       <div className="hidden lg:block">
-        <MenuItems />
+        <MenuItems user={user as User} />
       </div>
       <div className="lg:hidden text-foreground">
         <Sheet>
@@ -103,11 +107,14 @@ export const Menu: React.FC<{ className?: string; user?: User }> = ({
             {user && <MobileUserMenu user={user} />}
 
             <div className="lg:hidden bt-1 border-muted w-full absolute bottom-0 pl-0 p-10">
-              <MenuItems close={true} />
+              <MenuItems close={true} user={user as User} />
               <div className="h-2 w-full bg-wkbackground my-2"></div>
-              {user && user.role === "ADMIN" && (
+              <ActionProtection
+                allowedRoles={AllowedRoles.adminOnly}
+                user={user as User}
+              >
                 <AccountMenuItems close={true} />
-              )}
+              </ActionProtection>
             </div>
           </SheetContent>
         </Sheet>

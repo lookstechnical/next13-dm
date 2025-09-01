@@ -1,16 +1,8 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
-import { Form, Link, redirect, useNavigate } from "@remix-run/react";
+import { redirect } from "@remix-run/react";
 import { AttributeForm } from "~/components/forms/form/attribute";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
+
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { AttributesService } from "~/services/attributesService";
 import { Attribute } from "~/types";
@@ -52,33 +44,15 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function AttributeCreate() {
-  const navigate = useNavigate();
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/attributes");
-        }
-      }}
+    <SheetPage
+      backLink="/dashboard/attributes"
+      hasForm
+      title="Add Attributes"
+      description="Add a template attribute"
+      updateButton="Add Attribute"
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Attribute</SheetTitle>
-          <SheetDescription>Add a Attribute</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <AttributeForm />
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/attributes`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Add Attribute" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <AttributeForm />
+    </SheetPage>
   );
 }

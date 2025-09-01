@@ -6,7 +6,9 @@ import type {
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin, MoreVertical } from "lucide-react";
+import { ActionProtection } from "~/components/action-protection";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
+import { AllowedRoles, RouteProtection } from "~/components/route-protections";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
 import {
@@ -42,7 +44,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
   const groupService = new GroupService(supabaseClient);
   const groups = (await groupService.getGroupsByTeam(user.team.id)) || [];
-  return { event, players, groups };
+  return { event, players, groups, user };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -79,70 +81,79 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function EventPage() {
-  const { event } = useLoaderData<typeof loader>();
+  const { event, user } = useLoaderData<typeof loader>();
 
   return (
     <>
-      <div className="w-full flex flex-col container px-4 mx-auto pt-10 text-foreground">
-        <div className="w-full flex flex-col md:flex-row gap-0 mg:gap-4 md:justify-between items-end md:items-center mb-6 ">
-          <div className="flex flex-row gap-4 w-full md:w-1/2 items-center">
-            <div className="flex gap-1 flex-col gap-4">
-              <h1 className="text-4xl font-bold text-white flex flex-row gap-2 justify-center items-center">
-                {event.name}
-              </h1>
-              <p className="text-md flex flex-row gap-2 ">
-                <Calendar /> {formatDate(event.date)}
-              </p>
+      <RouteProtection allowedRoles={AllowedRoles.adminOnly} user={user}>
+        <div className="w-full flex flex-col container px-4 mx-auto pt-10 text-foreground">
+          <div className="w-full flex flex-col md:flex-row gap-0 mg:gap-4 md:justify-between items-end md:items-center mb-6 ">
+            <div className="flex flex-row gap-4 w-full md:w-1/2 items-center">
+              <div className="flex gap-1 flex-col gap-4">
+                <h1 className="text-4xl font-bold text-white flex flex-row gap-2 justify-center items-center">
+                  {event.name}
+                </h1>
+                <p className="text-md flex flex-row gap-2 ">
+                  <Calendar /> {formatDate(event.date)}
+                </p>
 
-              <p>
-                <span className="flex text-sm flex-row gap-2 ">
-                  <MapPin />
-                  {event.location}
-                </span>
-              </p>
+                <p>
+                  <span className="flex text-sm flex-row gap-2 ">
+                    <MapPin />
+                    {event.location}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <Badge variant="outline">{event.status}</Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <MoreVertical />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem className="p-0">
+                    <Button asChild variant="outline" className="w-full">
+                      <Link
+                        to={`/dashboard/events/${event.id}/register-players`}
+                      >
+                        Register Players
+                      </Link>
+                    </Button>
+                  </DropdownMenuItem>
+                  <ActionProtection
+                    allowedRoles={AllowedRoles.adminOnly}
+                    user={user}
+                  >
+                    <DropdownMenuItem asChild className="p-0">
+                      <DeleteConfirm name="Event" id={event.id}>
+                        <Button variant="destructive" className="w-full">
+                          Delete
+                        </Button>
+                      </DeleteConfirm>
+                    </DropdownMenuItem>
+                  </ActionProtection>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-          <div className="flex justify-between items-center gap-4">
-            <Badge variant="outline">{event.status}</Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <MoreVertical />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem className="p-0">
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to={`/dashboard/events/${event.id}/register-players`}>
-                      Register Players
-                    </Link>
-                  </Button>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="p-0">
-                  <DeleteConfirm name="Event" id={event.id}>
-                    <Button variant="destructive" className="w-full">
-                      Delete
-                    </Button>
-                  </DeleteConfirm>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div>
+            <Button asChild variant="outline" className="bg-background ">
+              <Link to={`/dashboard/events/${event.id}`}>Players</Link>
+            </Button>
+            {event.eventType === "training" && (
+              <Button asChild variant="outline" className="bg-background ">
+                <Link to={`/dashboard/events/${event.id}/session-plan`}>
+                  Session plan
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
-        <div>
-          <Button asChild variant="outline" className="bg-background ">
-            <Link to={`/dashboard/events/${event.id}`}>Players</Link>
-          </Button>
-          {event.eventType === "training" && (
-            <Button asChild variant="outline" className="bg-background ">
-              <Link to={`/dashboard/events/${event.id}/session-plan`}>
-                Session plan
-              </Link>
-            </Button>
-          )}
+        <div className="bg-card min-h-screen py-10">
+          <Outlet />
         </div>
-      </div>
-      <div className="bg-card min-h-screen py-10">
-        <Outlet />
-      </div>
+      </RouteProtection>
     </>
   );
 }

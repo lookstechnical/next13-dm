@@ -23,7 +23,7 @@ export const emailTemplate = (
           .replaceAll("{{name}}", player?.name)
           .replaceAll(
             "<p>",
-            '<p style="color: #c2c7d0; font-size: 16px; text-align: center;">'
+            '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
           )}
 
       <div style="text-align: center; margin: 30px 0;">

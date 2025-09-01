@@ -3,24 +3,9 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { ReportForm } from "~/components/forms/form/report";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { PlayerService } from "~/services/playerService";
@@ -107,34 +92,16 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function PlayerEventReport() {
-  const navigate = useNavigate();
   const { event, template, player } = useLoaderData<typeof loader>();
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate(`/dashboard/events/${event.id}`);
-        }
-      }}
+    <SheetPage
+      backLink={`/dashboard/events/${event.id}`}
+      title="Add Report"
+      description="Add Report"
+      updateButton="Add Report"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Report</SheetTitle>
-          <SheetDescription>Add a Report</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <ReportForm event={event} template={template} player={player} />
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/events/${event.id}`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Add Report" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <ReportForm event={event} template={template} player={player} />
+    </SheetPage>
   );
 }

@@ -1,16 +1,7 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
-import { Form, Link, redirect, useNavigate } from "@remix-run/react";
+import { redirect, useNavigate } from "@remix-run/react";
 import { ClubForm } from "~/components/forms/form/club";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { Club } from "~/types";
@@ -54,30 +45,14 @@ export const action: ActionFunction = async ({ request }) => {
 export default function TeamCreate() {
   const navigate = useNavigate();
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/clubs");
-        }
-      }}
+    <SheetPage
+      hasForm
+      title="Add New Club"
+      description="Add a new Club"
+      backLink="/dashboard/clubs"
+      updateButton="Add Club"
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Club</SheetTitle>
-          <SheetDescription>Add a Club</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <ClubForm />
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/clubs`}>Cancel</Link>
-            </Button>
-            <ActionButton title="Add Club" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <ClubForm />
+    </SheetPage>
   );
 }

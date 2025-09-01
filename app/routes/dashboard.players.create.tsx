@@ -3,24 +3,9 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { PlayerForm } from "~/components/forms/player";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
@@ -79,34 +64,17 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function PlayersCreate() {
-  const navigate = useNavigate();
   const { clubs } = useLoaderData<typeof loader>();
 
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/players");
-        }
-      }}
+    <SheetPage
+      backLink="/dashboard/players"
+      updateButton="Add player"
+      title="Add Player"
+      description="Add a new player to the team"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw] gap-10 flex flex-col">
-        <Form method="post" encType="multipart/form-data">
-          <SheetHeader className="">
-            <SheetTitle>Add Player</SheetTitle>
-            <SheetDescription>Edit </SheetDescription>
-          </SheetHeader>
-          <PlayerForm clubs={clubs} />
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/players`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Add Player" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <PlayerForm clubs={clubs} />
+    </SheetPage>
   );
 }

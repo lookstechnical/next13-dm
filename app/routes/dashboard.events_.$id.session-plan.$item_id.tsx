@@ -1,27 +1,10 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import {
-  Link,
-  Outlet,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
-import { SessionItemCard } from "~/components/session/item-card";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { ItemView } from "~/components/session/item-view";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import { CardGrid } from "~/components/ui/card-grid";
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { SessionService } from "~/services/sessionService";
-import { SessionItem } from "~/types";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -50,33 +33,16 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
 export default function SessionPlan() {
   const { event, sessionItem } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
 
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate(`/dashboard/events/${event.id}/session-plan`);
-        }
-      }}
+    <SheetPage
+      backLink={`/dashboard/events/${event.id}/session-plan`}
+      title={sessionItem.drills?.name}
+      description="Add Report"
+      updateButton="Add Report"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>{sessionItem.drills?.name}</SheetTitle>
-        </SheetHeader>
-
-        <ItemView item={sessionItem.drills} />
-        {/* <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-          <Button asChild variant="link">
-            <Link to={`/dashboard/events/${event.id}/session-plan`}>
-              Cancel
-            </Link>
-          </Button>
-
-          <ActionButton title="Add Library Item" />
-        </SheetFooter> */}
-      </SheetContent>
-    </Sheet>
+      <ItemView item={sessionItem.drills} />
+    </SheetPage>
   );
 }

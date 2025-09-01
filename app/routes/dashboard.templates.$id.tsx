@@ -3,24 +3,10 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { TemplateForm } from "~/components/forms/form/template";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
+
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { AttributesService } from "~/services/attributesService";
 import { TemplateService } from "~/services/templateService";
@@ -106,35 +92,17 @@ export const action: ActionFunction = async ({ request }) => {
   return redirect("/dashboard/templates");
 };
 
-export default function AttributeCreate() {
-  const navigate = useNavigate();
+export default function TemplateEdit() {
   const { attributes, template } = useLoaderData<typeof loader>();
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/templates");
-        }
-      }}
+    <SheetPage
+      backLink="/dashboard/templates"
+      title="Update Template"
+      description="Update Template"
+      hasForm
+      updateButton="Update Template"
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Template</SheetTitle>
-          <SheetDescription>Add a Template</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <TemplateForm attributes={attributes} template={template} />
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2 bg-background">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/templates`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Add Attribute" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <TemplateForm attributes={attributes} template={template} />
+    </SheetPage>
   );
 }

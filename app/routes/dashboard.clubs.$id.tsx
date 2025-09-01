@@ -3,26 +3,12 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { ClubForm } from "~/components/forms/form/club";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
+
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
-import { Club } from "~/types";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -68,36 +54,17 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function TeamCreate() {
-  const navigate = useNavigate();
   const { club } = useLoaderData<typeof loader>();
 
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/clubs");
-        }
-      }}
+    <SheetPage
+      hasForm
+      updateButton="Update Club"
+      title="Update Club"
+      description="Update a club"
+      backLink="/dashboard/clubs"
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Update Club</SheetTitle>
-          <SheetDescription>Update a Club</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <ClubForm club={club} />
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/clubs`}>Cancel</Link>
-            </Button>
-            <Button className="text-white" variant="outline" type="submit">
-              Update Club
-            </Button>
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <ClubForm club={club} />
+    </SheetPage>
   );
 }

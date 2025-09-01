@@ -29,7 +29,7 @@ export const ProgressCard: React.FC<ProgressCard> = ({
           <h3 className="uppercase">{category}</h3>
           <RadarAttributes
             attributes={categories[category]}
-            averages={teamProgress?.scores.filter(
+            averages={teamProgress?.scores?.filter(
               (s) => s.attributeCategory === category
             )}
           />

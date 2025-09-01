@@ -26,7 +26,7 @@ export const DateField: React.FC<DateField> = ({
           <Button
             variant="outline"
             id="date"
-            className="w-full justify-between font-normal text-foreground hover:bg-card border-muted"
+            className="w-full justify-between font-normal text-foreground hover:bg-card border-input"
           >
             {date ? date.toLocaleDateString() : "Select date"}
             <ChevronDownIcon />

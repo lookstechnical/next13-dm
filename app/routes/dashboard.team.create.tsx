@@ -1,16 +1,7 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
-import { Form, Link, redirect, useNavigate } from "@remix-run/react";
+import { redirect } from "@remix-run/react";
 import { TeamForm } from "~/components/forms/form/team";
-import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
+import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { TeamService } from "~/services/teamService";
 import { Team } from "~/types";
@@ -52,33 +43,15 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function TeamCreate() {
-  const navigate = useNavigate();
   return (
-    <Sheet
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          navigate("/dashboard/team");
-        }
-      }}
+    <SheetPage
+      backLink="/dashboard/team"
+      title="Add Team"
+      description="Add Team"
+      updateButton="Add Team"
+      hasForm
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Team</SheetTitle>
-          <SheetDescription>Add a Team</SheetDescription>
-        </SheetHeader>
-        <Form method="POST">
-          <TeamForm />
-
-          <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2">
-            <Button asChild variant="link">
-              <Link to={`/dashboard/team`}>Cancel</Link>
-            </Button>
-
-            <ActionButton title="Add Team" />
-          </SheetFooter>
-        </Form>
-      </SheetContent>
-    </Sheet>
+      <TeamForm />
+    </SheetPage>
   );
 }

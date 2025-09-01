@@ -3,27 +3,12 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  redirect,
-  useLoaderData,
-  useNavigate,
-} from "@remix-run/react";
+import { Form, redirect, useLoaderData, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { PlayerCard } from "~/components/players/player-card";
-import ActionButton from "~/components/ui/action-button";
+import SheetPage from "~/components/sheet-page";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
-import { Tabs } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
@@ -82,54 +67,35 @@ export default function AddPlayersToGroup() {
   const { availablePlayers, group } = useLoaderData<typeof loader>();
 
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(open) => {
-        if (!open) {
-          setOpen(open);
-          setTimeout(() => {
-            navigate(`/dashboard/groups/${group.id}`);
-          }, 500);
-        }
-      }}
+    <SheetPage
+      backLink={`/dashboard/groups/${group.id}`}
+      title="Add Players to Group"
+      description="Add Players to Group"
+      updateButton="Add Players to Group"
     >
-      <SheetContent className="w-full lg:w-2/3 sm:max-w-[100vw]">
-        <SheetHeader className="">
-          <SheetTitle>Add Players to Group</SheetTitle>
-          <SheetDescription>Add a player</SheetDescription>
-        </SheetHeader>
-
-        <div className="h-[80vh] overflow-scroll">
-          <CardGrid
-            name="All players are already in the group"
-            items={availablePlayers}
+      <CardGrid
+        name="All players are already in the group"
+        items={availablePlayers}
+      >
+        {availablePlayers?.map((player: Player) => (
+          <PlayerCard
+            key={`available-player-card-${player.id}`}
+            player={player}
           >
-            {availablePlayers?.map((player: Player) => (
-              <PlayerCard
-                key={`available-player-card-${player.id}`}
-                player={player}
+            <Form method="post" className="w-full">
+              <input type="hidden" name="playerId" value={player.id} />
+              <input type="hidden" name="groupId" value={group.id} />
+              <Button
+                type="submit"
+                variant="outline"
+                className="border-muted w-full"
               >
-                <Form method="post" className="w-full">
-                  <input type="hidden" name="playerId" value={player.id} />
-                  <input type="hidden" name="groupId" value={group.id} />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    className="border-muted w-full"
-                  >
-                    Add Player
-                  </Button>
-                </Form>
-              </PlayerCard>
-            ))}
-          </CardGrid>
-        </div>
-        <SheetFooter className="absolute bottom-0 w-full p-10 flex flex-row gap-2 bg-card">
-          <Button asChild variant="link">
-            <Link to={`/dashboard/groups/${group.id}`}>Cancel</Link>
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+                Add Player
+              </Button>
+            </Form>
+          </PlayerCard>
+        ))}
+      </CardGrid>
+    </SheetPage>
   );
 }
