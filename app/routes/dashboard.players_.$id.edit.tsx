@@ -5,6 +5,7 @@ import type {
 } from "@remix-run/node";
 import { redirect, useLoaderData } from "@remix-run/react";
 import { PlayerForm } from "~/components/forms/player";
+import { AllowedRoles, RouteProtection } from "~/components/route-protections";
 import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
@@ -17,6 +18,14 @@ export const meta: MetaFunction = () => {
 
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { supabaseClient } = await getSupabaseServerClient(request);
+
+  const { user: authUser } = await requireUser(supabaseClient);
+  const user = await getAppUser(authUser.id, supabaseClient);
+
+  if (!user) {
+    return redirect("/");
+  }
+
   const playerService = new PlayerService(supabaseClient);
   const player = params.id
     ? await playerService.getPlayerById(params.id)
@@ -25,7 +34,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const clubsService = new ClubService(supabaseClient);
   const clubs = await clubsService.getAllClubs();
 
-  return { player, clubs };
+  return { player, clubs, user };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -54,7 +63,7 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function PlayersCreate() {
-  const { player, clubs } = useLoaderData<typeof loader>();
+  const { player, clubs, user } = useLoaderData<typeof loader>();
 
   return (
     <SheetPage
@@ -64,7 +73,9 @@ export default function PlayersCreate() {
       description="Update a player in the team"
       hasForm
     >
-      <PlayerForm player={player} clubs={clubs} />
+      <RouteProtection allowedRoles={AllowedRoles.headOfDept} user={user}>
+        <PlayerForm player={player} clubs={clubs} />
+      </RouteProtection>
     </SheetPage>
   );
 }

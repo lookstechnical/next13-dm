@@ -85,7 +85,7 @@ export default function EventPage() {
 
   return (
     <>
-      <RouteProtection allowedRoles={AllowedRoles.adminOnly} user={user}>
+      <RouteProtection allowedRoles={AllowedRoles.all} user={user}>
         <div className="w-full flex flex-col container px-4 mx-auto pt-10 text-foreground">
           <div className="w-full flex flex-col md:flex-row gap-0 mg:gap-4 md:justify-between items-end md:items-center mb-6 ">
             <div className="flex flex-row gap-4 w-full md:w-1/2 items-center">

@@ -105,14 +105,14 @@ export default function Players() {
                 />
               </Form>
               <MoreActions>
-                <DropdownMenuItem asChild>
+                {/* <DropdownMenuItem asChild>
                   <Button asChild variant={"outline"}>
                     <Link to="/dashboard/players/csv-import">
                       <DownloadIcon />
                       Import CSV
                     </Link>
                   </Button>
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuItem asChild>
                   <Button asChild variant={"outline"}>
                     <Link to="/dashboard/players/create">

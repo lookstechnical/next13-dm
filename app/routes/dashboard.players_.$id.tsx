@@ -5,10 +5,12 @@ import type {
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { DeleteIcon, Edit2Icon, User } from "lucide-react";
+import { ActionProtection } from "~/components/action-protection";
 import RadarAttributes from "~/components/charts/radar";
 import { MoreActions } from "~/components/layout/more-actions";
 import { ProgressCard } from "~/components/progress/progress-card";
 import { ReportCard } from "~/components/reports/report-card";
+import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button copy";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -73,6 +75,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   }
 
   return {
+    user,
     player,
     reports,
     progress,
@@ -96,7 +99,7 @@ export const action: ActionFunction = async ({ request }) => {
 };
 
 export default function PlayerPage() {
-  const { player, reports, progress, teamProgress, hasProgressTemplate } =
+  const { player, reports, progress, teamProgress, hasProgressTemplate, user } =
     useLoaderData<typeof loader>();
 
   return (
@@ -150,17 +153,22 @@ export default function PlayerPage() {
           </div>
           <div>
             <MoreActions>
-              <DropdownMenuItem asChild>
-                <Button
-                  asChild
-                  variant={"outline"}
-                  className="hover:ring-0 hover:outline-0"
-                >
-                  <Link to={`/dashboard/players/${player.id}/edit`}>
-                    <Edit2Icon /> Edit
-                  </Link>
-                </Button>
-              </DropdownMenuItem>
+              <ActionProtection
+                allowedRoles={AllowedRoles.headOfDept}
+                user={user}
+              >
+                <DropdownMenuItem asChild>
+                  <Button
+                    asChild
+                    variant={"outline"}
+                    className="hover:ring-0 hover:outline-0"
+                  >
+                    <Link to={`/dashboard/players/${player.id}/edit`}>
+                      <Edit2Icon /> Edit
+                    </Link>
+                  </Button>
+                </DropdownMenuItem>
+              </ActionProtection>
 
               {hasProgressTemplate && (
                 <DropdownMenuItem asChild>

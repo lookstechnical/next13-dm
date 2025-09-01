@@ -110,6 +110,7 @@ export class ScoutService {
         status: scout.status,
         invited_by: scout.invitedBy,
         invited_at: scout.invitedAt,
+        current_team: scout.current_team,
       })
       .select()
       .single();
