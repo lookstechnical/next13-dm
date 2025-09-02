@@ -28,9 +28,6 @@ export const ItemView: FC<ItemView> = ({ item }) => {
             {item.coachingPoints?.map((c) => (
               <li>{c}</li>
             ))}
-            <li className="">
-              Catch early - ( hands out towards the ball off your chest )
-            </li>
           </ul>
         </div>
       </div>
