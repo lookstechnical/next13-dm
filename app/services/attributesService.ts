@@ -1,62 +1,34 @@
 import { Attribute } from "../types";
-import { convertKeysToCamelCase } from "../utils/helpers";
+import { BaseService } from "./BaseService";
+import { staticDataCache } from "./CacheManager";
 
-export class AttributesService {
-  client;
+export class AttributesService extends BaseService {
   constructor(client: any) {
-    this.client = client;
+    // Use static data cache for attributes (longer TTL)
+    super(client, staticDataCache);
   }
   async getAllAttributes(): Promise<Attribute[]> {
-    const { data, error } = await this.client
-      .from("report_attributes")
-      .select("*")
-      .order("name");
-
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || [];
+    return this.getAll<Attribute>("report_attributes");
   }
 
-  async getAttribueById(attributeId: string): Promise<Attribute> {
-    const { data, error } = await this.client
-      .from("report_attributes")
-      .select("*")
-      .eq("id", attributeId)
-      .single();
-
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+  async getAttributeById(attributeId: string): Promise<Attribute | null> {
+    return this.getById<Attribute>("report_attributes", attributeId);
   }
 
-  async addNewAttribue(
+  async addNewAttribute(
     attributeData: Omit<Attribute, "id" | "createdAt">
   ): Promise<Attribute> {
-    const { data, error } = await this.client
-      .from("report_attributes")
-      .insert({
-        name: attributeData.name,
-        description: attributeData.description,
-        active: attributeData.active,
-        category: attributeData.category,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+    return this.create<Attribute>("report_attributes", attributeData);
   }
 
-  async updateAtrribute(
-    attributeData: Omit<Attribute, "id" | "createdAt">,
-    attributeId: string
-  ): Promise<Attribute> {
-    const { data, error } = await this.client
-      .from("report_attributes")
-      .update(attributeData)
-      .eq("id", attributeId)
-      .select()
-      .single();
+  async updateAttribute(
+    attributeId: string,
+    attributeData: Partial<Attribute>
+  ): Promise<Attribute | null> {
+    return this.update<Attribute>("report_attributes", attributeId, attributeData);
+  }
 
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+  async deleteAttribute(attributeId: string): Promise<boolean> {
+    return this.performDelete("report_attributes", attributeId);
   }
 }

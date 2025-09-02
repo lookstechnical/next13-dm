@@ -1,11 +1,19 @@
 import { redirect } from "@remix-run/node";
 import { TeamService } from "~/services/teamService";
 import { Team, User } from "~/types";
+import { AuthRateLimiter } from "./auth-rate-limiter";
 
 let sessionUser: User | undefined = undefined;
+let sessionUserExpiry: number = 0;
+const USER_CACHE_TTL = 60 * 1000; // 1 minute cache for user profile
 
 export async function getAppUser(userId: string, client: any) {
-  if (sessionUser && sessionUser.id === userId) return sessionUser;
+  const now = Date.now();
+  
+  // Check if we have valid cached user data
+  if (sessionUser && sessionUser.id === userId && now < sessionUserExpiry) {
+    return sessionUser;
+  }
 
   const { data: userProfiles, error } = await client
     .from("users")
@@ -68,6 +76,7 @@ export async function getAppUser(userId: string, client: any) {
     };
 
     sessionUser = currentUser;
+    sessionUserExpiry = now + USER_CACHE_TTL; // Cache for 1 minute
 
     return sessionUser;
   }
@@ -75,25 +84,54 @@ export async function getAppUser(userId: string, client: any) {
 
 export const clearUserSession = () => {
   sessionUser = undefined;
+  sessionUserExpiry = 0;
 };
 
 export async function requireUser(client: any) {
-  const {
-    data: { user },
-    error,
-  } = await client.auth.getUser();
+  try {
+    const { user, error } = await AuthRateLimiter.getUser(client);
 
-  if (!user) throw redirect("/");
-  return { user };
+    if (error && !user) {
+      console.error("[requireUser] Auth error:", error);
+      throw redirect("/");
+    }
+    
+    if (!user) {
+      throw redirect("/");
+    }
+    
+    return { user };
+  } catch (error: any) {
+    console.error("[requireUser] Rate limiter error:", error.message);
+    
+    // If it's a rate limit error, try to redirect gracefully
+    if (error.message?.includes('rate limit exceeded')) {
+      // You might want to redirect to a "please wait" page instead
+      throw redirect("/?error=rate_limit");
+    }
+    
+    throw redirect("/");
+  }
 }
 
 export async function isLoggedIn(client: any) {
-  const {
-    data: { user },
-    error,
-  } = await client.auth.getUser();
+  try {
+    const { user, error } = await AuthRateLimiter.getUser(client);
 
-  if (user) throw redirect("/dashboard");
+    if (user) {
+      throw redirect("/dashboard");
+    }
 
-  return {};
+    return {};
+  } catch (error: any) {
+    console.error("[isLoggedIn] Rate limiter error:", error.message);
+    
+    // If rate limited, assume not logged in for safety
+    if (error.message?.includes('rate limit exceeded')) {
+      return {};
+    }
+    
+    // For other errors, also assume not logged in
+    return {};
+  }
 }

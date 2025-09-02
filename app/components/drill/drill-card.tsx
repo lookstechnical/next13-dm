@@ -26,19 +26,9 @@ export const DrillCard: React.FC<DrillCard> = ({
     return (
       <div className="p-6">
         <div className="flex items-center">
-          {/* {drill.imageUrl ? (
-            <img
-              width={16}
-              height={16}
-              alt={drill.name}
-              className="w-20 h-16 object-cover mr-4"
-              src={drill.imageUrl}
-            />
-          ) : ( */}
           <div className="w-20 h-16  bg-wkbackground flex items-center justify-center mr-4">
             <Volleyball size={24} className="text-gray-400" />
           </div>
-          {/* )} */}
 
           <div className="flex-grow">
             <h3 className="text-lg font-semibold text-white">{drill?.name}</h3>
@@ -47,7 +37,11 @@ export const DrillCard: React.FC<DrillCard> = ({
         </div>
         <div className="flex flex-row gap-2 pt-4">
           {drill?.categories?.map((c) => (
-            <Badge variant="outline" className="rounded-lg">
+            <Badge
+              variant="outline"
+              key={`category-${c.name}`}
+              className="rounded-lg"
+            >
               {c.name}
             </Badge>
           ))}

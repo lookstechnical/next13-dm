@@ -1,43 +1,21 @@
 import { Club } from "../types";
+import { BaseService } from "./BaseService";
 
-export class ClubService {
-  client;
-  constructor(client: any) {
-    this.client = client;
-  }
+export class ClubService extends BaseService {
+  private readonly fieldMapping = {
+    createdBy: "created_by"
+  };
+
   async getAllClubs(): Promise<Club[]> {
-    const { data, error } = await this.client
-      .from("clubs")
-      .select("*")
-      .order("name");
-
-    if (error) throw error;
-    return data || [];
+    return this.getAll<Club>("clubs");
   }
 
   async getActiveClubs(): Promise<Club[]> {
-    const { data, error } = await this.client
-      .from("clubs")
-      .select("*")
-      .eq("status", "active")
-      .order("name");
-
-    if (error) throw error;
-    return data || [];
+    return this.getAll<Club>("clubs", "*", "name", { status: "active" });
   }
 
   async getClubById(id: string): Promise<Club | null> {
-    const { data, error } = await this.client
-      .from("clubs")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null; // Not found
-      throw error;
-    }
-    return data;
+    return this.getById<Club>("clubs", id);
   }
 
   async getClubsByType(type: Club["type"]): Promise<Club[]> {
@@ -48,60 +26,22 @@ export class ClubService {
       .eq("status", "active")
       .order("name");
 
-    if (error) throw error;
-    return data || [];
+    const result = this.transformResponse<Club>(data, error, []);
+    return Array.isArray(result) ? result : [];
   }
 
   async createClub(
     clubData: Omit<Club, "id" | "createdAt">,
     createdBy: string
   ): Promise<Club> {
-    const { data, error } = await this.client
-      .from("clubs")
-      .insert({
-        name: clubData.name,
-        type: clubData.type,
-        location: clubData.location,
-        founded: clubData.founded,
-        website: clubData.website,
-        status: clubData.status,
-        created_by: createdBy,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    return this.create<Club>("clubs", { ...clubData, createdBy }, this.fieldMapping);
   }
 
   async updateClub(id: string, updates: Partial<Club>): Promise<Club | null> {
-    const updateData: any = {};
-
-    if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.type !== undefined) updateData.type = updates.type;
-    if (updates.location !== undefined) updateData.location = updates.location;
-    if (updates.founded !== undefined) updateData.founded = updates.founded;
-    if (updates.website !== undefined) updateData.website = updates.website;
-    if (updates.status !== undefined) updateData.status = updates.status;
-
-    const { data, error } = await this.client
-      .from("clubs")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null;
-      throw error;
-    }
-    return data;
+    return this.update<Club>("clubs", id, updates, this.fieldMapping);
   }
 
   async deleteClub(id: string): Promise<boolean> {
-    const { error } = await this.client.from("clubs").delete().eq("id", id);
-
-    if (error) throw error;
-    return true;
+    return this.performDelete("clubs", id);
   }
 }

@@ -2,6 +2,7 @@ import { SessionItem } from "~/types";
 import { Button } from "../ui/button";
 import { DownloadIcon } from "lucide-react";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { ClientOnly } from "~/utils/client-only";
 
 type DownloadButton = {
   sessionItems: SessionItem[];
@@ -262,24 +263,30 @@ export async function generateSessionPlanPDF(items) {
   });
 
   const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "session-plan.pdf";
-  link.click();
+  
+  // Check if we're in browser environment
+  if (typeof window !== 'undefined' && document) {
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "session-plan.pdf";
+    link.click();
+  }
 }
 
 export const SessionDownloadButton: React.FC<DownloadButton> = ({
   sessionItems,
 }) => {
   return (
-    <Button
-      variant="outline"
-      className="text-foreground"
-      onClick={() => generateSessionPlanPDF(sessionItems)}
-    >
-      <DownloadIcon />
-      <span>Download PDF</span>
-    </Button>
+    <ClientOnly>
+      <Button
+        variant="outline"
+        className="text-foreground"
+        onClick={() => generateSessionPlanPDF(sessionItems)}
+      >
+        <DownloadIcon />
+        <span>Download PDF</span>
+      </Button>
+    </ClientOnly>
   );
 };

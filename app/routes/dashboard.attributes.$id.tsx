@@ -23,7 +23,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const attributeService = new AttributesService(supabaseClient);
 
   const attribute = params.id
-    ? await attributeService.getAttribueById(params.id)
+    ? await attributeService.getAttributeById(params.id)
     : undefined;
 
   return { attribute };
@@ -52,7 +52,7 @@ export const action: ActionFunction = async ({ request }) => {
     description,
   };
 
-  await attributeService.updateAtrribute(data, id);
+  await attributeService.updateAttribute(id, data);
 
   return redirect("/dashboard/attributes");
 };

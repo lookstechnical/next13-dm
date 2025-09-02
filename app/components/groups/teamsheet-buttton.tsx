@@ -4,6 +4,7 @@ import { Player } from "~/types";
 import React from "react";
 import { Button } from "../ui/button";
 import { calculateAgeGroup } from "~/utils/helpers";
+import { ClientOnly } from "~/utils/client-only";
 
 export async function generateTeamPDF(players: Player[], teamName: string) {
   const pdfDoc = await PDFDocument.create();
@@ -135,12 +136,15 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
   }
 
   const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
-
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "teamsheet.pdf";
-  link.click();
+  
+  // Check if we're in browser environment
+  if (typeof window !== 'undefined' && document) {
+    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "teamsheet.pdf";
+    link.click();
+  }
 }
 
 type DownloadButton = {
@@ -153,13 +157,15 @@ export const DownloadButton: React.FC<DownloadButton> = ({
   teamName,
 }) => {
   return (
-    <Button
-      variant="outline"
-      className="w-full"
-      onClick={() => generateTeamPDF(players, teamName)}
-    >
-      <DownloadIcon />
-      <span>Download PDF</span>
-    </Button>
+    <ClientOnly>
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={() => generateTeamPDF(players, teamName)}
+      >
+        <DownloadIcon />
+        <span>Download PDF</span>
+      </Button>
+    </ClientOnly>
   );
 };

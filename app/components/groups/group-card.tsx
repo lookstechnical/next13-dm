@@ -1,7 +1,6 @@
 import { Link } from "@remix-run/react";
 import { Card } from "../ui/card";
 import { PlayerGroup } from "~/types";
-import { formatDate } from "~/utils/helpers";
 import { Users2Icon } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { cn } from "~/lib/utils";

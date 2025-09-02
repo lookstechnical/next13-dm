@@ -1,52 +1,34 @@
 import { Template, TemplateAttribute } from "../types";
-import { convertKeysToCamelCase } from "../utils/helpers";
+import { BaseService } from "./BaseService";
+import { staticDataCache } from "./CacheManager";
 
-export class TemplateService {
-  client;
+export class TemplateService extends BaseService {
   constructor(client: any) {
-    this.client = client;
+    // Use static data cache for templates (longer TTL)
+    super(client, staticDataCache);
   }
   async getAllTemplates(): Promise<Template[]> {
-    const { data, error } = await this.client
-      .from("report_templates")
-      .select("*")
-      .order("name");
-
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || [];
+    return this.getAll<Template>("report_templates");
   }
 
-  async getTemplateById(templateId: string): Promise<Template> {
-    const { data, error } = await this.client
-      .from("report_templates")
-      .select("*, template_attributes(report_attributes(*))")
-      .eq("id", templateId)
-      .single();
-
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+  async getTemplateById(templateId: string): Promise<Template | null> {
+    return this.getById<Template>(
+      "report_templates", 
+      templateId, 
+      "*, template_attributes(report_attributes(*))"
+    );
   }
 
   async addNewTemplate(
     templateData: Omit<Template, "id" | "createdAt">
   ): Promise<Template> {
-    const { data, error } = await this.client
-      .from("report_templates")
-      .insert({
-        name: templateData.name,
-        active: templateData.active,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+    return this.create<Template>("report_templates", templateData);
   }
 
   async updateTemplate(
-    templateData: Omit<Template, "id" | "createdAt">,
-    templateId: string
-  ): Promise<Template> {
+    templateId: string,
+    templateData: Partial<Template>
+  ): Promise<Template | null> {
     const { data, error } = await this.client
       .from("report_templates")
       .update(templateData)
@@ -54,37 +36,26 @@ export class TemplateService {
       .select("*, template_attributes(attribute_id)")
       .single();
 
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+    return this.transformSingleResponse<Template>(data, error);
   }
 
   async addAttributeToTemplate(
     templateData: Omit<TemplateAttribute, "id" | "createdAt">
   ): Promise<TemplateAttribute> {
-    const { data, error } = await this.client
-      .from("template_attributes")
-      .insert({
-        attribute_id: templateData.attribute_id,
-        template_id: templateData.template_id,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+    return this.create<TemplateAttribute>("template_attributes", templateData);
   }
 
   async removeAttributeFromTemplate(
     templateData: Omit<TemplateAttribute, "id" | "createdAt">
-  ): Promise<TemplateAttribute> {
-    const { data, error } = await this.client
+  ): Promise<boolean> {
+    const { error } = await this.client
       .from("template_attributes")
       .delete()
       .eq("attribute_id", templateData.attribute_id)
       .eq("template_id", templateData.template_id);
 
     if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+    return true;
   }
 
   async getAttributesByTemplateId(
@@ -95,7 +66,7 @@ export class TemplateService {
       .select("*, report_attributes(*)")
       .eq("template_id", templateId);
 
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || null;
+    const result = this.transformResponse<TemplateAttribute>(data, error, []);
+    return Array.isArray(result) ? result : [];
   }
 }

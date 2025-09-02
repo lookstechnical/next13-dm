@@ -38,7 +38,7 @@ export const action: ActionFunction = async ({ request }) => {
     active: true,
   };
 
-  await attributeService.addNewAttribue(data);
+  await attributeService.addNewAttribute(data);
 
   return redirect("/dashboard/attributes");
 };

@@ -161,6 +161,7 @@ export default function AddPlayersToGroup() {
             >
               {playerGroups.map((group: PlayerGroup) => (
                 <GroupCard
+                  key={`group-card-${group.id}`}
                   group={group}
                   onSelect={toggleGroupSelection}
                   isSelected={selectedGroups.includes(group.id)}
