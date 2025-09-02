@@ -24,17 +24,23 @@ export const ItemView: FC<ItemView> = ({ item }) => {
 
         <div className="p-4 bg-background">
           <h3 className="text-muted text-sm">Coaching Points</h3>
-          <ul>
+          <ul className="text-sm list-disc pl-4 pt-4">
             {item.coachingPoints?.map((c) => (
               <li>{c}</li>
             ))}
+            <li className="">
+              Catch early - ( hands out towards the ball off your chest )
+            </li>
           </ul>
         </div>
       </div>
 
       <div className="flex flex-row gap-2 pt-4 py-4 bg-wkbackground">
         {item?.categories?.map((c: any) => (
-          <Badge variant="outline" className="text-sm rounded-lg">
+          <Badge
+            variant="outline"
+            className="text-sm rounded-lg bg-background border-input"
+          >
             {c.name}
           </Badge>
         ))}

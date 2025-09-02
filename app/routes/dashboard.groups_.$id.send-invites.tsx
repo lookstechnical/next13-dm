@@ -40,7 +40,7 @@ export const action: ActionFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
   const groupsService = new GroupService(supabaseClient);
 
-  const resend = new Resend("re_UshzPAdj_NmvC1j4Cipqh89znQYz3BcXU");
+  const resend = new Resend(process.env.VITE_RESEND_API);
 
   const invitationService = new InvitationService(supabaseClient);
 

@@ -22,6 +22,7 @@ import {
   SheetTitle,
 } from "~/components/ui/sheet";
 import ActionButton from "./ui/action-button";
+import { ArrowLeft } from "lucide-react";
 
 type SheetPageProps = {
   backLink?: string;
@@ -44,11 +45,20 @@ export default function SheetPage({
   const renderContent = () => {
     return (
       <>
-        <div className="h-[80vh] px-10 py-4 overflow-scroll">{children}</div>
+        <div className="h-[80vh] px-4 md:px-10 py-4 overflow-scroll">
+          {children}
+        </div>
         <SheetFooter className="absolute bottom-0 w-full px-10 py-4 justify-end flex flex-row gap-2 bg-background">
-          {backLink && (
+          {backLink && hasForm && (
             <Button asChild variant="link">
               <Link to={backLink}>Cancel</Link>
+            </Button>
+          )}
+          {backLink && !hasForm && (
+            <Button asChild variant="link" className="text-muted">
+              <Link to={backLink}>
+                <ArrowLeft /> Back
+              </Link>
             </Button>
           )}
           {updateButton && <ActionButton title={updateButton} />}

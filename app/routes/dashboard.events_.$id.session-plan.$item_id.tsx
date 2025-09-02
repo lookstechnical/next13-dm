@@ -39,8 +39,6 @@ export default function SessionPlan() {
       backLink={`/dashboard/events/${event.id}/session-plan`}
       title={sessionItem.drills?.name}
       description="Add Report"
-      updateButton="Add Report"
-      hasForm
     >
       <ItemView item={sessionItem.drills} />
     </SheetPage>

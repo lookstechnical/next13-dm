@@ -27,7 +27,6 @@ export default function PlayersCreate() {
   return (
     <SheetPage
       backLink="/dashboard/drills-library"
-      hasForm
       title={drill.name}
       description=""
     >
