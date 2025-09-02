@@ -47,6 +47,7 @@ export interface Drill {
   description: string;
   intensity: string;
   categories?: DrillCategory[];
+  coachingPoints: string[];
   videoUrl?: string;
   imageUrl?: string;
 }
