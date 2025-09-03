@@ -1,5 +1,6 @@
 import { ActionFunction, LoaderFunction, redirect } from "@remix-run/node";
 import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import { Resend } from "resend";
 import z from "zod";
 import { PlayerForm } from "~/components/forms/player";
 import ActionButton from "~/components/ui/action-button";
@@ -30,41 +31,67 @@ export const loader: LoaderFunction = async ({ request }) => {
 };
 
 export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = await getSupabaseServerClient(request);
-  let formData = await request.formData();
-  const avatar = formData.get("avatar");
+  try {
+    const { supabaseClient } = await getSupabaseServerClient(request);
+    let formData = await request.formData();
+    const avatar = formData.get("avatar");
 
-  const url = new URL(request.url);
-  const token = url.searchParams.get("token");
-  console.log({ token });
-  if (!token) return redirect("/");
-  const inviteService = new InvitationService(supabaseClient);
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token");
+    if (!token) return redirect("/");
+    const inviteService = new InvitationService(supabaseClient);
 
-  const invite = await inviteService.getInvitationByToken(token);
-  console.log({ invite });
+    const invite = await inviteService.getInvitationByToken(token);
 
-  if (!invite) return redirect("/");
+    if (!invite) return redirect("/");
 
-  const playerService = new PlayerService(supabaseClient);
+    const playerService = new PlayerService(supabaseClient);
 
-  const { data, playerId } = await playerService.getFormFields(formData);
-  console.log({ playerId, data });
+    const { data, playerId } = await playerService.getFormFields(formData);
 
-  const validations = inviteRegistration.safeParse({ ...data, avatar });
-  if (validations.error) return { errors: z.treeifyError(validations.error) };
-  console.log({ validations });
+    const validations = inviteRegistration.safeParse({ ...data, avatar });
+    if (validations.error) return { errors: z.treeifyError(validations.error) };
 
-  await playerService.updatePlayer(playerId, data);
+    await playerService.updatePlayer(playerId, data);
 
-  if (playerId && avatar) {
-    const res = await playerService.uploadPlayerProfilePhoto(playerId, avatar);
-    console.log({ res });
+    if (playerId && avatar) {
+      const res = await playerService.uploadPlayerProfilePhoto(
+        playerId,
+        avatar
+      );
+    }
+
+    await inviteService.completeInvitation(invite);
+
+    return { status: "complete" };
+  } catch (e: any) {
+    const resend = new Resend(process.env.VITE_RESEND_API);
+    await resend.emails.send({
+      from: "Error - beCoachable <noreply@be-coachable.com>",
+      to: ["info@lookstechnical.co.uk"],
+      subject: "And error on Player invite",
+      html: `<div>${e.message}</div>`,
+    });
+
+    throw e;
   }
-
-  await inviteService.completeInvitation(invite);
-
-  return { status: "complete" };
 };
+
+export function ErrorBoundary() {
+  return (
+    <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
+      <div className="w-full py-6 flex flex-col w-[50rem] items-center">
+        <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
+
+        <h1 className="text-4xl">There Was an error please try again </h1>
+        <p className="text-muted">
+          if the problem persists and your on mobile please try on a laptop or
+          desktop pc
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const PlayerInvite = () => {
   const { clubs, player, invite } = useLoaderData<typeof loader>();
