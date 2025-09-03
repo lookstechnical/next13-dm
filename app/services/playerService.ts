@@ -464,9 +464,13 @@ export class PlayerService {
         return { error: error.message };
       }
 
-      const { data } = this.client.storage
+      const { data, error2 } = this.client.storage
         .from("profile-images-public")
         .getPublicUrl(filePath);
+
+      if (error2) {
+        return { error: error2.message };
+      }
 
       return await this.updatePlayer(playerId, {
         photoUrl: data.publicUrl,

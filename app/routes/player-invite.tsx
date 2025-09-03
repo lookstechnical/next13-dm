@@ -36,23 +36,29 @@ export const action: ActionFunction = async ({ request }) => {
 
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
+  console.log({ token });
   if (!token) return redirect("/");
   const inviteService = new InvitationService(supabaseClient);
 
   const invite = await inviteService.getInvitationByToken(token);
+  console.log({ invite });
+
   if (!invite) return redirect("/");
 
   const playerService = new PlayerService(supabaseClient);
 
   const { data, playerId } = await playerService.getFormFields(formData);
+  console.log({ playerId, data });
 
   const validations = inviteRegistration.safeParse({ ...data, avatar });
   if (validations.error) return { errors: z.treeifyError(validations.error) };
+  console.log({ validations });
 
   await playerService.updatePlayer(playerId, data);
 
   if (playerId && avatar) {
-    await playerService.uploadPlayerProfilePhoto(playerId, avatar);
+    const res = await playerService.uploadPlayerProfilePhoto(playerId, avatar);
+    console.log({ res });
   }
 
   await inviteService.completeInvitation(invite);
