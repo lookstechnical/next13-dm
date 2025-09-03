@@ -38,13 +38,8 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   }
 
   const event = await eventService.getEventById(params.id as string);
-  const players = event
-    ? await eventService.getEventRegistrations(event.id as string)
-    : [];
 
-  const groupService = new GroupService(supabaseClient);
-  const groups = (await groupService.getGroupsByTeam(user.team.id)) || [];
-  return { event, players, groups, user };
+  return { event, user };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -107,34 +102,39 @@ export default function EventPage() {
             </div>
             <div className="flex justify-between items-center gap-4">
               <Badge variant="outline">{event.status}</Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <MoreVertical />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem className="p-0">
-                    <Button asChild variant="outline" className="w-full">
-                      <Link
-                        to={`/dashboard/events/${event.id}/register-players`}
-                      >
-                        Register Players
-                      </Link>
-                    </Button>
-                  </DropdownMenuItem>
-                  <ActionProtection
-                    allowedRoles={AllowedRoles.adminOnly}
-                    user={user}
-                  >
-                    <DropdownMenuItem asChild className="p-0">
-                      <DeleteConfirm name="Event" id={event.id}>
-                        <Button variant="destructive" className="w-full">
-                          Delete
-                        </Button>
-                      </DeleteConfirm>
+              <ActionProtection
+                allowedRoles={AllowedRoles.headOfDept}
+                user={user}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <MoreVertical />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem className="p-0">
+                      <Button asChild variant="outline" className="w-full">
+                        <Link
+                          to={`/dashboard/events/${event.id}/register-players`}
+                        >
+                          Register Players
+                        </Link>
+                      </Button>
                     </DropdownMenuItem>
-                  </ActionProtection>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <ActionProtection
+                      allowedRoles={AllowedRoles.adminOnly}
+                      user={user}
+                    >
+                      <DropdownMenuItem asChild className="p-0">
+                        <DeleteConfirm name="Event" id={event.id}>
+                          <Button variant="destructive" className="w-full">
+                            Delete
+                          </Button>
+                        </DeleteConfirm>
+                      </DropdownMenuItem>
+                    </ActionProtection>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </ActionProtection>
             </div>
           </div>
           <div>

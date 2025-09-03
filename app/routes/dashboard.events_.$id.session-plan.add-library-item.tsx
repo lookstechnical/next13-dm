@@ -58,9 +58,9 @@ export default function SessionPlan() {
   return (
     <SheetPage
       backLink={`/dashboard/events/${event.id}/session-plan`}
-      title={sessionItem.drills?.name}
-      description="Add Library Item"
-      updateButton="Add Library Item"
+      title="Add Session Item"
+      description="Add Session Item"
+      updateButton="Add Session Item"
       hasForm
     >
       <LibraryItemForm />

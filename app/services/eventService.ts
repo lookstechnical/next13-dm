@@ -182,7 +182,7 @@ export class EventService {
     const { data, error } = await this.client
       .from("event_registrations")
       .select(
-        "*, players ( name, position, dateOfBirth:date_of_birth, id, club, player_group_members(group_id) )"
+        "*, players ( name,photo_url, position, dateOfBirth:date_of_birth, id, club, player_group_members(group_id) )"
       )
       .eq("event_id", eventId)
       .order("players(name)", { ascending: true });

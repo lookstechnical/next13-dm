@@ -6,8 +6,10 @@ import type {
 import { Form, Link, redirect, useLoaderData } from "@remix-run/react";
 import { User2 } from "lucide-react";
 import { useState } from "react";
+import { ActionProtection } from "~/components/action-protection";
 import { SelectField } from "~/components/forms/select";
 import { PlayerCard } from "~/components/players/player-card";
+import { AllowedRoles } from "~/components/route-protections";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
 // import RadarAttributes from "~/components/charts/radar";
@@ -41,7 +43,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
   const groupService = new GroupService(supabaseClient);
   const groups = (await groupService.getGroupsByTeam(user.team.id)) || [];
-  return { event, players, groups };
+  return { event, players, groups, user };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -78,7 +80,7 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function PlayerPage() {
-  const { event, players, groups } = useLoaderData<typeof loader>();
+  const { event, players, groups, user } = useLoaderData<typeof loader>();
   const [status, setStatus] = useState<string>();
   const [group, setGroup] = useState<string>();
 
@@ -138,28 +140,33 @@ export default function PlayerPage() {
             {filteredPlayers.map((player: EventRegistration) => (
               <PlayerCard player={player.players}>
                 <div className="flex flex-row w-full ">
-                  <Form method="POST" className="w-full">
-                    <input
-                      type="hidden"
-                      name="playerId"
-                      value={player.players.id}
-                    />
-                    <input
-                      type="hidden"
-                      name="eventId"
-                      value={player.eventId}
-                    />
+                  <ActionProtection
+                    allowedRoles={AllowedRoles.headOfDept}
+                    user={user}
+                  >
+                    <Form method="POST" className="w-full">
+                      <input
+                        type="hidden"
+                        name="playerId"
+                        value={player.players.id}
+                      />
+                      <input
+                        type="hidden"
+                        name="eventId"
+                        value={player.eventId}
+                      />
 
-                    <Button
-                      type="submit"
-                      variant={getVariant(player)}
-                      className={cn(
-                        "w-full flex-1 text-white uppercase border-muted"
-                      )}
-                    >
-                      {player.status}
-                    </Button>
-                  </Form>
+                      <Button
+                        type="submit"
+                        variant={getVariant(player)}
+                        className={cn(
+                          "w-full flex-1 text-white uppercase border-muted"
+                        )}
+                      >
+                        {player.status}
+                      </Button>
+                    </Form>
+                  </ActionProtection>
                   <Button className="w-full border-muted" variant="outline">
                     <Link
                       to={`/dashboard/events/${event.id}/report/${player.playerId}`}

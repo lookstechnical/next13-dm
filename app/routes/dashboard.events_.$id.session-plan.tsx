@@ -65,7 +65,7 @@ export default function SessionPlan() {
                 <Link
                   to={`/dashboard/events/${event.id}/session-plan/add-library-item`}
                 >
-                  Add Library Item
+                  Add Session Item
                 </Link>
               </Button>
             </div>
