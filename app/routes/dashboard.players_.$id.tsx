@@ -110,7 +110,7 @@ export default function PlayerPage() {
             <div className="relative w-[130px] h-[130px] flex items-center justify-center overflow-hidden rounded-full object-cover bg-white">
               {player?.photoUrl ? (
                 <img
-                  className="w-full object-fit h-full a"
+                  className="w-full object-fit"
                   alt={player.name}
                   src={player.photoUrl}
                 />
