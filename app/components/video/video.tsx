@@ -1,6 +1,10 @@
 import React from "react";
 
-const VideoPlayer = ({ url }) => {
+type VideoPlayerProps = {
+  url: string;
+};
+
+const VideoPlayer = ({ url }: VideoPlayerProps) => {
   if (!url) return <p>No video URL provided</p>;
 
   // Check if it's YouTube
@@ -41,10 +45,13 @@ const VideoPlayer = ({ url }) => {
   }
 
   // Check if it's a direct video file (.mp4, .webm, .ogg)
-  if (/\.(mp4|webm|ogg)$/i.test(url)) {
+  if (/\.(mp4|webm|ogg)$/i.test(url.split("?")[0])) {
     return (
-      <video width="100%" height="400" controls>
-        <source src={url} type={`video/${url.split(".").pop()}`} />
+      <video width="100%" height="400" controls controlsList="nodownload">
+        <source
+          src={url}
+          type={`video/${url.split("?")[0].split(".").pop()}`}
+        />
         Your browser does not support the video tag.
       </video>
     );

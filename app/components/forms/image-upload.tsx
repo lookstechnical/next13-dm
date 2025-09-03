@@ -7,18 +7,20 @@ type ImageUploadProps = {
   isProfile?: boolean;
   name?: string;
   errors?: any;
+  accept?: string;
 };
 export const ImageUpload: React.FC<ImageUploadProps> = ({
   image,
   errors,
   isProfile,
   name = "avatar",
+  accept = "image/*",
 }) => {
   const [previewUrl, setPreviewUrl] = useState(image);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && accept === "image/*") {
       setPreviewUrl(URL.createObjectURL(file));
     }
   };
@@ -70,7 +72,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           <input
             id={name}
             type="file"
-            accept="image/*"
+            accept={accept}
             name={name}
             // defaultValue={image}
             onChange={handleFileChange}

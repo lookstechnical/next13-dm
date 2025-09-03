@@ -380,12 +380,7 @@ export const RichTextField = ({
 
   return (
     <Field name={name} label={label}>
-      <input
-        type="hidden"
-        defaultValue={defaultValue}
-        name={name}
-        value={html}
-      />
+      <input type="hidden" name={name} value={html} />
       <RichTextEditor
         html={html}
         onChange={setHtml}

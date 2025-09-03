@@ -40,7 +40,11 @@ export const DrillForm: React.FC<DrillForm> = ({ drill, categories }) => {
           </Field>
           <div className="flex flex-row gap-4">
             <Field name="videoUrl" label="Video Url">
-              <ImageUpload name="video" image={drill?.imageUrl} />
+              <ImageUpload
+                name="video"
+                accept="video/*"
+                image={drill?.imageUrl}
+              />
               <Input
                 name="videoUrl"
                 placeholder="Enter Video Url"
