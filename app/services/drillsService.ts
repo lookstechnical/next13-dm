@@ -112,6 +112,17 @@ export class DrillsService {
       }
     }
 
+    if (data?.video_url) {
+      const { data: videoData, error } = await this.client.storage
+        .from("drill-images")
+        .createSignedUrl(data.video_url, 30);
+      data.video_url = videoData?.signedUrl;
+
+      if (error) {
+        console.log({ error });
+      }
+    }
+
     return convertKeysToCamelCase(data);
   }
 
