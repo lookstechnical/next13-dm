@@ -17,7 +17,7 @@ export const emailTemplate = (
   <body style="margin: 0; font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff;">
     <div style="max-width: 600px; margin: 40px auto; background-color: #1b1d2a; padding: 30px; border-radius: 12px; border: 1px solid #2a2d3b;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://be-coachable.com/logo.png" alt="Be Coachble" style="width:60px;" />
+        <img src="https://be-coachable.com/logo.png" alt="beCoachble" style="width:60px;" />
       </div>
 
         ${message

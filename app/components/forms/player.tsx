@@ -22,7 +22,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs, errors }) => {
         <input type="hidden" name="photoUrl" value={player.photoUrl} />
       )}
       <div className="flex flex-col lg:flex-row w-full gap-5">
-        <div className="w-1/3 flex items-center justify-center">
+        <div className="w-full md:w-1/3 flex items-center justify-center">
           <ImageUpload
             isProfile
             image={player?.photoUrl as string}

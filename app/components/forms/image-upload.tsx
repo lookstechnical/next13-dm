@@ -42,7 +42,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           ) : (
             <div
               className={cn(
-                "object-cover border-4 border-gray-300 shadow items-center justify-center flex hover:bg-wkbackground",
+                "object-cover border-4 border-gray-300 shadow items-center justify-center flex hover:bg-wkbackground flex-col",
                 isProfile ? "w-32 h-32 rounded-full" : "aspect-video w-full "
               )}
             >
@@ -51,12 +51,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               ) : (
                 <Volleyball className="text-muted" />
               )}
+              <p className="text-sm text-muted">Click to upload</p>
             </div>
           )}
 
           {/* Upload label styled like a button over image */}
 
-          <div className="absolute bottom-0 right-0 bg-secondary p-1">
+          <div className="absolute -bottom-5 right-0 bg-secondary p-1">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-5 w-5 "
@@ -78,7 +79,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         </label>
       </div>
       {errors && errors?.properties["avatar"] && (
-        <p className="text-sm text-destructive">
+        <p className="text-sm text-destructive mt-8">
           {errors?.properties[name].errors[0]}
         </p>
       )}

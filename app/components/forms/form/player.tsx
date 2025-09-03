@@ -18,7 +18,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
     <div className="flex gap-4 flex-col">
       {player && <input type="hidden" name="playerId" value={player.id} />}
       <div className="flex flex-row w-full gap-5">
-        <div className="w-1/3 flex items-center justify-center">
+        <div className="w-full md:w-1/3 flex items-center justify-center">
           <ImageUpload isProfile image={player?.photoUrl as string} />
         </div>
         <div className="flex flex-col w-full gap-5">

@@ -30,11 +30,16 @@ export const inviteRegistration = z
       .nonempty(
         "Please enter a mobile phone number to help us contact you in case of an emergency"
       ),
-    avatar: z.any().optional(),
+    avatar: z.file(),
     photoUrl: z.any().optional(),
   })
-  .refine((data) => data.photoUrl || data.avatar || data.avatar.size <= 0, {
-    message:
-      "Please upload an image this will help our coaches identify you when you attend",
-    path: ["avatar"], // show error under avatar
-  });
+  .refine(
+    (data) => {
+      return data.photoUrl || data.avatar.size !== 0;
+    },
+    {
+      message:
+        "Please upload an image this will help our coaches identify you when you attend",
+      path: ["avatar"], // show error under avatar
+    }
+  );

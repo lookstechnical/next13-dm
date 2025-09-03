@@ -97,9 +97,12 @@ const PlayerInvite = () => {
   return (
     <div className="min-h-screen min-w-screen bg-background text-foreground">
       <div className="w-full py-10 bg-wkbackground">
-        <div className="container mx-auto max-w-[50rem] py-10 flex flex-row gap-3 flex flex-col items-center">
+        <div className="container mx-auto max-w-[50rem] py-10 flex flex-row gap-3 flex flex-col items-center p-4 text-center">
           <img src="/logo.png" className="w-20" width={50} height={50} />
           <h1 className="text-4xl">Player Invitation</h1>
+          <p>
+            Congratulations on your Invitation to the Saints LDP Excel Program
+          </p>
           <p className="text-muted">
             Please complete the form below to accept your invitation
           </p>
