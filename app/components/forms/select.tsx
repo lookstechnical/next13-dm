@@ -53,8 +53,8 @@ export const SelectField: React.FC<SelectField> = ({
               {selectedOption?.name || placeholder || label}
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="max-h-[45vh] p-4 py-12">
-            <div className="h-[90%] overflow-scroll">
+          <SheetContent side="bottom" className="max-h-[45vh] h-full p-4 py-12">
+            <div className="max-h-[90%] overflow-scroll">
               <SheetClose className="text-foreground w-full">
                 <Button
                   type="button"
@@ -66,12 +66,12 @@ export const SelectField: React.FC<SelectField> = ({
                 </Button>
               </SheetClose>
               {options.map((p) => (
-                <SheetClose className=" text-foreground w-full">
+                <SheetClose className="text-foreground w-full">
                   <Button
                     type="button"
                     variant="outline"
                     key={`select-option-${p.id}`}
-                    className=" text-foreground w-full"
+                    className=" text-foreground w-full text-xl"
                     onClick={() => setValue(p.id)}
                   >
                     {p.name}
