@@ -12,7 +12,7 @@ type PlayerForm = {
   errors?: any[];
 };
 
-const sizes = ["XS", "SM", "MD", "LG", "XL", "XXL", "XXXL"];
+const sizes = ["XS", "SM", "M", "LG", "XL", "XXL", "XXXL"];
 
 export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs, errors }) => {
   return (
