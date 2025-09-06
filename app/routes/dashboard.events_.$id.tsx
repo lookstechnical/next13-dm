@@ -148,6 +148,11 @@ export default function EventPage() {
                 </Link>
               </Button>
             )}
+            <Button asChild variant="outline" className="bg-background ">
+              <Link to={`/dashboard/events/${event.id}/discussion`}>
+                Reflect
+              </Link>
+            </Button>
           </div>
         </div>
         <div className="bg-card min-h-screen py-10">

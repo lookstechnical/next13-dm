@@ -79,6 +79,30 @@ export class InvitationService {
     return convertKeysToCamelCase(data);
   }
 
+  async rejectInvitation(
+    invitation: Invitation,
+    reason?: string
+  ): Promise<{ success: boolean; message: string }> {
+    if (invitation.status === "accepted") {
+      return {
+        success: false,
+        message: "This invitation has already been used or expired",
+      };
+    }
+
+    // Mark invitation as rejected
+    const { error: updateError } = await this.client
+      .from("invitations")
+      .update({ status: "rejected", ...(reason && { reason }) })
+      .eq("id", invitation.id);
+
+    if (updateError) {
+      console.error("Failed to update invitation status:", updateError);
+    }
+
+    return { success: true, message: "Profile rejected successfully!" };
+  }
+
   async completeInvitation(
     invitation: Invitation
   ): Promise<{ success: boolean; message: string }> {

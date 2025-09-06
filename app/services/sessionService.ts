@@ -74,4 +74,45 @@ export class SessionService {
     }
     return { status: "success" };
   }
+
+  async addSessionReflection(reflection: any) {
+    const { data, error } = await this.client
+      .from("session_reflection")
+      .insert(reflection)
+      .select()
+      .single();
+
+    if (error) {
+      console.log(error);
+    }
+    return convertKeysToCamelCase(data);
+  }
+
+  async addSessionReflectionComments(reflectionId: string, reflection: any) {
+    const { data, error } = await this.client
+      .from("comments")
+      .insert({
+        session_reflection_id: reflectionId,
+        ...reflection,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.log(error);
+    }
+    return convertKeysToCamelCase(data);
+  }
+
+  async getReflectionsById(eventId: string) {
+    const { data, error } = await this.client
+      .from("session_reflection")
+      .select("*, users(name), comments(*, users(name))")
+      .eq("event_id", eventId);
+
+    if (error) {
+      console.log(error);
+    }
+    return convertKeysToCamelCase(data);
+  }
 }

@@ -1,10 +1,10 @@
-import { Loader } from "lucide-react";
+import { Loader, LucideIcon } from "lucide-react";
 import { Button, ButtonProps } from "./button";
 import { useNavigation } from "@remix-run/react";
 import { cn } from "~/lib/utils";
 
 type ActionButton = {
-  title: string;
+  title: string | LucideIcon;
 } & ButtonProps;
 
 const ActionButton: React.FC<ActionButton> = ({

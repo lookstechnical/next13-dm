@@ -77,6 +77,7 @@ export default function DrillsCreate() {
       title="Add Drill/Game"
       description="Add a new skill drill or game"
       updateButton="Add drill"
+      hasForm
     >
       <DrillForm categories={categories} />
     </SheetPage>

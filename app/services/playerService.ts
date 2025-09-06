@@ -167,7 +167,7 @@ export class PlayerService {
         photo_url,
         mobile,
         player_group_members!inner(group_id),
-        invitations(status)
+        invitations(status, reason)
       `
       )
       .eq("player_group_members.group_id", groupId);

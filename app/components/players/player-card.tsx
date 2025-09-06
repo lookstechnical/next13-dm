@@ -2,13 +2,14 @@ import { Link } from "@remix-run/react";
 import { Card } from "../ui/card";
 import { Player } from "~/types";
 import {
-  calculateAge,
   calculateAgeGroup,
   calculateRelativeAgeQuartile,
 } from "~/utils/helpers";
 import { cn } from "~/lib/utils";
-import { Mail, MailCheck, Phone, User } from "lucide-react";
+import { Mail, MailCheck, MailMinus, Phone, User } from "lucide-react";
 import { PropsWithChildren } from "react";
+import { Tooltip, TooltipContent, TooltipProvider } from "../ui/tooltip";
+import { TooltipTrigger } from "@radix-ui/react-tooltip";
 
 type PlayerCard = PropsWithChildren<{
   player: Player;
@@ -114,6 +115,21 @@ export const PlayerCard: React.FC<PlayerCard> = ({
             {player?.invitations?.[0] &&
               player.invitations[0].status === "accepted" && (
                 <MailCheck className="text-secondary" />
+              )}
+            {player?.invitations?.[0] &&
+              player.invitations[0].status === "rejected" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <MailMinus className="text-primary" />
+                    </TooltipTrigger>
+                    <TooltipContent className="text-foreground">
+                      {player.invitations[0].reason
+                        ? player.invitations[0].reason
+                        : "No Reason given"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
           </div>
         </div>

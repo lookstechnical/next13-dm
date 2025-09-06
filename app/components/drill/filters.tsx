@@ -18,12 +18,10 @@ type DrillFilters = {
 };
 export const DrillFilters: React.FC<DrillFilters> = ({
   appliedFilters,
-  groups,
   categories,
 }) => {
   const [open, setOpen] = useState(false);
 
-  console.log(appliedFilters.categoryFilter);
   return (
     <Sheet open={open} onOpenChange={(val) => setOpen(val)}>
       <SheetTrigger asChild onClick={() => setOpen(true)}>
