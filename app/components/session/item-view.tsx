@@ -7,6 +7,7 @@ type ItemView = {
   item: Drill;
 };
 export const ItemView: FC<ItemView> = ({ item }) => {
+  console.log({ item });
   return (
     <div className="text-foreground flex flex-col gap-4 xl:pr-40">
       <div className="aspect-video bg-background">
