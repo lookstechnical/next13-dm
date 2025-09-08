@@ -55,7 +55,7 @@ export const action: ActionFunction = async ({ request }) => {
   }
   const video = formData.get("video");
   if (video) {
-    await drillService.uploadDrillImage(video, drill.id);
+    await drillService.uploadDrillVideo(video, drill.id);
   }
 
   if (categories) {

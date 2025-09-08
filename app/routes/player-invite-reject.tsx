@@ -124,7 +124,7 @@ const PlayerInvite = () => {
           <p>We understand you’ve decided not to join at this time.</p>
           <p className="text-muted">
             Your feedback is valuable to us. Could you share the main reason you
-            chose not to participate
+            have chosen not to join
           </p>
         </div>
       </div>
@@ -150,12 +150,8 @@ const PlayerInvite = () => {
                   name: "Times clash with other activities",
                 },
                 {
-                  id: "The program isn’t what I’m looking for",
-                  name: "The program isn’t what I’m looking for",
-                },
-                {
-                  id: "I have had an offer of a scholarship/programme at another club",
-                  name: "I have had an offer of a scholarship/programme at another club",
+                  id: "I have had an offer of a scholarship or similar at another club",
+                  name: "I have had an offer of a scholarship or similar at another club",
                 },
                 {
                   id: "other",
@@ -164,7 +160,7 @@ const PlayerInvite = () => {
               ]}
             />
             {showOtherField && (
-              <Field name="other_reason" label="Details">
+              <Field name="other_reason" label="Please give us details.">
                 <Textarea name="other_reason" />
               </Field>
             )}
