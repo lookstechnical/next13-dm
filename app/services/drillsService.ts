@@ -16,6 +16,7 @@ export class DrillsService {
         intensity: drillData.intensity,
         video_url: drillData.videoUrl,
         image_url: drillData.imageUrl,
+        coaching_points: drillData.coachingPoints,
       })
       .select()
       .single();
@@ -193,5 +194,15 @@ export class DrillsService {
     const { data, error } = await this.client.from("categories").select("*");
 
     return convertKeysToCamelCase(data);
+  }
+
+  async deleteDrill(drillId: string) {
+    const { data, error } = await this.client
+      .from("drills")
+      .delete()
+      .eq("id", drillId);
+
+    if (error) console.log(error);
+    return { success: true };
   }
 }

@@ -10,7 +10,7 @@ import {
   useLoaderData,
   useNavigate,
 } from "@remix-run/react";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, ReactNode } from "react";
 import { AttributeForm } from "~/components/forms/form/attribute";
 import { Button } from "~/components/ui/button";
 import {
@@ -30,6 +30,7 @@ type SheetPageProps = {
   description: string;
   updateButton?: string;
   hasForm?: boolean;
+  renderFooterButtons?: () => ReactNode;
 };
 
 export default function SheetPage({
@@ -39,6 +40,7 @@ export default function SheetPage({
   updateButton,
   children,
   hasForm,
+  renderFooterButtons,
 }: PropsWithChildren<SheetPageProps>) {
   const navigate = useNavigate();
 
@@ -49,6 +51,7 @@ export default function SheetPage({
           {children}
         </div>
         <SheetFooter className="absolute bottom-0 w-full px-10 py-4 justify-end flex flex-row gap-2 bg-background">
+          {renderFooterButtons && renderFooterButtons()}
           {backLink && hasForm && (
             <Button asChild variant="link">
               <Link to={backLink}>Cancel</Link>

@@ -4,6 +4,7 @@ import { Field } from "../field";
 import { RichTextField } from "../rich-text";
 import { CategoryOption, MultiSelectField } from "../multi-select";
 import { ImageUpload } from "../image-upload";
+import StringArrayInput from "../list-field";
 
 type DrillForm = {
   drill?: any;
@@ -11,6 +12,7 @@ type DrillForm = {
 };
 
 export const DrillForm: React.FC<DrillForm> = ({ drill, categories }) => {
+  console.log({ drill });
   return (
     <div className="flex gap-4 flex-col">
       {drill && <input type="hidden" name="playerId" value={drill.id} />}
@@ -21,20 +23,6 @@ export const DrillForm: React.FC<DrillForm> = ({ drill, categories }) => {
               name="name"
               placeholder="Enter Title"
               defaultValue={drill?.name}
-              className="bg-card border-gray-600 text-white placeholder:text-gray-400"
-            />
-          </Field>
-          <RichTextField
-            name="description"
-            label="Description"
-            placeholder="Enter Description"
-            defaultValue={drill?.description}
-          />
-          <Field name="intensity" label="Intensity">
-            <Input
-              name="intensity"
-              placeholder="Enter Intensity"
-              defaultValue={drill?.intensity}
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />
           </Field>
@@ -63,10 +51,34 @@ export const DrillForm: React.FC<DrillForm> = ({ drill, categories }) => {
               />
             </Field>
           </div>
+
+          <div className="flex flex-row gap-4">
+            <RichTextField
+              name="description"
+              label="Description"
+              placeholder="Enter Description"
+              defaultValue={drill?.description}
+            />
+            <StringArrayInput
+              name="coachingPoints"
+              label="Coaching points"
+              defaultValue={drill?.coachingPoints || []}
+            />
+          </div>
+          <Field name="intensity" label="Intensity">
+            <Input
+              name="intensity"
+              placeholder="Enter Intensity"
+              defaultValue={drill?.intensity}
+              className="bg-card border-gray-600 text-white placeholder:text-gray-400"
+            />
+          </Field>
+
           <MultiSelectField
             name="categories"
             label="Categories"
             placeholder="Enter Description"
+            defaultValue={drill?.categories?.map((c) => c.id)}
             canCreate
             options={categories?.map((c) => ({ id: c.id, label: c.name }))}
           />

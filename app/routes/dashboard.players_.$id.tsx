@@ -1,3 +1,4 @@
+import { DialogTrigger } from "@radix-ui/react-dialog";
 import type {
   ActionFunction,
   LoaderFunction,
@@ -12,7 +13,9 @@ import { ProgressCard } from "~/components/progress/progress-card";
 import { ReportCard } from "~/components/reports/report-card";
 import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button copy";
+import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
+import { Sheet } from "~/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
@@ -108,15 +111,30 @@ export default function PlayerPage() {
         <div className="w-full flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-4 ">
           <div className="flex flex-col lg:flex-row gap-4 w-full lg:w-1/2 items-center">
             <div className="relative w-[130px] h-[130px] flex items-center justify-center overflow-hidden rounded-full object-cover bg-white">
-              {player?.photoUrl ? (
-                <img
-                  className="w-full object-fit"
-                  alt={player.name}
-                  src={player.photoUrl}
-                />
-              ) : (
-                <User className="text-background" />
-              )}
+              <Dialog>
+                <DialogTrigger>
+                  {player?.photoUrl ? (
+                    <img
+                      className="w-full object-fit"
+                      alt={player.name}
+                      src={player.photoUrl}
+                    />
+                  ) : (
+                    <User className="text-background" />
+                  )}
+                </DialogTrigger>
+                <DialogContent>
+                  {player?.photoUrl ? (
+                    <img
+                      className="w-full object-fit"
+                      alt={player.name}
+                      src={player.photoUrl}
+                    />
+                  ) : (
+                    <User className="text-background" />
+                  )}
+                </DialogContent>
+              </Dialog>
             </div>
             <div className="flex gap-1 flex-col">
               <h1 className="text-4xl font-bold text-white flex flex-row gap-2 justify-center items-center">

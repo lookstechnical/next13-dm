@@ -38,14 +38,18 @@ export const action: ActionFunction = async ({ request }) => {
   const drillService = new DrillsService(supabaseClient);
 
   const categories = formData.get("categories") as string;
+  const coachingPoints = formData.get("coachingPoints") as string;
 
   const data: Omit<Drill, "id"> = {
     name: formData.get("name") as string,
     description: formData.get("description") as string,
     intensity: formData.get("intensity") as string,
+    coachingPoints: coachingPoints.split(","),
     videoUrl: formData.get("videoUrl") as string,
     imageUrl: formData.get("imageUrl") as string,
   };
+
+  console.log({ data });
 
   const drill = await drillService.addDrill(data);
 
