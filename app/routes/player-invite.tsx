@@ -31,13 +31,14 @@ export const loader: LoaderFunction = async ({ request }) => {
 };
 
 export const action: ActionFunction = async ({ request }) => {
+  let formData = await request.formData();
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token");
+
   try {
     const { supabaseClient } = await getSupabaseServerClient(request);
-    let formData = await request.formData();
     const avatar = formData.get("avatar");
 
-    const url = new URL(request.url);
-    const token = url.searchParams.get("token");
     if (!token) return redirect("/");
     const inviteService = new InvitationService(supabaseClient);
 
@@ -70,7 +71,7 @@ export const action: ActionFunction = async ({ request }) => {
       from: "Error - beCoachable <noreply@be-coachable.com>",
       to: ["info@lookstechnical.co.uk"],
       subject: "And error on Player invite",
-      html: `<div>${e.message}</div>`,
+      html: `<div>${e.message} for ${token}</div>`,
     });
 
     throw e;
