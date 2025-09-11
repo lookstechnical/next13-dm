@@ -137,8 +137,8 @@ export default function PlayerPage() {
             items={filteredPlayers}
             name="No Players currently for this event"
           >
-            {filteredPlayers.map((player: EventRegistration) => (
-              <PlayerCard player={player.players}>
+            {filteredPlayers.map((player: EventRegistration, index: number) => (
+              <PlayerCard player={player.players} key={`player-card-${index}`}>
                 <div className="flex flex-row w-full ">
                   <ActionProtection
                     allowedRoles={AllowedRoles.headOfDept}
@@ -167,7 +167,11 @@ export default function PlayerPage() {
                       </Button>
                     </Form>
                   </ActionProtection>
-                  <Button className="w-full border-muted" variant="outline">
+                  <Button
+                    asChild
+                    className="w-full border-muted"
+                    variant="outline"
+                  >
                     <Link
                       to={`/dashboard/events/${event.id}/report/${player.playerId}`}
                     >

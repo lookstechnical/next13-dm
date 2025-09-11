@@ -7,10 +7,12 @@ import {
   useSubmit,
 } from "@remix-run/react";
 import { UserPlus } from "lucide-react";
+import { ActionProtection } from "~/components/action-protection";
 import { DrillCard } from "~/components/drill/drill-card";
 import { DrillFilters } from "~/components/drill/filters";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
+import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
@@ -43,11 +45,11 @@ export const loader: LoaderFunction = async ({ request }) => {
   );
   const categories = await drillsService.getAllDrillCategories();
 
-  return { drills, categories, appliedFilters: { name, categoryFilter } };
+  return { drills, categories, appliedFilters: { name, categoryFilter }, user };
 };
 
 export default function DrillsLibrary() {
-  const { drills, categories, appliedFilters, groups } =
+  const { drills, categories, appliedFilters, groups, user } =
     useLoaderData<typeof loader>();
 
   const cardUrl = (id: string) => {
@@ -66,9 +68,12 @@ export default function DrillsLibrary() {
                 groups={groups}
                 categories={categories}
               />
-
-              <MoreActions>
-                {/* <DropdownMenuItem asChild>
+              <ActionProtection
+                allowedRoles={AllowedRoles.headOfDept}
+                user={user}
+              >
+                <MoreActions>
+                  {/* <DropdownMenuItem asChild>
                   <Button asChild variant={"outline"}>
                     <Link to="/dashboard/players/csv-import">
                       <DownloadIcon />
@@ -76,15 +81,16 @@ export default function DrillsLibrary() {
                     </Link>
                   </Button>
                 </DropdownMenuItem> */}
-                <DropdownMenuItem asChild>
-                  <Button asChild variant={"outline"}>
-                    <Link to="/dashboard/drills-library/create">
-                      <UserPlus />
-                      Add Drill/Skill
-                    </Link>
-                  </Button>
-                </DropdownMenuItem>
-              </MoreActions>
+                  <DropdownMenuItem asChild>
+                    <Button asChild variant={"outline"}>
+                      <Link to="/dashboard/drills-library/create">
+                        <UserPlus />
+                        Add Drill/Skill
+                      </Link>
+                    </Button>
+                  </DropdownMenuItem>
+                </MoreActions>
+              </ActionProtection>
             </div>
           )}
         />

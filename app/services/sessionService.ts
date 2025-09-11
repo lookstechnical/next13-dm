@@ -60,6 +60,18 @@ export class SessionService {
       }
     }
 
+    if (data?.drills?.video_url) {
+      const { data: videoData, error } = await this.client.storage
+        .from("drill-images")
+        .createSignedUrl(data?.drills?.video_url, 30);
+
+      data.drills = { ...data.drills, video_url: videoData?.signedUrl };
+
+      if (error) {
+        console.log({ error });
+      }
+    }
+
     return convertKeysToCamelCase(data);
   }
 

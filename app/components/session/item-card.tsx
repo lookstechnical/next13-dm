@@ -1,13 +1,17 @@
 import { Link } from "@remix-run/react";
-import { SessionItem } from "~/types";
+import { SessionItem, User } from "~/types";
 import { DeleteConfirm } from "../forms/delete-confirm";
+import { ActionProtection } from "../action-protection";
+import { AllowedRoles } from "../route-protections";
 
 export const SessionItemCard = ({
   sessionItem,
   to,
+  user,
 }: {
   sessionItem: SessionItem;
   to: string;
+  user: User;
 }) => {
   const renderContent = () => {
     return (
@@ -67,13 +71,15 @@ export const SessionItemCard = ({
         </Link>
       )}
       {!to && renderContent()}
-      <div className="w-fit">
-        <DeleteConfirm
-          name={sessionItem?.drills?.name}
-          id={sessionItem.id}
-          term="Remove"
-        />
-      </div>
+      <ActionProtection allowedRoles={AllowedRoles.headOfDept} user={user}>
+        <div className="w-fit">
+          <DeleteConfirm
+            name={sessionItem?.drills?.name}
+            id={sessionItem.id}
+            term="Remove"
+          />
+        </div>
+      </ActionProtection>
     </div>
   );
 };

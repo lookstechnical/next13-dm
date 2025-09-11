@@ -170,11 +170,11 @@ export default function PlayerPage() {
             </div>
           </div>
           <div>
-            <MoreActions>
-              <ActionProtection
-                allowedRoles={AllowedRoles.headOfDept}
-                user={user}
-              >
+            <ActionProtection
+              allowedRoles={AllowedRoles.headOfDept}
+              user={user}
+            >
+              <MoreActions>
                 <DropdownMenuItem asChild>
                   <Button
                     asChild
@@ -186,34 +186,34 @@ export default function PlayerPage() {
                     </Link>
                   </Button>
                 </DropdownMenuItem>
-              </ActionProtection>
 
-              {hasProgressTemplate && (
+                {hasProgressTemplate && (
+                  <DropdownMenuItem asChild>
+                    <Button
+                      asChild
+                      variant={"outline"}
+                      className="hover:ring-0 hover:outline-0"
+                    >
+                      <Link to={`/dashboard/players/${player.id}/nine-box`}>
+                        Progress Report
+                      </Link>
+                    </Button>
+                  </DropdownMenuItem>
+                )}
+
                 <DropdownMenuItem asChild>
-                  <Button
-                    asChild
-                    variant={"outline"}
-                    className="hover:ring-0 hover:outline-0"
+                  <Form
+                    method="delete"
+                    className="w-full h-full hover:bg-destructive p-0 "
                   >
-                    <Link to={`/dashboard/players/${player.id}/nine-box`}>
-                      Progress Report
-                    </Link>
-                  </Button>
+                    <input type="hidden" name="playerId" value={player.id} />
+                    <Button variant="destructive" className="w-full">
+                      <DeleteIcon /> Delete
+                    </Button>
+                  </Form>
                 </DropdownMenuItem>
-              )}
-
-              <DropdownMenuItem asChild>
-                <Form
-                  method="delete"
-                  className="w-full h-full hover:bg-destructive p-0 "
-                >
-                  <input type="hidden" name="playerId" value={player.id} />
-                  <Button variant="destructive" className="w-full">
-                    <DeleteIcon /> Delete
-                  </Button>
-                </Form>
-              </DropdownMenuItem>
-            </MoreActions>
+              </MoreActions>
+            </ActionProtection>
           </div>
         </div>
       </div>

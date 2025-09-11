@@ -3,10 +3,9 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Form, redirect, useActionData, useNavigate } from "@remix-run/react";
+import { Form, useActionData, useNavigate } from "@remix-run/react";
 import { useEffect } from "react";
 import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import supabase, { getSupabaseServerClient } from "~/lib/supabase";

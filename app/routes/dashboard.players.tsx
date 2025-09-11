@@ -8,11 +8,13 @@ import {
   useSubmit,
 } from "@remix-run/react";
 import { DownloadIcon, UserPlus } from "lucide-react";
+import { ActionProtection } from "~/components/action-protection";
 import { SelectField } from "~/components/forms/select";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
 import { PlayerFilters } from "~/components/players/filters";
 import { PlayerCard } from "~/components/players/player-card";
+import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
@@ -104,8 +106,12 @@ export default function Players() {
                   ]}
                 />
               </Form>
-              <MoreActions>
-                {/* <DropdownMenuItem asChild>
+              <ActionProtection
+                allowedRoles={AllowedRoles.headOfDept}
+                user={user}
+              >
+                <MoreActions>
+                  {/* <DropdownMenuItem asChild>
                   <Button asChild variant={"outline"}>
                     <Link to="/dashboard/players/csv-import">
                       <DownloadIcon />
@@ -113,15 +119,16 @@ export default function Players() {
                     </Link>
                   </Button>
                 </DropdownMenuItem> */}
-                <DropdownMenuItem asChild>
-                  <Button asChild variant={"outline"}>
-                    <Link to="/dashboard/players/create">
-                      <UserPlus />
-                      Add Player
-                    </Link>
-                  </Button>
-                </DropdownMenuItem>
-              </MoreActions>
+                  <DropdownMenuItem asChild>
+                    <Button asChild variant={"outline"}>
+                      <Link to="/dashboard/players/create">
+                        <UserPlus />
+                        Add Player
+                      </Link>
+                    </Button>
+                  </DropdownMenuItem>
+                </MoreActions>
+              </ActionProtection>
             </div>
           )}
         />

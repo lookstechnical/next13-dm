@@ -4,6 +4,8 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
+import { ActionProtection } from "~/components/action-protection";
+import { AllowedRoles } from "~/components/route-protections";
 import { SessionDownloadButton } from "~/components/session/download-button";
 import { SessionItemCard } from "~/components/session/item-card";
 import { Button } from "~/components/ui/button";
@@ -35,7 +37,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     params.id as string
   );
 
-  return { event, sessionItems };
+  return { event, sessionItems, user };
 };
 
 export const action: ActionFunction = async ({ request, params }) => {
@@ -51,7 +53,7 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function SessionPlan() {
-  const { event, sessionItems } = useLoaderData<typeof loader>();
+  const { event, sessionItems, user } = useLoaderData<typeof loader>();
 
   return (
     <>
@@ -61,13 +63,18 @@ export default function SessionPlan() {
             <div></div>
             <div className="flex flex-row">
               <SessionDownloadButton sessionItems={sessionItems} />
-              <Button variant="outline" asChild className="text-white">
-                <Link
-                  to={`/dashboard/events/${event.id}/session-plan/add-library-item`}
-                >
-                  Add Session Item
-                </Link>
-              </Button>
+              <ActionProtection
+                allowedRoles={AllowedRoles.headOfDept}
+                user={user}
+              >
+                <Button variant="outline" asChild className="text-white">
+                  <Link
+                    to={`/dashboard/events/${event.id}/session-plan/add-library-item`}
+                  >
+                    Add Session Item
+                  </Link>
+                </Button>
+              </ActionProtection>
             </div>
           </div>
         </div>
@@ -82,6 +89,7 @@ export default function SessionPlan() {
                 key={item.id}
                 sessionItem={item}
                 to={`/dashboard/events/${event.id}/session-plan/${item.id}`}
+                user={user}
               />
             ))}
           </CardGrid>
