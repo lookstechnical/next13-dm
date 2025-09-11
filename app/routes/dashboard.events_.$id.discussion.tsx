@@ -41,7 +41,8 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
   const event = await eventService.getEventById(params.id as string);
   const reflections = await sessionService.getReflectionsById(
-    params.id as string
+    params.id as string,
+    user
   );
 
   return { event, reflections };

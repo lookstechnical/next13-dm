@@ -44,6 +44,21 @@ export const SessionItemCard = ({
     );
   };
 
+  if (sessionItem.type === "section") {
+    return (
+      <div className="flex flex-col lg:flex-row gap-4 justify-between py-4 text-foreground">
+        <h3 className="text-muted text-xl">{sessionItem.description} </h3>
+        <div className="w-fit">
+          <DeleteConfirm
+            name={sessionItem?.drills?.name}
+            id={sessionItem.id}
+            term="Remove"
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-row bg-wkbackground w-full text-foreground p-4">
       {to && (

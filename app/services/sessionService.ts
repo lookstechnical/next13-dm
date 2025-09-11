@@ -1,4 +1,4 @@
-import { SessionItem } from "~/types";
+import { SessionItem, User } from "~/types";
 import { convertKeysToCamelCase } from "../utils/helpers";
 
 export class SessionService {
@@ -104,11 +104,19 @@ export class SessionService {
     return convertKeysToCamelCase(data);
   }
 
-  async getReflectionsById(eventId: string) {
-    const { data, error } = await this.client
+  async getReflectionsById(eventId: string, user?: User) {
+    const query = this.client
       .from("session_reflection")
       .select("*, users(name), comments(*, users(name))")
       .eq("event_id", eventId);
+
+    if (user) {
+      if (user.role !== "HEAD_OF_DEPARTMENT" && user.role !== "ADMIN") {
+        query.eq("coach_id", user.id);
+      }
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.log(error);

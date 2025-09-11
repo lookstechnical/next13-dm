@@ -2,7 +2,7 @@ import { Link } from "@remix-run/react";
 import { Card } from "../ui/card";
 import { Drill } from "~/types";
 import { cn } from "~/lib/utils";
-import { User, Volleyball } from "lucide-react";
+import { ImageIcon, User, Video, Volleyball } from "lucide-react";
 import { PropsWithChildren } from "react";
 import { Badge } from "../ui/badge";
 
@@ -26,20 +26,19 @@ export const DrillCard: React.FC<DrillCard> = ({
     return (
       <div className="p-6">
         <div className="flex items-center">
-          {/* {drill.imageUrl ? (
-            <img
-              width={16}
-              height={16}
-              alt={drill.name}
-              className="w-20 h-16 object-cover mr-4"
-              src={drill.imageUrl}
-            />
-          ) : ( */}
-          <div className="w-20 h-16  bg-wkbackground flex items-center justify-center mr-4">
-            <Volleyball size={24} className="text-gray-400" />
-          </div>
-          {/* )} */}
-
+          {drill.videoUrl ? (
+            <div className="w-20 h-16  bg-wkbackground flex items-center justify-center mr-4">
+              <Video size={24} className="text-gray-400" />
+            </div>
+          ) : drill.imageUrl ? (
+            <div className="w-20 h-16  bg-wkbackground flex items-center justify-center mr-4">
+              <ImageIcon size={24} className="text-gray-400" />
+            </div>
+          ) : (
+            <div className="w-20 h-16  bg-wkbackground flex items-center justify-center mr-4">
+              <Volleyball size={24} className="text-gray-400" />
+            </div>
+          )}
           <div className="flex-grow">
             <h3 className="text-lg font-semibold text-white">{drill?.name}</h3>
             <div className="text-sm text-gray-400">{drill?.intensity}</div>
