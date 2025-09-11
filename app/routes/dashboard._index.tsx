@@ -12,8 +12,8 @@ import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "beCoachable" },
+    { name: "description", content: "Welcome to beCoachable" },
   ];
 };
 
