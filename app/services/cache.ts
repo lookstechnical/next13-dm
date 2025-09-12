@@ -6,7 +6,7 @@
 export interface CacheConfig {
   ttl?: number; // Time to live in milliseconds
   maxSize?: number; // Maximum cache entries
-  storage?: 'memory' | 'localStorage' | 'both';
+  storage?: 'memory' | 'localStorage' | 'netlify' | 'both';
 }
 
 export interface CacheEntry<T> {
@@ -27,8 +27,111 @@ class CacheManager {
   private defaultConfig: Required<CacheConfig> = {
     ttl: 5 * 60 * 1000, // 5 minutes default
     maxSize: 1000,
-    storage: 'both'
+    storage: this.getDefaultStorage()
   };
+
+  /**
+   * Determine the best default storage option based on environment
+   */
+  private getDefaultStorage(): 'memory' | 'localStorage' | 'netlify' | 'both' {
+    // Check if running in Netlify environment
+    if (this.isNetlifyEnvironment()) {
+      return 'netlify';
+    }
+    // Fall back to previous default
+    return 'both';
+  }
+
+  /**
+   * Check if running in Netlify environment
+   */
+  private isNetlifyEnvironment(): boolean {
+    try {
+      // Check for Netlify environment variables or context
+      return typeof process !== 'undefined' && 
+             process.env && 
+             (process.env.NETLIFY === 'true' || 
+              process.env.NETLIFY_DEV === 'true' ||
+              typeof window !== 'undefined' && 
+              window.location?.hostname?.includes('netlify'));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if localStorage is available (browser environment)
+   */
+  private isLocalStorageAvailable(): boolean {
+    try {
+      return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get data from Netlify cache (using fetch with cache headers)
+   */
+  private async getFromNetlifyCache<T>(key: string): Promise<T | null> {
+    try {
+      if (typeof fetch === 'undefined') return null;
+      
+      const response = await fetch(`/.netlify/functions/cache?key=${encodeURIComponent(key)}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'max-age=300, stale-while-revalidate=60'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.value || null;
+      }
+    } catch (error) {
+      console.warn('Netlify cache read error:', error);
+    }
+    return null;
+  }
+
+  /**
+   * Set data in Netlify cache (using edge functions or KV storage)
+   */
+  private async setToNetlifyCache<T>(key: string, data: T, ttl: number): Promise<void> {
+    try {
+      if (typeof fetch === 'undefined') return;
+      
+      await fetch('/.netlify/functions/cache', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': `max-age=${Math.floor(ttl / 1000)}`
+        },
+        body: JSON.stringify({
+          key,
+          value: data,
+          ttl
+        })
+      });
+    } catch (error) {
+      console.warn('Netlify cache write error:', error);
+    }
+  }
+
+  /**
+   * Delete data from Netlify cache
+   */
+  private async deleteFromNetlifyCache(key: string): Promise<void> {
+    try {
+      if (typeof fetch === 'undefined') return;
+      
+      await fetch(`/.netlify/functions/cache?key=${encodeURIComponent(key)}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.warn('Netlify cache delete error:', error);
+    }
+  }
 
   /**
    * Generate a cache key from query parameters
@@ -48,8 +151,24 @@ class CacheManager {
       return memoryEntry.data;
     }
 
-    // Check localStorage if enabled
-    if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+    // Check Netlify cache if enabled
+    if (this.defaultConfig.storage === 'netlify' || this.defaultConfig.storage === 'both') {
+      const netlifyData = await this.getFromNetlifyCache<T>(key);
+      if (netlifyData !== null) {
+        // Store in memory cache for faster subsequent access
+        const entry: CacheEntry<T> = {
+          data: netlifyData,
+          timestamp: Date.now(),
+          ttl: this.defaultConfig.ttl,
+          key
+        };
+        this.memoryCache.set(key, entry);
+        return netlifyData;
+      }
+    }
+
+    // Check localStorage if enabled and available (browser only)
+    if ((this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') && this.isLocalStorageAvailable()) {
       try {
         const stored = localStorage.getItem(`cache:${key}`);
         if (stored) {
@@ -75,6 +194,7 @@ class CacheManager {
    */
   async set<T>(key: string, data: T, config: CacheConfig = {}): Promise<void> {
     const ttl = config.ttl ?? this.defaultConfig.ttl;
+    const storage = config.storage ?? this.defaultConfig.storage;
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
@@ -85,8 +205,13 @@ class CacheManager {
     // Store in memory
     this.memoryCache.set(key, entry);
 
-    // Store in localStorage if enabled
-    if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+    // Store in Netlify cache if enabled
+    if (storage === 'netlify' || storage === 'both') {
+      await this.setToNetlifyCache(key, data, ttl);
+    }
+
+    // Store in localStorage if enabled and available (browser only)
+    if ((storage === 'both' || storage === 'localStorage') && this.isLocalStorageAvailable()) {
       try {
         localStorage.setItem(`cache:${key}`, JSON.stringify(entry));
       } catch (error) {
@@ -120,9 +245,16 @@ class CacheManager {
       }
     }
 
-    toDelete.forEach(key => {
+    toDelete.forEach(async (key) => {
       this.memoryCache.delete(key);
-      if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+      
+      // Clean up from Netlify cache
+      if (this.defaultConfig.storage === 'netlify' || this.defaultConfig.storage === 'both') {
+        await this.deleteFromNetlifyCache(key);
+      }
+      
+      // Clean up from localStorage
+      if ((this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') && this.isLocalStorageAvailable()) {
         try {
           localStorage.removeItem(`cache:${key}`);
         } catch (error) {
@@ -147,7 +279,7 @@ class CacheManager {
       }
 
       // Check localStorage
-      if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+      if ((this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') && this.isLocalStorageAvailable()) {
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -164,9 +296,16 @@ class CacheManager {
       }
 
       // Delete identified keys
-      keysToDelete.forEach(key => {
+      keysToDelete.forEach(async (key) => {
         this.memoryCache.delete(key);
-        if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+        
+        // Delete from Netlify cache
+        if (this.defaultConfig.storage === 'netlify' || this.defaultConfig.storage === 'both') {
+          await this.deleteFromNetlifyCache(key);
+        }
+        
+        // Delete from localStorage
+        if ((this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') && this.isLocalStorageAvailable()) {
           try {
             localStorage.removeItem(`cache:${key}`);
           } catch (error) {
@@ -200,10 +339,25 @@ class CacheManager {
   /**
    * Clear all cache
    */
-  clear(): void {
+  async clear(): Promise<void> {
     this.memoryCache.clear();
     
-    if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+    // Clear Netlify cache if enabled
+    if (this.defaultConfig.storage === 'netlify' || this.defaultConfig.storage === 'both') {
+      try {
+        await fetch('/.netlify/functions/cache', {
+          method: 'DELETE',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+      } catch (error) {
+        console.warn('Netlify cache clear error:', error);
+      }
+    }
+    
+    // Clear localStorage if enabled
+    if ((this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') && this.isLocalStorageAvailable()) {
       try {
         const keysToDelete: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {

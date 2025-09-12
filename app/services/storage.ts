@@ -11,7 +11,19 @@ export interface StorageService {
 }
 
 class LocalStorageService implements StorageService {
+  private isLocalStorageAvailable(): boolean {
+    try {
+      return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+    } catch {
+      return false;
+    }
+  }
+
   get<T>(key: string): T | null {
+    if (!this.isLocalStorageAvailable()) {
+      return null;
+    }
+    
     try {
       const item = localStorage.getItem(key);
       return item ? JSON.parse(item) : null;
@@ -22,6 +34,10 @@ class LocalStorageService implements StorageService {
   }
 
   set<T>(key: string, data: T): void {
+    if (!this.isLocalStorageAvailable()) {
+      return;
+    }
+    
     try {
       localStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
@@ -30,6 +46,10 @@ class LocalStorageService implements StorageService {
   }
 
   remove(key: string): void {
+    if (!this.isLocalStorageAvailable()) {
+      return;
+    }
+    
     try {
       localStorage.removeItem(key);
     } catch (error) {
@@ -38,6 +58,10 @@ class LocalStorageService implements StorageService {
   }
 
   clear(): void {
+    if (!this.isLocalStorageAvailable()) {
+      return;
+    }
+    
     try {
       localStorage.clear();
     } catch (error) {
