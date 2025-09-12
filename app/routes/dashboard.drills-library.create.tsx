@@ -9,20 +9,19 @@ import SheetPage from "~/components/sheet-page";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { DrillsService } from "~/services/drillsService";
 import { Drill } from "~/types";
+import { withAuth } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  const { supabaseClient } = await getSupabaseServerClient(request);
-
+export const loader: LoaderFunction = withAuth(async ({ supabaseClient }) => {
   const drillService = new DrillsService(supabaseClient);
   const categories = await drillService.getAllDrillCategories();
 
   return { categories };
-};
+});
 
 export const action: ActionFunction = async ({ request }) => {
   const { supabaseClient } = await getSupabaseServerClient(request);

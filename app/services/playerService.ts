@@ -3,6 +3,8 @@ import {
   convertKeysToCamelCase,
   getDateRangeForAgeGroup,
 } from "../utils/helpers";
+import { withCache, cacheManager } from './cache';
+import { CacheInvalidationService, CacheTTL } from './cacheInvalidation';
 
 type AvScore = { score: string };
 
@@ -13,69 +15,85 @@ export class PlayerService {
   }
 
   async getAllPlayers(): Promise<Player[]> {
-    const { data, error } = await this.client
-      .from("players")
-      .select(
-        `
-        id,
-        team_id,
-        name,
-        position,
-        secondary_position,
-        date_of_birth,
-        nationality,
-        club,
-        school,
-        height,
-        foot,
-        photo_url,
-        email,
-        scout_id,
-        created_at,
-        updated_at,
-        mobile
-      `
-      )
-      .order("name");
+    const cacheKey = cacheManager.generateKey('players', 'getAllPlayers');
+    
+    return withCache(
+      cacheKey,
+      async () => {
+        const { data, error } = await this.client
+          .from("players")
+          .select(
+            `
+            id,
+            team_id,
+            name,
+            position,
+            secondary_position,
+            date_of_birth,
+            nationality,
+            club,
+            school,
+            height,
+            foot,
+            photo_url,
+            email,
+            scout_id,
+            created_at,
+            updated_at,
+            mobile
+          `
+          )
+          .order("name");
 
-    if (error) throw error;
-    return (data || []).map(this.transformFromDb);
+        if (error) throw error;
+        return (data || []).map(this.transformFromDb);
+      },
+      { ttl: CacheTTL.PLAYERS }
+    );
   }
 
   async getPlayerById(id: string): Promise<Player | null> {
-    const { data, error } = await this.client
-      .from("players")
-      .select(
-        `
-        id,
-        mobile,
-        team_id,
-        name,
-        position,
-        secondary_position,
-        date_of_birth,
-        nationality,
-        club,
-        school,
-        height,
-        foot,
-        photo_url,
-        email,
-        scout_id,
-        created_at,
-        updated_at,
-        shirt,
-        shorts
-      `
-      )
-      .eq("id", id)
-      .single();
+    const cacheKey = cacheManager.generateKey('players', 'getPlayerById', { id });
+    
+    return withCache(
+      cacheKey,
+      async () => {
+        const { data, error } = await this.client
+          .from("players")
+          .select(
+            `
+            id,
+            mobile,
+            team_id,
+            name,
+            position,
+            secondary_position,
+            date_of_birth,
+            nationality,
+            club,
+            school,
+            height,
+            foot,
+            photo_url,
+            email,
+            scout_id,
+            created_at,
+            updated_at,
+            shirt,
+            shorts
+          `
+          )
+          .eq("id", id)
+          .single();
 
-    if (error) {
-      if (error.code === "PGRST116") return null; // Not found
-      throw error;
-    }
-    return convertKeysToCamelCase(data);
+        if (error) {
+          if (error.code === "PGRST116") return null; // Not found
+          throw error;
+        }
+        return convertKeysToCamelCase(data);
+      },
+      { ttl: CacheTTL.PLAYERS }
+    );
   }
 
   async getPlayerByEmail(email: string): Promise<Player | null> {
@@ -381,6 +399,10 @@ export class PlayerService {
       .single();
 
     if (error) throw error;
+    
+    // Invalidate related cache
+    CacheInvalidationService.invalidatePlayerCache(playerData.teamId);
+    
     return data;
   }
 
@@ -439,7 +461,13 @@ export class PlayerService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    return this.transformFromDb(data);
+    
+    const result = this.transformFromDb(data);
+    
+    // Invalidate related cache
+    CacheInvalidationService.invalidatePlayerCache(result.teamId, id);
+    
+    return result;
   }
 
   async uploadPlayerProfilePhoto(playerId: string, avatar: any) {
@@ -479,9 +507,18 @@ export class PlayerService {
   }
 
   async deletePlayer(id: string): Promise<boolean> {
+    // Get player data before deletion for cache invalidation
+    const player = await this.getPlayerById(id);
+    
     const { error } = await this.client.from("players").delete().eq("id", id);
 
     if (error) throw error;
+    
+    // Invalidate related cache
+    if (player) {
+      CacheInvalidationService.invalidatePlayerCache(player.teamId, id);
+    }
+    
     return true;
   }
 
@@ -498,13 +535,14 @@ export class PlayerService {
       club: dbRow.club,
       school: dbRow.school,
       ageGroup: "", // Will be calculated by the UI
-      height: dbRow.height,
-      foot: dbRow.foot,
       photoUrl: dbRow.photo_url,
       email: dbRow.email,
+      mobile: dbRow.mobile,
       scoutId: dbRow.scout_id,
       createdAt: dbRow.created_at,
       updatedAt: dbRow.updated_at,
+      shirt: dbRow.shirt,
+      shorts: dbRow.shorts,
     };
   }
 }

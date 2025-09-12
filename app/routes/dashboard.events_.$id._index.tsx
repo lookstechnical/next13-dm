@@ -19,65 +19,61 @@ import { cn } from "~/lib/utils";
 import { EventService } from "~/services/eventService";
 import { GroupService } from "~/services/groupService";
 import { EventRegistration } from "~/types";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const eventService = new EventService(supabaseClient);
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+    const event = await eventService.getEventById(params.id as string);
+    const players = event
+      ? await eventService.getEventRegistrations(event.id as string)
+      : [];
 
-  if (!user) {
-    return redirect("/");
+    const groupService = new GroupService(supabaseClient);
+    const groups = (await groupService.getGroupsByTeam(user.team.id)) || [];
+    return { event, players, groups, user };
   }
+);
 
-  const event = await eventService.getEventById(params.id as string);
-  const players = event
-    ? await eventService.getEventRegistrations(event.id as string)
-    : [];
+export const action: ActionFunction = withAuthAction(
+  async ({ request, params, supabaseClient }) => {
+    const eventService = new EventService(supabaseClient);
+    const formData = await request.formData();
 
-  const groupService = new GroupService(supabaseClient);
-  const groups = (await groupService.getGroupsByTeam(user.team.id)) || [];
-  return { event, players, groups, user };
-};
+    if (request.method === "DELETE") {
+      if (params.id) eventService.deleteEvent(params.id);
+      return redirect("/dashboard/events");
+    } else {
+      const playerId = formData.get("playerId");
+      const eventId = formData.get("eventId");
 
-export const action: ActionFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
-  const formData = await request.formData();
+      const event =
+        playerId && eventId
+          ? await eventService.getPlayerEventRegistrationById(
+              playerId as string,
+              eventId as string
+            )
+          : undefined;
 
-  if (request.method === "DELETE") {
-    if (params.id) eventService.deleteEvent(params.id);
-    return redirect("/dashboard/events");
-  } else {
-    const playerId = formData.get("playerId");
-    const eventId = formData.get("eventId");
-
-    const event =
-      playerId && eventId
-        ? await eventService.getPlayerEventRegistrationById(
-            playerId as string,
-            eventId as string
-          )
-        : undefined;
-
-    if (event) {
-      const status = event.status === "confirmed" ? "attended" : "confirmed";
-      await eventService.updateAttendanceById(
-        status,
-        playerId as string,
-        eventId as string
-      );
+      if (event) {
+        const status = event.status === "confirmed" ? "attended" : "confirmed";
+        await eventService.updateAttendanceById(
+          status,
+          playerId as string,
+          eventId as string
+        );
+      }
     }
-  }
 
-  return {};
-};
+    return {};
+  }
+);
 
 export default function PlayerPage() {
   const { event, players, groups, user } = useLoaderData<typeof loader>();

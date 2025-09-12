@@ -1,5 +1,7 @@
 import { convertKeysToCamelCase } from "~/utils/helpers";
 import { Team, TeamMembership, User } from "../types";
+import { withCache, cacheManager } from './cache';
+import { CacheInvalidationService, CacheTTL } from './cacheInvalidation';
 
 export class TeamService {
   client;
@@ -8,51 +10,75 @@ export class TeamService {
   }
 
   async getAllTeams(): Promise<Team[]> {
-    const { data, error } = await this.client
-      .from("teams")
-      .select("*")
-      .order("name");
+    const cacheKey = cacheManager.generateKey('teams', 'getAllTeams');
+    
+    return withCache(
+      cacheKey,
+      async () => {
+        const { data, error } = await this.client
+          .from("teams")
+          .select("*")
+          .order("name");
 
-    if (error) throw error;
-    return convertKeysToCamelCase(data) || [];
+        if (error) throw error;
+        return convertKeysToCamelCase(data) || [];
+      },
+      { ttl: CacheTTL.TEAMS }
+    );
   }
 
   async getTeamById(id: string): Promise<Team | null> {
-    const { data, error } = await this.client
-      .from("teams")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const cacheKey = cacheManager.generateKey('teams', 'getTeamById', { id });
+    
+    return withCache(
+      cacheKey,
+      async () => {
+        const { data, error } = await this.client
+          .from("teams")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-    if (error) {
-      if (error.code === "PGRST116") return null; // Not found
-      throw error;
-    }
-    return data;
+        if (error) {
+          if (error.code === "PGRST116") return null; // Not found
+          throw error;
+        }
+        return data;
+      },
+      { ttl: CacheTTL.TEAMS }
+    );
   }
 
   async getUserTeams(user: User): Promise<Team[]> {
-    // Get user's team memberships first
-    const { data: memberships, error: membershipsError } = await this.client
-      .from("team_memberships")
-      .select("team_id")
-      .eq("user_id", user.id);
+    const cacheKey = cacheManager.generateKey('teams', 'getUserTeams', { userId: user.id });
+    
+    return withCache(
+      cacheKey,
+      async () => {
+        // Get user's team memberships first
+        const { data: memberships, error: membershipsError } = await this.client
+          .from("team_memberships")
+          .select("team_id")
+          .eq("user_id", user.id);
 
-    if (membershipsError) throw membershipsError;
+        if (membershipsError) throw membershipsError;
 
-    if (!memberships || memberships.length === 0) {
-      return [];
-    }
+        if (!memberships || memberships.length === 0) {
+          return [];
+        }
 
-    // Get team details separately
-    const teamIds = memberships.map((m) => m.team_id);
-    const { data: teams, error: teamsError } = await this.client
-      .from("teams")
-      .select("*")
-      .in("id", teamIds);
+        // Get team details separately
+        const teamIds = memberships.map((m) => m.team_id);
+        const { data: teams, error: teamsError } = await this.client
+          .from("teams")
+          .select("*")
+          .in("id", teamIds);
 
-    if (teamsError) throw teamsError;
-    return convertKeysToCamelCase(teams) || [];
+        if (teamsError) throw teamsError;
+        return convertKeysToCamelCase(teams) || [];
+      },
+      { ttl: CacheTTL.TEAMS }
+    );
   }
 
   getUserRoleInTeam(
@@ -81,6 +107,10 @@ export class TeamService {
       .single();
 
     if (error) throw error;
+    
+    // Invalidate related cache
+    CacheInvalidationService.invalidateTeamCache();
+    
     return data;
   }
 
@@ -96,6 +126,10 @@ export class TeamService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
+    
+    // Invalidate related cache
+    CacheInvalidationService.invalidateTeamCache(id);
+    
     return data;
   }
 
@@ -103,6 +137,10 @@ export class TeamService {
     const { error } = await this.client.from("teams").delete().eq("id", id);
 
     if (error) throw error;
+    
+    // Invalidate related cache
+    CacheInvalidationService.invalidateTeamRelatedCache(id);
+    
     return true;
   }
 

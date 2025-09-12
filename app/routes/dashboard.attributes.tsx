@@ -1,43 +1,70 @@
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
+import type { MetaFunction } from "@remix-run/node";
 import {
   Link,
   NavLink,
   Outlet,
-  redirect,
   useLoaderData,
+  useRouteError,
 } from "@remix-run/react";
 import { UserPlus } from "lucide-react";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
+import { AllowedRoles } from "~/components/route-protections";
 import { DataTable } from "~/components/table/data-table";
 import { Button } from "~/components/ui/button";
 
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { AttributesService } from "~/services/attributesService";
 
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  // const;
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
-  }
-  const attributeService = new AttributesService(supabaseClient);
-  const attributes = await attributeService.getAllAttributes();
+export const loader = withAuth(
+  AllowedRoles.headOfDept,
+  async ({ user, supabaseClient }) => {
+    const attributeService = new AttributesService(supabaseClient);
+    const attributes = await attributeService.getAllAttributes();
 
-  return { attributes, user };
-};
+    return { attributes, user };
+  }
+);
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  if (error?.status) {
+    return (
+      <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
+        <div className="w-full py-6 flex flex-col w-[50rem] items-center">
+          <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
+
+          <h1 className="text-xl">
+            You do not have permissions to access this page please contact your
+            admin
+          </h1>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
+      <div className="w-full py-6 flex flex-col w-[50rem] items-center">
+        <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
+
+        <h1 className="text-4xl">There Was an error please try again </h1>
+        <p className="text-muted">
+          if the problem persists and your on mobile please try on a laptop or
+          desktop pc
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function Attributes() {
-  const { attributes, user } = useLoaderData<typeof loader>();
+  const { attributes } = useLoaderData<typeof loader>();
 
   return (
     <div className="flex flex-column space-y-10 container px-4 mx-auto py-10 text-foreground">

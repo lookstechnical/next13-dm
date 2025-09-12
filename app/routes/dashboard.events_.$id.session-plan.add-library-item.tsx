@@ -6,51 +6,46 @@ import type {
 import { redirect, useLoaderData } from "@remix-run/react";
 import { LibraryItemForm } from "~/components/forms/form/lirary-item";
 import SheetPage from "~/components/sheet-page";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { SessionService } from "~/services/sessionService";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const eventService = new EventService(supabaseClient);
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+    const event = params.id
+      ? await eventService.getEventById(params.id)
+      : undefined;
 
-  if (!user) {
-    return redirect("/");
+    return { event, user };
   }
+);
 
-  const event = params.id
-    ? await eventService.getEventById(params.id)
-    : undefined;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, params, supabaseClient }) => {
+    const sessionService = new SessionService(supabaseClient);
 
-  return { event, user };
-};
+    const formData = await request.formData();
 
-export const action: ActionFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const sessionService = new SessionService(supabaseClient);
+    const data = {
+      description: formData.get("description") as string,
+      assigned_to: formData.get("assignedTo") as string,
+      duration: formData.get("duration") as string,
+      drill_id: formData.get("drillId") as string,
+      event_id: params.id,
+    };
 
-  const formData = await request.formData();
+    await sessionService.addSessionItem(data);
 
-  const data = {
-    description: formData.get("description") as string,
-    assigned_to: formData.get("assignedTo") as string,
-    duration: formData.get("duration") as string,
-    drill_id: formData.get("drillId") as string,
-    event_id: params.id,
-  };
-
-  await sessionService.addSessionItem(data);
-
-  return redirect(`/dashboard/events/${params.id}/session-plan`);
-};
+    return redirect(`/dashboard/events/${params.id}/session-plan`);
+  }
+);
 
 export default function SessionPlan() {
   const { event, user } = useLoaderData<typeof loader>();

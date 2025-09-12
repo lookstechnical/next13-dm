@@ -7,60 +7,54 @@ import { redirect, useLoaderData } from "@remix-run/react";
 import { PlayerForm } from "~/components/forms/player";
 import { AllowedRoles, RouteProtection } from "~/components/route-protections";
 import SheetPage from "~/components/sheet-page";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { requireUser, getAppUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = await getSupabaseServerClient(request);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const playerService = new PlayerService(supabaseClient);
+    const player = params.id
+      ? await playerService.getPlayerById(params.id)
+      : undefined;
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+    const clubsService = new ClubService(supabaseClient);
+    const clubs = await clubsService.getAllClubs();
 
-  if (!user) {
-    return redirect("/");
+    return { player, clubs, user };
   }
+);
 
-  const playerService = new PlayerService(supabaseClient);
-  const player = params.id
-    ? await playerService.getPlayerById(params.id)
-    : undefined;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const formdata = await request.formData();
+    const avatar = formdata.get("avatar");
 
-  const clubsService = new ClubService(supabaseClient);
-  const clubs = await clubsService.getAllClubs();
+    const { user: authUser } = await requireUser(supabaseClient);
+    const user = await getAppUser(authUser.id, supabaseClient);
 
-  return { player, clubs, user };
-};
+    if (!user) {
+      return redirect("/");
+    }
 
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = await getSupabaseServerClient(request);
-  const formdata = await request.formData();
-  const avatar = formdata.get("avatar");
+    const playerService = new PlayerService(supabaseClient);
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+    const { data, playerId } = await playerService.getFormFields(formdata);
 
-  if (!user) {
-    return redirect("/");
+    await playerService.updatePlayer(playerId, data);
+
+    if (playerId && avatar) {
+      await playerService.uploadPlayerProfilePhoto(playerId, avatar);
+    }
+
+    return redirect(`/dashboard/players/${playerId}`);
   }
-
-  const playerService = new PlayerService(supabaseClient);
-
-  const { data, playerId } = await playerService.getFormFields(formdata);
-
-  await playerService.updatePlayer(playerId, data);
-
-  if (playerId && avatar) {
-    await playerService.uploadPlayerProfilePhoto(playerId, avatar);
-  }
-
-  return redirect(`/dashboard/players/${playerId}`);
-};
+);
 
 export default function PlayersCreate() {
   const { player, clubs, user } = useLoaderData<typeof loader>();

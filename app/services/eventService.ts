@@ -1,5 +1,7 @@
 import { Event, EventRegistration, ValidationCode } from "../types";
 import { convertKeysToCamelCase } from "../utils/helpers";
+import { withCache, cacheManager } from './cache';
+import { CacheInvalidationService, CacheTTL } from './cacheInvalidation';
 
 export class EventService {
   client;
@@ -7,13 +9,21 @@ export class EventService {
     this.client = client;
   }
   async getAllEvents(): Promise<Event[]> {
-    const { data, error } = await this.client
-      .from("events")
-      .select("*")
-      .order("date");
+    const cacheKey = cacheManager.generateKey('events', 'getAllEvents');
+    
+    return withCache(
+      cacheKey,
+      async () => {
+        const { data, error } = await this.client
+          .from("events")
+          .select("*")
+          .order("date");
 
-    if (error) throw error;
-    return data || [];
+        if (error) throw error;
+        return data || [];
+      },
+      { ttl: CacheTTL.EVENTS }
+    );
   }
 
   async getEventById(id: string): Promise<Event | null> {

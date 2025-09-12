@@ -1,9 +1,5 @@
 import { DialogTrigger } from "@radix-ui/react-dialog";
-import type {
-  ActionFunction,
-  LoaderFunction,
-  MetaFunction,
-} from "@remix-run/node";
+import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { DeleteIcon, Edit2Icon, User } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
@@ -17,7 +13,6 @@ import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { Sheet } from "~/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
 import { PlayerService } from "~/services/playerService";
 import { ReportService } from "~/services/reportService";
@@ -26,24 +21,16 @@ import {
   calculateAgeGroup,
   calculateRelativeAgeQuartile,
 } from "~/utils/helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { getSupabaseServerClient } from "~/lib/supabase";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  // const;
-  const { supabaseClient } = getSupabaseServerClient(request);
+export const loader = withAuth(async ({ params, user, supabaseClient }) => {
   const playerService = new PlayerService(supabaseClient);
   const reportService = new ReportService(supabaseClient);
-
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
-  }
 
   const player = await playerService.getPlayerById(params.id as string);
 
@@ -85,21 +72,22 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     teamProgress,
     hasProgressTemplate: !!user?.team?.progresTemplateId,
   };
-};
+});
 
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const playerService = new PlayerService(supabaseClient);
-  let formData = await request.formData();
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const playerService = new PlayerService(supabaseClient);
+    let formData = await request.formData();
 
-  const playerId = formData.get("playerId");
+    const playerId = formData.get("playerId");
 
-  if (playerId) {
-    await playerService.deletePlayer(playerId as string);
+    if (playerId) {
+      await playerService.deletePlayer(playerId as string);
+    }
+
+    return redirect("/dashboard/players");
   }
-
-  return redirect("/dashboard/players");
-};
+);
 
 export default function PlayerPage() {
   const { player, reports, progress, teamProgress, hasProgressTemplate, user } =

@@ -4,7 +4,7 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
+import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin, MoreVertical } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
@@ -16,64 +16,56 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "~/components/ui/dropdown-menu";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
-import { GroupService } from "~/services/groupService";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { formatDate } from "~/utils/helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const eventService = new EventService(supabaseClient);
+    const event = await eventService.getEventById(params.id as string);
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
+    return { event, user };
   }
+);
 
-  const event = await eventService.getEventById(params.id as string);
+export const action: ActionFunction = withAuthAction(
+  async ({ request, params, supabaseClient }) => {
+    const eventService = new EventService(supabaseClient);
+    const formData = await request.formData();
 
-  return { event, user };
-};
+    if (request.method === "DELETE") {
+      if (params.id) eventService.deleteEvent(params.id);
+      return redirect("/dashboard/events");
+    } else {
+      const playerId = formData.get("playerId");
+      const eventId = formData.get("eventId");
 
-export const action: ActionFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
-  const formData = await request.formData();
+      const event =
+        playerId && eventId
+          ? await eventService.getPlayerEventRegistrationById(
+              playerId as string,
+              eventId as string
+            )
+          : undefined;
 
-  if (request.method === "DELETE") {
-    if (params.id) eventService.deleteEvent(params.id);
-    return redirect("/dashboard/events");
-  } else {
-    const playerId = formData.get("playerId");
-    const eventId = formData.get("eventId");
-
-    const event =
-      playerId && eventId
-        ? await eventService.getPlayerEventRegistrationById(
-            playerId as string,
-            eventId as string
-          )
-        : undefined;
-
-    if (event) {
-      const status = event.status === "confirmed" ? "attended" : "confirmed";
-      await eventService.updateAttendanceById(
-        status,
-        playerId as string,
-        eventId as string
-      );
+      if (event) {
+        const status = event.status === "confirmed" ? "attended" : "confirmed";
+        await eventService.updateAttendanceById(
+          status,
+          playerId as string,
+          eventId as string
+        );
+      }
     }
-  }
 
-  return {};
-};
+    return {};
+  }
+);
 
 export default function EventPage() {
   const { event, user } = useLoaderData<typeof loader>();

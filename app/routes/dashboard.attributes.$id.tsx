@@ -6,9 +6,9 @@ import type {
 import { redirect, useLoaderData } from "@remix-run/react";
 import { AttributeForm } from "~/components/forms/form/attribute";
 import SheetPage from "~/components/sheet-page";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { AttributesService } from "~/services/attributesService";
 import { Attribute } from "~/types";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -18,44 +18,46 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const attributeService = new AttributesService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient }) => {
+    const attributeService = new AttributesService(supabaseClient);
 
-  const attribute = params.id
-    ? await attributeService.getAttribueById(params.id)
-    : undefined;
+    const attribute = params.id
+      ? await attributeService.getAttribueById(params.id)
+      : undefined;
 
-  return { attribute };
-};
-
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const attributeService = new AttributesService(supabaseClient);
-
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
+    return { attribute };
   }
+);
 
-  let formData = await request.formData();
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string;
-  const id = formData.get("attributeId") as string;
-  const category = formData.get("category") as string;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const attributeService = new AttributesService(supabaseClient);
 
-  const data: Omit<Attribute, "id" | "createdAt"> = {
-    name,
-    category,
-    description,
-  };
+    const { user: authUser } = await requireUser(supabaseClient);
+    const user = await getAppUser(authUser.id, supabaseClient);
 
-  await attributeService.updateAtrribute(data, id);
+    if (!user) {
+      return redirect("/");
+    }
 
-  return redirect("/dashboard/attributes");
-};
+    let formData = await request.formData();
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    const id = formData.get("attributeId") as string;
+    const category = formData.get("category") as string;
+
+    const data: Omit<Attribute, "id" | "createdAt"> = {
+      name,
+      category,
+      description,
+    };
+
+    await attributeService.updateAtrribute(data, id);
+
+    return redirect("/dashboard/attributes");
+  }
+);
 
 export default function AttributeEdit() {
   const { attribute } = useLoaderData<typeof loader>();

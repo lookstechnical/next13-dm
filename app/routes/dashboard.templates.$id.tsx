@@ -11,6 +11,7 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { AttributesService } from "~/services/attributesService";
 import { TemplateService } from "~/services/templateService";
 import { Template } from "~/types";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -20,77 +21,72 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const attributeService = new AttributesService(supabaseClient);
-  const templateService = new TemplateService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ request, params, supabaseClient }) => {
+    const attributeService = new AttributesService(supabaseClient);
+    const templateService = new TemplateService(supabaseClient);
 
-  const attributes = await attributeService.getAllAttributes();
-  const template = params.id
-    ? await templateService.getTemplateById(params.id)
-    : undefined;
+    const attributes = await attributeService.getAllAttributes();
+    const template = params.id
+      ? await templateService.getTemplateById(params.id)
+      : undefined;
 
-  return { attributes, template };
-};
-
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const templateService = new TemplateService(supabaseClient);
-
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
+    return { attributes, template };
   }
+);
 
-  let formData = await request.formData();
-  const name = formData.get("name") as string;
-  const attributeIds = formData.get("attributeIds") as string;
-  const templateId = formData.get("templateId") as string;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const templateService = new TemplateService(supabaseClient);
 
-  const data: Omit<Template, "id" | "createdAt"> = {
-    name,
-    active: true,
-  };
+    let formData = await request.formData();
+    const name = formData.get("name") as string;
+    const attributeIds = formData.get("attributeIds") as string;
+    const templateId = formData.get("templateId") as string;
 
-  const template = await templateService.updateTemplate(data, templateId);
-  const currentAttributeIds = template.templateAttributes.map(
-    (o) => o.attributeId
-  );
+    const data: Omit<Template, "id" | "createdAt"> = {
+      name,
+      active: true,
+    };
 
-  const selectedAttributesArray = JSON.parse(attributeIds);
+    const template = await templateService.updateTemplate(data, templateId);
+    const currentAttributeIds = template.templateAttributes.map(
+      (o) => o.attributeId
+    );
 
-  const deleteIds = currentAttributeIds.filter(
-    (a) => !selectedAttributesArray.includes(a)
-  );
+    const selectedAttributesArray = JSON.parse(attributeIds);
 
-  const insertIds = selectedAttributesArray.filter(
-    (a) => !currentAttributeIds.includes(a)
-  );
+    const deleteIds = currentAttributeIds.filter(
+      (a) => !selectedAttributesArray.includes(a)
+    );
 
-  if (deleteIds) {
-    for (const deleteId of deleteIds) {
-      await templateService.removeAttributeFromTemplate({
-        attribute_id: deleteId,
-        template_id: templateId,
-      });
-    }
-  }
+    const insertIds = selectedAttributesArray.filter(
+      (a) => !currentAttributeIds.includes(a)
+    );
 
-  if (insertIds) {
-    for (const attributeId of insertIds) {
-      try {
-        await templateService.addAttributeToTemplate({
+    if (deleteIds) {
+      for (const deleteId of deleteIds) {
+        await templateService.removeAttributeFromTemplate({
+          attribute_id: deleteId,
           template_id: templateId,
-          attribute_id: attributeId,
         });
-      } catch (e) {}
+      }
     }
-  }
 
-  return redirect("/dashboard/templates");
-};
+    if (insertIds) {
+      for (const attributeId of insertIds) {
+        try {
+          await templateService.addAttributeToTemplate({
+            template_id: templateId,
+            attribute_id: attributeId,
+          });
+        } catch (e) {}
+      }
+    }
+
+    return redirect("/dashboard/templates");
+  }
+);
 
 export default function TemplateEdit() {
   const { attributes, template } = useLoaderData<typeof loader>();

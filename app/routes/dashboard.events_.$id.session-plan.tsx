@@ -10,47 +10,41 @@ import { SessionDownloadButton } from "~/components/session/download-button";
 import { SessionItemCard } from "~/components/session/item-card";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { SessionService } from "~/services/sessionService";
 import { SessionItem } from "~/types";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
-  const sessionService = new SessionService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const eventService = new EventService(supabaseClient);
+    const sessionService = new SessionService(supabaseClient);
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+    const event = await eventService.getEventById(params.id as string);
+    const sessionItems = await sessionService.getSessionItemsByEvent(
+      params.id as string
+    );
 
-  if (!user) {
-    return redirect("/");
+    return { event, sessionItems, user };
   }
+);
 
-  const event = await eventService.getEventById(params.id as string);
-  const sessionItems = await sessionService.getSessionItemsByEvent(
-    params.id as string
-  );
+export const action: ActionFunction = withAuthAction(
+  async ({ request, params, supabaseClient }) => {
+    const sessionService = new SessionService(supabaseClient);
+    const formData = await request.formData();
 
-  return { event, sessionItems, user };
-};
-
-export const action: ActionFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const sessionService = new SessionService(supabaseClient);
-  const formData = await request.formData();
-
-  if (request.method === "DELETE") {
-    const id = formData.get("id") as string;
-    if (id) sessionService.deleteSessionItemsById(id);
-    return redirect(`/dashboard/events/${params.id}/session-plan`);
+    if (request.method === "DELETE") {
+      const id = formData.get("id") as string;
+      if (id) sessionService.deleteSessionItemsById(id);
+      return redirect(`/dashboard/events/${params.id}/session-plan`);
+    }
   }
-};
+);
 
 export default function SessionPlan() {
   const { event, sessionItems, user } = useLoaderData<typeof loader>();

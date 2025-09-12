@@ -13,33 +13,32 @@ import { Button } from "~/components/ui/button";
 
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { DrillsService } from "~/services/drillsService";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = await getSupabaseServerClient(request);
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const drillService = new DrillsService(supabaseClient);
+    const drill = params.id
+      ? await drillService.getDrillById(params.id)
+      : undefined;
 
-  const drillService = new DrillsService(supabaseClient);
-  const drill = params.id
-    ? await drillService.getDrillById(params.id)
-    : undefined;
+    return { drill, user };
+  }
+);
 
-  return { drill, user };
-};
+export const action: ActionFunction = withAuthAction(
+  async ({ params, supabaseClient }) => {
+    const drillService = new DrillsService(supabaseClient);
+    await drillService.deleteDrill(params.id as string);
 
-export const action: ActionFunction = async ({ request, params }) => {
-  const { supabaseClient } = await getSupabaseServerClient(request);
-
-  const drillService = new DrillsService(supabaseClient);
-  await drillService.deleteDrill(params.id as string);
-
-  return redirect("/dashboard/drills-library");
-};
+    return redirect("/dashboard/drills-library");
+  }
+);
 
 export default function PlayersCreate() {
   const { drill, user } = useLoaderData<typeof loader>();

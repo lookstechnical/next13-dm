@@ -1,11 +1,5 @@
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import {
-  Link,
-  NavLink,
-  Outlet,
-  redirect,
-  useLoaderData,
-} from "@remix-run/react";
+import type { MetaFunction } from "@remix-run/node";
+import { Link, Outlet, useLoaderData } from "@remix-run/react";
 import { UserPlus, Users2Icon } from "lucide-react";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
@@ -15,24 +9,16 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { ScoutService } from "~/services/scoutService";
 import { TeamService } from "~/services/teamService";
 import { Scout, Team, User } from "~/types";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Teams" }, { name: "description", content: "Teams" }];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  // const;
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
-  }
+export const loader = withAuth(async ({ user, supabaseClient }) => {
   const teamService = new TeamService(supabaseClient);
   const usersService = new ScoutService(supabaseClient);
 
@@ -42,7 +28,7 @@ export const loader: LoaderFunction = async ({ request }) => {
   const [teams, users] = await Promise.all([teamsPromise, usersPromise]);
 
   return { teams, users, user };
-};
+});
 
 const roleToVariant = (role: Scout["role"]): BadgeProps["variant"] => {
   switch (role) {

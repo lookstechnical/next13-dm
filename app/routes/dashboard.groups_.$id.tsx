@@ -5,15 +5,7 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import {
-  Calendar,
-  DeleteIcon,
-  Edit2Icon,
-  MapPin,
-  MoreVertical,
-  User,
-  Users2Icon,
-} from "lucide-react";
+import { MoreVertical, Users2Icon } from "lucide-react";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { PlayerFilters } from "~/components/players/filters";
@@ -21,92 +13,61 @@ import { PlayerCard } from "~/components/players/player-card";
 import ActionButton from "~/components/ui/action-button";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
-// import RadarAttributes from "~/components/charts/radar";
-import { Card } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "~/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
-import { EventService } from "~/services/eventService";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
-import { EventRegistration, Player } from "~/types";
-import {
-  calculateAgeGroup,
-  calculateRelativeAgeQuartile,
-  formatDate,
-} from "~/utils/helpers";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new GroupService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ request, params, supabaseClient }) => {
+    const eventService = new GroupService(supabaseClient);
 
-  const playerService = new PlayerService(supabaseClient);
+    const playerService = new PlayerService(supabaseClient);
 
-  const players = await playerService.getPlayersByGroup(params.id as string);
+    const players = await playerService.getPlayersByGroup(params.id as string);
 
-  const group = await eventService.getGroupById(params.id as string);
+    const group = await eventService.getGroupById(params.id as string);
 
-  const url = new URL(request.url);
-  // const order = url.searchParams.get("order");
-  // const nameFilter = url.searchParams.get("name");
-  // const ageGroup = url.searchParams.get("age-group");
+    const playerGroupMembers = players;
 
-  const playerGroupMembers = players;
-
-  // group?.playerGroupMembers.filter((pg) => {
-  //   const val = true;
-  //   if (nameFilter) {
-  //     const name = pg.players.name;
-  //     if (name && name.toLowerCase().includes(nameFilter)) {
-  //     } else return false;
-  //   }
-
-  //   if (ageGroup) {
-  //     const ag = calculateAgeGroup(pg.players.dateOfBirth);
-  //     if (ageGroup && ageGroup === ag) {
-  //     } else {
-  //       return false;
-  //     }
-  //   }
-
-  //   return val;
-  // });
-
-  return { group: { ...group, playerGroupMembers } };
-};
-
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const groupsService = new GroupService(supabaseClient);
-
-  let formData = await request.formData();
-  const groupId = formData.get("groupId");
-  const playerId = formData.get("playerId");
-  const action = formData.get("action");
-
-  if (action === "delete-group") {
-    await groupsService.deleteGroup(groupId as string);
-    return redirect("/dashboard/groups");
-  } else {
-    if (playerId && groupId) {
-      await groupsService.removePlayersFromGroup(groupId as string, [
-        playerId as string,
-      ]);
-    }
+    return { group: { ...group, playerGroupMembers } };
   }
+);
 
-  return { message: "Successfully removed" };
-};
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const groupsService = new GroupService(supabaseClient);
+
+    let formData = await request.formData();
+    const groupId = formData.get("groupId");
+    const playerId = formData.get("playerId");
+    const action = formData.get("action");
+
+    if (action === "delete-group") {
+      await groupsService.deleteGroup(groupId as string);
+      return redirect("/dashboard/groups");
+    } else {
+      if (playerId && groupId) {
+        await groupsService.removePlayersFromGroup(groupId as string, [
+          playerId as string,
+        ]);
+      }
+    }
+
+    return { message: "Successfully removed" };
+  }
+);
 
 export default function PlayerPage() {
   const { group } = useLoaderData<typeof loader>();

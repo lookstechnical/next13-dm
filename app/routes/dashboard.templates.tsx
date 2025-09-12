@@ -1,11 +1,5 @@
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import {
-  Link,
-  NavLink,
-  Outlet,
-  redirect,
-  useLoaderData,
-} from "@remix-run/react";
+import type { MetaFunction } from "@remix-run/node";
+import { Link, NavLink, Outlet, useLoaderData } from "@remix-run/react";
 import { UserPlus } from "lucide-react";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
@@ -13,28 +7,20 @@ import { DataTable } from "~/components/table/data-table";
 import { Button } from "~/components/ui/button";
 
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { TemplateService } from "~/services/templateService";
 
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  // const;
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
-  }
+export const loader = withAuth(async ({ user, supabaseClient }) => {
   const attributeService = new TemplateService(supabaseClient);
   const templates = await attributeService.getAllTemplates();
 
   return { templates, user };
-};
+});
 
 export default function Templates() {
   const { templates, user } = useLoaderData<typeof loader>();

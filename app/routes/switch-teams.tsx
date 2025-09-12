@@ -1,6 +1,8 @@
 import { ActionFunction, json, redirect } from "@remix-run/node";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ScoutService } from "~/services/scoutService";
+import { withAuth } from "~/utils/auth-helpers";
+import { clearAuthCache } from "~/utils/auth.server";
 import { clearUserSession, requireUser } from "~/utils/require-user";
 
 export const loader = () => {
@@ -27,22 +29,22 @@ function getNearestRootUrl(path: string, allowed: string[]): string {
   return matches.length ? matches.sort((a, b) => b.length - a.length)[0] : "/";
 }
 
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
+export const action: ActionFunction = withAuth(
+  async ({ request, supabaseClient }) => {
+    clearAuthCache();
+    const user = await requireUser(supabaseClient);
 
-  clearUserSession();
-  const user = await requireUser(supabaseClient);
+    let formData = await request.formData();
+    const teamId = formData.get("teamId") as string;
+    const currentUrl = formData.get("currentUrl") as string;
 
-  let formData = await request.formData();
-  const teamId = formData.get("teamId") as string;
-  const currentUrl = formData.get("currentUrl") as string;
+    const scoutService = new ScoutService(supabaseClient);
 
-  const scoutService = new ScoutService(supabaseClient);
+    if (teamId) {
+      await scoutService.updateTeamContext(user.user.id, teamId);
+    }
 
-  if (teamId) {
-    await scoutService.updateTeamContext(user.user.id, teamId);
+    const redirectUrl = getNearestRootUrl(currentUrl, allowedRedirects);
+    return redirect(redirectUrl);
   }
-
-  const redirectUrl = getNearestRootUrl(currentUrl, allowedRedirects);
-  return redirect(redirectUrl);
-};
+);

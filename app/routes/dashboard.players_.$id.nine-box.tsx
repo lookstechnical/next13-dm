@@ -3,116 +3,94 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Form, redirect, useLoaderData, useNavigate } from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { NineBoxForm } from "~/components/forms/form/nine-box";
 import SheetPage from "~/components/sheet-page";
-import ActionButton from "~/components/ui/action-button";
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetTitle,
-} from "~/components/ui/sheet";
-import { getSupabaseServerClient } from "~/lib/supabase";
+
 import { ReportService } from "~/services/reportService";
-import { TeamService } from "~/services/teamService";
 import { TemplateService } from "~/services/templateService";
 import { PlayerReport } from "~/types";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  // const;
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const reportService = new ReportService(supabaseClient);
-  const templateService = new TemplateService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const reportService = new ReportService(supabaseClient);
+    const templateService = new TemplateService(supabaseClient);
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+    let template;
+    let report;
+    if (user?.team?.progresTemplateId) {
+      template = await templateService.getTemplateById(
+        user?.team?.progresTemplateId as string
+      );
 
-  if (!user) {
-    return redirect("/");
-  }
-
-  let template;
-  let report;
-  if (user?.team?.progresTemplateId) {
-    template = await templateService.getTemplateById(
-      user?.team?.progresTemplateId as string
-    );
-
-    report = await reportService.getNineBoxReport(
-      params.id as string,
-      user?.team?.progresTemplateId as string
-    );
-  }
-
-  return { report, template, player: { id: params.id } };
-};
-
-export const action: ActionFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const reportService = new ReportService(supabaseClient);
-
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
-  }
-
-  let formData = await request.formData();
-  const templateId = formData.get("templateId") as string;
-  const playerId = params.id as string;
-  const reportId = formData.get("reportId") as string;
-
-  const data: Omit<
-    PlayerReport,
-    | "id"
-    | "scoutId"
-    | "createdAt"
-    | "matchId"
-    | "position"
-    | "suggestedPosition"
-    | "reportScores"
-    | "notes"
-    | "eventId"
-  > & {
-    eventId: string;
-  } = {
-    playerId,
-    templateId,
-  };
-
-  let report;
-  if (reportId) {
-    report = { id: reportId };
-    await reportService.removeReportScores(reportId);
-  } else {
-    report = await reportService.createPlayerReport(data, user.id);
-  }
-
-  if (report) {
-    for (const [key, value] of formData.entries()) {
-      const match = key.match(/^attribute\[(.+)\]$/);
-      if (match) {
-        const uuid = match[1];
-
-        await reportService.addReportScore(uuid, report.id, value.toString());
-      }
+      report = await reportService.getNineBoxReport(
+        params.id as string,
+        user?.team?.progresTemplateId as string
+      );
     }
 
-    await reportService.refreshTeamProgress(user.current_team as string);
+    return { report, template, player: { id: params.id } };
   }
+);
 
-  return redirect(`/dashboard/players/${playerId}`);
-};
+export const action: ActionFunction = withAuthAction(
+  async ({ request, params, supabaseClient, user }) => {
+    const reportService = new ReportService(supabaseClient);
+
+    let formData = await request.formData();
+    const templateId = formData.get("templateId") as string;
+    const playerId = params.id as string;
+    const reportId = formData.get("reportId") as string;
+
+    const data: Omit<
+      PlayerReport,
+      | "id"
+      | "scoutId"
+      | "createdAt"
+      | "matchId"
+      | "position"
+      | "suggestedPosition"
+      | "reportScores"
+      | "notes"
+      | "eventId"
+    > & {
+      eventId: string;
+    } = {
+      playerId,
+      templateId,
+    };
+
+    let report;
+    if (reportId) {
+      report = { id: reportId };
+      await reportService.removeReportScores(reportId);
+    } else {
+      report = await reportService.createPlayerReport(data, user.id);
+    }
+
+    if (report) {
+      for (const [key, value] of formData.entries()) {
+        const match = key.match(/^attribute\[(.+)\]$/);
+        if (match) {
+          const uuid = match[1];
+
+          await reportService.addReportScore(uuid, report.id, value.toString());
+        }
+      }
+
+      await reportService.refreshTeamProgress(user.current_team as string);
+    }
+
+    return redirect(`/dashboard/players/${playerId}`);
+  }
+);
 
 export default function PlayerPage() {
-  const navigate = useNavigate();
   const { report, template, player } = useLoaderData<typeof loader>();
 
   return (

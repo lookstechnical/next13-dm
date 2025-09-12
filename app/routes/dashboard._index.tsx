@@ -1,14 +1,13 @@
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import { redirect, useLoaderData } from "@remix-run/react";
+import type { MetaFunction } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
 import { EventCard } from "~/components/events/event-card";
 import { AttributeHeatmap } from "~/components/heatmap";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { DashboardService } from "~/services/dashboardService";
 import { EventService } from "~/services/eventService";
 import { ReportService } from "~/services/reportService";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [
@@ -17,18 +16,26 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
+export function ErrorBoundary() {
+  return (
+    <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
+      <div className="w-full py-6 flex flex-col w-[50rem] items-center">
+        <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
+
+        <h1 className="text-4xl">There Was an error please try again </h1>
+        <p className="text-muted">
+          if the problem persists and your on mobile please try on a laptop or
+          desktop pc
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export const loader = withAuth(async ({ user, supabaseClient }) => {
   const dashService = new DashboardService(supabaseClient);
   const eventService = new EventService(supabaseClient);
   const reportService = new ReportService(supabaseClient);
-
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
-  }
 
   const teamProgress = await reportService.getTeamProgressAvg(
     user.current_team as string
@@ -40,8 +47,8 @@ export const loader: LoaderFunction = async ({ request }) => {
     author: "John Wooden",
     position: "Coach",
   };
-  return { quote, event, teamProgress };
-};
+  return { quote, event, teamProgress, user };
+});
 
 export default function Index() {
   const { quote, event, teamProgress } = useLoaderData<typeof loader>();

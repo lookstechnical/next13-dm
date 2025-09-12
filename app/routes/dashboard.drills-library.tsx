@@ -1,11 +1,5 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import {
-  Link,
-  Outlet,
-  redirect,
-  useLoaderData,
-  useSubmit,
-} from "@remix-run/react";
+import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { UserPlus } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
 import { DrillCard } from "~/components/drill/drill-card";
@@ -19,34 +13,35 @@ import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { DrillsService } from "~/services/drillsService";
 import { Drill } from "~/types";
+import { withAuth } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  // const;
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
+export const loader: LoaderFunction = withAuth(
+  async ({ request, supabaseClient, user }) => {
+    const drillsService = new DrillsService(supabaseClient);
+
+    const url = new URL(request.url);
+    const name = url.searchParams.get("name");
+    const categoryFilter = url.searchParams.get("categories");
+
+    const drills = await drillsService.getAllDrills(
+      name as string,
+      categoryFilter !== "" ? (categoryFilter?.split(",") as string[]) : []
+    );
+    const categories = await drillsService.getAllDrillCategories();
+
+    return {
+      drills,
+      categories,
+      appliedFilters: { name, categoryFilter },
+      user,
+    };
   }
-  const drillsService = new DrillsService(supabaseClient);
-
-  const url = new URL(request.url);
-  const name = url.searchParams.get("name");
-  const categoryFilter = url.searchParams.get("categories");
-
-  const drills = await drillsService.getAllDrills(
-    name as string,
-    categoryFilter !== "" ? (categoryFilter?.split(",") as string[]) : []
-  );
-  const categories = await drillsService.getAllDrillCategories();
-
-  return { drills, categories, appliedFilters: { name, categoryFilter }, user };
-};
+);
 
 export default function DrillsLibrary() {
   const { drills, categories, appliedFilters, groups, user } =

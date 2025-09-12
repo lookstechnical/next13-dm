@@ -3,7 +3,7 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
+import { Form, Link, Outlet, useLoaderData } from "@remix-run/react";
 import { SendHorizonal, User } from "lucide-react";
 import { CommentForm } from "~/components/forms/form/comment-form";
 import { energy, reflectionQuestions } from "~/components/forms/form/reflect";
@@ -18,59 +18,45 @@ import {
 import ActionButton from "~/components/ui/action-button";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { SessionService } from "~/services/sessionService";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
-  const sessionService = new SessionService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const eventService = new EventService(supabaseClient);
+    const sessionService = new SessionService(supabaseClient);
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
+    const event = await eventService.getEventById(params.id as string);
+    const reflections = await sessionService.getReflectionsById(
+      params.id as string,
+      user
+    );
 
-  if (!user) {
-    return redirect("/");
+    return { event, reflections };
   }
+);
 
-  const event = await eventService.getEventById(params.id as string);
-  const reflections = await sessionService.getReflectionsById(
-    params.id as string,
-    user
-  );
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient, user }) => {
+    const sessionService = new SessionService(supabaseClient);
 
-  return { event, reflections };
-};
+    const formData = await request.formData();
+    const comment = formData.get("comment") as string;
+    const parentId = formData.get("parentId") as string;
 
-export const action: ActionFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
+    await sessionService.addSessionReflectionComments(parentId, {
+      comment,
+      user_id: user.id,
+    });
 
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
+    return {};
   }
-
-  const sessionService = new SessionService(supabaseClient);
-
-  const formData = await request.formData();
-  const comment = formData.get("comment") as string;
-  const parentId = formData.get("parentId") as string;
-
-  await sessionService.addSessionReflectionComments(parentId, {
-    comment,
-    user_id: user.id,
-  });
-
-  return {};
-};
+);
 
 export default function EventDiscussion() {
   const { event, reflections } = useLoaderData<typeof loader>();

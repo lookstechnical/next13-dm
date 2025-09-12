@@ -3,63 +3,58 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Form, redirect, useLoaderData, useNavigate } from "@remix-run/react";
+import { Form, useLoaderData, useNavigate } from "@remix-run/react";
 import { useState } from "react";
 import { PlayerCard } from "~/components/players/player-card";
 import SheetPage from "~/components/sheet-page";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { Player } from "~/types";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const groupsService = new GroupService(supabaseClient);
-  const playerService = new PlayerService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const groupsService = new GroupService(supabaseClient);
+    const playerService = new PlayerService(supabaseClient);
 
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
+    const group = params.id
+      ? await groupsService.getGroupById(params.id)
+      : undefined;
+
+    if (!group) return {};
+
+    const availablePlayers = await playerService.getPlayersNotInlist(
+      user.current_team as string,
+      group.playerIds
+    );
+
+    return { availablePlayers, group };
   }
+);
 
-  const group = params.id
-    ? await groupsService.getGroupById(params.id)
-    : undefined;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const groupsService = new GroupService(supabaseClient);
 
-  if (!group) return {};
+    let formData = await request.formData();
+    const groupId = formData.get("groupId");
+    const playerId = formData.get("playerId");
 
-  const availablePlayers = await playerService.getPlayersNotInlist(
-    user.current_team as string,
-    group.playerIds
-  );
+    if (playerId && groupId) {
+      await groupsService.addPlayersToGroup(groupId as string, [
+        playerId as string,
+      ]);
+    }
 
-  return { availablePlayers, group };
-};
-
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const groupsService = new GroupService(supabaseClient);
-
-  let formData = await request.formData();
-  const groupId = formData.get("groupId");
-  const playerId = formData.get("playerId");
-
-  if (playerId && groupId) {
-    await groupsService.addPlayersToGroup(groupId as string, [
-      playerId as string,
-    ]);
+    return {};
   }
-
-  return {};
-};
+);
 
 export default function AddPlayersToGroup() {
   const navigate = useNavigate();

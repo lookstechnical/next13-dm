@@ -11,6 +11,7 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { AttributesService } from "~/services/attributesService";
 import { TemplateService } from "~/services/templateService";
 import { Template } from "~/types";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -20,52 +21,47 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const attributeService = new AttributesService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ request, supabaseClient }) => {
+    const attributeService = new AttributesService(supabaseClient);
 
-  const attributes = await attributeService.getAllAttributes();
+    const attributes = await attributeService.getAllAttributes();
 
-  return { attributes };
-};
-
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const templateService = new TemplateService(supabaseClient);
-
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
+    return { attributes };
   }
+);
 
-  let formData = await request.formData();
-  const name = formData.get("name") as string;
-  const attributeIds = formData.get("attributeIds") as string;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const templateService = new TemplateService(supabaseClient);
 
-  const data: Omit<Template, "id" | "createdAt"> = {
-    name,
-    active: true,
-  };
+    let formData = await request.formData();
+    const name = formData.get("name") as string;
+    const attributeIds = formData.get("attributeIds") as string;
 
-  const template = await templateService.addNewTemplate(data);
+    const data: Omit<Template, "id" | "createdAt"> = {
+      name,
+      active: true,
+    };
 
-  if (template.id) {
-    const selectedAttributesArray = JSON.parse(attributeIds);
+    const template = await templateService.addNewTemplate(data);
 
-    for (const attributeId of selectedAttributesArray) {
-      try {
-        await templateService.addAttributeToTemplate({
-          template_id: template.id,
-          attribute_id: attributeId,
-        });
-      } catch (e) {}
+    if (template.id) {
+      const selectedAttributesArray = JSON.parse(attributeIds);
+
+      for (const attributeId of selectedAttributesArray) {
+        try {
+          await templateService.addAttributeToTemplate({
+            template_id: template.id,
+            attribute_id: attributeId,
+          });
+        } catch (e) {}
+      }
     }
-  }
 
-  return redirect("/dashboard/templates");
-};
+    return redirect("/dashboard/templates");
+  }
+);
 
 export default function TemplateCreate() {
   const { attributes } = useLoaderData<typeof loader>();

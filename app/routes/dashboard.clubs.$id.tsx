@@ -7,8 +7,8 @@ import { redirect, useLoaderData } from "@remix-run/react";
 import { ClubForm } from "~/components/forms/form/club";
 import SheetPage from "~/components/sheet-page";
 
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
 export const meta: MetaFunction = () => {
@@ -18,40 +18,44 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const clubService = new ClubService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ supabaseClient, params }) => {
+    const clubService = new ClubService(supabaseClient);
 
-  const club = params.id ? await clubService.getClubById(params.id) : undefined;
+    const club = params.id
+      ? await clubService.getClubById(params.id)
+      : undefined;
 
-  return { club };
-};
-
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const clubService = new ClubService(supabaseClient);
-
-  const { user: authUser } = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.id, supabaseClient);
-
-  if (!user) {
-    return redirect("/");
+    return { club };
   }
+);
 
-  let formData = await request.formData();
-  const name = formData.get("name") as string;
-  const location = formData.get("location") as string;
-  const clubId = formData.get("clubId") as string;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const clubService = new ClubService(supabaseClient);
 
-  const data = {
-    name,
-    location,
-  };
+    const { user: authUser } = await requireUser(supabaseClient);
+    const user = await getAppUser(authUser.id, supabaseClient);
 
-  await clubService.updateClub(clubId, data);
+    if (!user) {
+      return redirect("/");
+    }
 
-  return redirect("/dashboard/clubs");
-};
+    let formData = await request.formData();
+    const name = formData.get("name") as string;
+    const location = formData.get("location") as string;
+    const clubId = formData.get("clubId") as string;
+
+    const data = {
+      name,
+      location,
+    };
+
+    await clubService.updateClub(clubId, data);
+
+    return redirect("/dashboard/clubs");
+  }
+);
 
 export default function TeamCreate() {
   const { club } = useLoaderData<typeof loader>();

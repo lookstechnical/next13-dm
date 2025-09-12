@@ -1,9 +1,5 @@
 import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
-import {
-  redirect,
-  type LoaderFunction,
-  type MetaFunction,
-} from "@remix-run/node";
+import { type MetaFunction } from "@remix-run/node";
 import { Link, Outlet, useLoaderData } from "@remix-run/react";
 import { ActionProtection } from "~/components/action-protection";
 import { EventCard } from "~/components/events/event-card";
@@ -12,27 +8,20 @@ import { MoreActions } from "~/components/layout/more-actions";
 import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { Event } from "~/types";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Events" }, { name: "description", content: "Events" }];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
-  }
-  const playerService = new EventService(supabaseClient);
-  const events = (await playerService.getEventsByTeam(user.team.id)) || [];
+export const loader = withAuth(async ({ user, supabaseClient }) => {
+  const eventService = new EventService(supabaseClient);
+  const events = (await eventService.getEventsByTeam(user.team.id)) || [];
 
   return { events, user };
-};
+});
 
 export default function Events() {
   const { events, user } = useLoaderData<typeof loader>();

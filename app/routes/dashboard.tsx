@@ -1,8 +1,7 @@
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
+import type { MetaFunction } from "@remix-run/node";
 import { Outlet, useLoaderData } from "@remix-run/react";
 import { Authenticated } from "~/components/layout/authenticated";
-import { getSupabaseServerClient } from "~/lib/supabase";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { dashboardLayoutLoader } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [
@@ -11,21 +10,7 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  const response = new Response();
-  const { supabaseClient } = getSupabaseServerClient(request);
-
-  const authUser = await requireUser(supabaseClient);
-
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-
-  return new Response(JSON.stringify({ user }), {
-    headers: {
-      ...response.headers,
-      "Content-Type": "application/json",
-    },
-  });
-};
+export const loader = dashboardLayoutLoader;
 
 export default function Layout() {
   const { user } = useLoaderData();

@@ -12,95 +12,92 @@ import SheetPage from "~/components/sheet-page";
 import { CardGrid } from "~/components/ui/card-grid";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { EventRegistration, Player, PlayerGroup } from "~/types";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request, params }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const eventService = new EventService(supabaseClient);
-  const playerService = new PlayerService(supabaseClient);
-  const groupService = new GroupService(supabaseClient);
+export const loader: LoaderFunction = withAuth(
+  async ({ params, supabaseClient, user }) => {
+    const eventService = new EventService(supabaseClient);
+    const playerService = new PlayerService(supabaseClient);
+    const groupService = new GroupService(supabaseClient);
 
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
+    const event = params.id
+      ? await eventService.getEventById(params.id)
+      : undefined;
+
+    if (!event) return {};
+
+    const eventReg = params.id
+      ? await eventService.getEventRegistrations(params.id)
+      : [];
+
+    const availablePlayers = await playerService.getPlayersNotInlist(
+      user.current_team as string,
+      eventReg.map((reg) => reg.playerId)
+    );
+
+    const playerGroups = await groupService.getGroupsByTeam(
+      user.current_team as string
+    );
+
+    return { availablePlayers, event, playerGroups };
   }
+);
 
-  const event = params.id
-    ? await eventService.getEventById(params.id)
-    : undefined;
+export const action: ActionFunction = withAuthAction(
+  async ({ request, supabaseClient }) => {
+    const groupsService = new GroupService(supabaseClient);
+    const eventsService = new EventService(supabaseClient);
 
-  if (!event) return {};
+    let formData = await request.formData();
+    const groupIds = formData.get("groupIds") as string;
+    const playerIds = formData.get("playerIds") as string;
+    const eventId = formData.get("eventId") as string;
 
-  const eventReg = params.id
-    ? await eventService.getEventRegistrations(params.id)
-    : [];
+    const selectedGroupsArray = JSON.parse(groupIds);
+    const selectedPlayersArray = JSON.parse(playerIds);
 
-  const availablePlayers = await playerService.getPlayersNotInlist(
-    user.current_team as string,
-    eventReg.map((reg) => reg.playerId)
-  );
+    for (const groupId of selectedGroupsArray) {
+      const group = await groupsService.getGroupById(groupId);
 
-  const playerGroups = await groupService.getGroupsByTeam(
-    user.current_team as string
-  );
-
-  return { availablePlayers, event, playerGroups };
-};
-
-export const action: ActionFunction = async ({ request }) => {
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const groupsService = new GroupService(supabaseClient);
-  const eventsService = new EventService(supabaseClient);
-
-  let formData = await request.formData();
-  const groupIds = formData.get("groupIds") as string;
-  const playerIds = formData.get("playerIds") as string;
-  const eventId = formData.get("eventId") as string;
-
-  const selectedGroupsArray = JSON.parse(groupIds);
-  const selectedPlayersArray = JSON.parse(playerIds);
-
-  for (const groupId of selectedGroupsArray) {
-    const group = await groupsService.getGroupById(groupId);
-
-    if (group) {
-      for (const playerId of group.playerIds) {
-        const data: Omit<EventRegistration, "id" | "registeredAt" | "players"> =
-          {
+      if (group) {
+        for (const playerId of group.playerIds) {
+          const data: Omit<
+            EventRegistration,
+            "id" | "registeredAt" | "players"
+          > = {
             playerId,
             eventId,
             status: "confirmed",
           };
 
-        try {
-          await eventsService.addEventRegistration(data);
-        } catch (e) {}
+          try {
+            await eventsService.addEventRegistration(data);
+          } catch (e) {}
+        }
       }
     }
+
+    for (const playerId of selectedPlayersArray) {
+      const data: Omit<EventRegistration, "id" | "registeredAt" | "players"> = {
+        playerId,
+        eventId,
+        status: "confirmed",
+      };
+
+      await eventsService.addEventRegistration(data);
+    }
+
+    return redirect(`/dashboard/events/${eventId}`);
   }
-
-  for (const playerId of selectedPlayersArray) {
-    const data: Omit<EventRegistration, "id" | "registeredAt" | "players"> = {
-      playerId,
-      eventId,
-      status: "confirmed",
-    };
-
-    await eventsService.addEventRegistration(data);
-  }
-
-  return redirect(`/dashboard/events/${eventId}`);
-};
+);
 
 export default function AddPlayersToGroup() {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);

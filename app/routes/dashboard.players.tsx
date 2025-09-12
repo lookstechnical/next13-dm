@@ -1,9 +1,8 @@
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
+import type { MetaFunction } from "@remix-run/node";
 import {
   Form,
   Link,
   Outlet,
-  redirect,
   useLoaderData,
   useSubmit,
 } from "@remix-run/react";
@@ -18,24 +17,16 @@ import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { Player } from "~/types";
-import { getAppUser, requireUser } from "~/utils/require-user";
+import { withAuth } from "~/utils/auth-helpers";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader: LoaderFunction = async ({ request }) => {
-  // const;
-  const { supabaseClient } = getSupabaseServerClient(request);
-  const authUser = await requireUser(supabaseClient);
-  const user = await getAppUser(authUser.user.id, supabaseClient);
-  if (!user) {
-    return redirect("/");
-  }
+export const loader = withAuth(async ({ request, user, supabaseClient }) => {
   const playerService = new PlayerService(supabaseClient);
   const groupService = new GroupService(supabaseClient);
 
@@ -71,7 +62,7 @@ export const loader: LoaderFunction = async ({ request }) => {
       position,
     },
   };
-};
+});
 
 export default function Players() {
   const { players, user, appliedFilters, groups } =
