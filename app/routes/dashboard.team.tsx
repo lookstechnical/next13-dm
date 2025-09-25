@@ -14,6 +14,8 @@ import { TeamService } from "~/services/teamService";
 import { Scout, Team, User } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Teams" }, { name: "description", content: "Teams" }];
 };

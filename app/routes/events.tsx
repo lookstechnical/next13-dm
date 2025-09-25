@@ -5,6 +5,8 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { Event } from "~/types";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const loader: LoaderFunction = async ({ request }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
   const eventService = new EventService(supabaseClient);

@@ -29,25 +29,31 @@ export const emailTemplate = (
 
       <div style="text-align: center; margin: 30px 0; display:flex; flex-direction: row; gap: 10px; justify-content: center">
         ${
-          invite &&
-          `<a href="${process.env.VITE_URL}/player-invite-reject?token=${invite.token}" style="background-color: #b30202ff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+          invite
+            ? `<a href="${process.env.VITE_URL}/player-invite-reject?token=${invite.token}" style="background-color: #b30202ff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
           Reject Invite
         </a>`
+            : ""
         }
          ${
-           invite &&
-           `<a href="${process.env.VITE_URL}/player-invite?token=${invite.token}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+           invite
+             ? `<a href="${process.env.VITE_URL}/player-invite?token=${invite.token}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
           Accept Invite
         </a>`
+             : ""
          }
       </div>
 
-      ${footer
-        .replaceAll("{{name}}", player?.name)
-        .replaceAll(
-          "<p>",
-          '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
-        )}
+      ${
+        footer
+          ? footer
+              .replaceAll("{{name}}", player?.name)
+              .replaceAll(
+                "<p>",
+                '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
+              )
+          : ""
+      }
 
       <hr style="border: none; border-top: 1px solid #2a2d3b; margin: 40px 0;" />
     </div>

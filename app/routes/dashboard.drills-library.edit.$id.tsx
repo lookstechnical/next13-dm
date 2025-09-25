@@ -6,11 +6,11 @@ import type {
 import { redirect, useLoaderData } from "@remix-run/react";
 import { DrillForm } from "~/components/forms/form/drill";
 import SheetPage from "~/components/sheet-page";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { DrillsService } from "~/services/drillsService";
 import { Drill } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

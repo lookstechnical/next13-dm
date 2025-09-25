@@ -3,7 +3,6 @@ import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { DeleteIcon, Edit2Icon, User } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
-import RadarAttributes from "~/components/charts/radar";
 import { MoreActions } from "~/components/layout/more-actions";
 import { ProgressCard } from "~/components/progress/progress-card";
 import { ReportCard } from "~/components/reports/report-card";
@@ -11,7 +10,6 @@ import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button copy";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { Sheet } from "~/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { cn } from "~/lib/utils";
 import { PlayerService } from "~/services/playerService";
@@ -22,7 +20,8 @@ import {
   calculateRelativeAgeQuartile,
 } from "~/utils/helpers";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { getSupabaseServerClient } from "~/lib/supabase";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

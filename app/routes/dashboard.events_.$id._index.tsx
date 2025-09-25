@@ -10,17 +10,15 @@ import { ActionProtection } from "~/components/action-protection";
 import { SelectField } from "~/components/forms/select";
 import { PlayerCard } from "~/components/players/player-card";
 import { AllowedRoles } from "~/components/route-protections";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
-// import RadarAttributes from "~/components/charts/radar";
 import { CardGrid } from "~/components/ui/card-grid";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
 import { EventService } from "~/services/eventService";
 import { GroupService } from "~/services/groupService";
 import { EventRegistration } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

@@ -18,6 +18,8 @@ import { PlayerService } from "~/services/playerService";
 import { EventRegistration, Player, PlayerGroup } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };

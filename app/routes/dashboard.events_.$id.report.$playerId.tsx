@@ -13,6 +13,7 @@ import { TemplateService } from "~/services/templateService";
 import { PlayerReport } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [

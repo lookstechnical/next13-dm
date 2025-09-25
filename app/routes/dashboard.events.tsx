@@ -12,6 +12,8 @@ import { EventService } from "~/services/eventService";
 import { Event } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Events" }, { name: "description", content: "Events" }];
 };

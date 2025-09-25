@@ -11,6 +11,8 @@ import { TemplateService } from "~/services/templateService";
 
 import { withAuth } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };

@@ -7,10 +7,11 @@ import { DataTable } from "~/components/table/data-table";
 import { Button } from "~/components/ui/button";
 
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { AttributesService } from "~/services/attributesService";
 import { ClubService } from "~/services/clubService";
 
 import { withAuth } from "~/utils/auth-helpers";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Clubs" }, { name: "description", content: "Clubs" }];

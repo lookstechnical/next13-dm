@@ -1,5 +1,5 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
-import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
+import { Link, Outlet, useLoaderData } from "@remix-run/react";
 import { UserPlus } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
 import { DrillCard } from "~/components/drill/drill-card";
@@ -10,11 +10,11 @@ import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { DrillsService } from "~/services/drillsService";
 import { Drill } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

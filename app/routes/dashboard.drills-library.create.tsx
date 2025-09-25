@@ -12,6 +12,8 @@ import { Drill } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
 import { getAppUser, requireUser } from "~/utils/require-user";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };

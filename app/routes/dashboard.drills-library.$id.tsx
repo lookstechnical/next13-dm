@@ -4,17 +4,17 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Form, Link, redirect, useLoaderData } from "@remix-run/react";
-import { Delete, Edit2 } from "lucide-react";
+import { Edit2 } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
 import { AllowedRoles } from "~/components/route-protections";
 import { ItemView } from "~/components/session/item-view";
 import SheetPage from "~/components/sheet-page";
 import { Button } from "~/components/ui/button";
 
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { DrillsService } from "~/services/drillsService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

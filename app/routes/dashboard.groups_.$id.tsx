@@ -19,11 +19,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "~/components/ui/dropdown-menu";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { cn } from "~/lib/utils";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

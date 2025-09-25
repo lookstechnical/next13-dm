@@ -11,6 +11,8 @@ import { GroupService } from "~/services/groupService";
 import { PlayerGroup } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Groups" }, { name: "description", content: "Groups" }];
 };

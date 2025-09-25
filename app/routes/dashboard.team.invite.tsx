@@ -7,12 +7,12 @@ import { redirect, useLoaderData } from "@remix-run/react";
 import { InviteUserForm } from "~/components/forms/form/invite-user";
 import { AllowedRoles } from "~/components/route-protections";
 import SheetPage from "~/components/sheet-page";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { ScoutService } from "~/services/scoutService";
 import { TeamService } from "~/services/teamService";
 import { User } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [

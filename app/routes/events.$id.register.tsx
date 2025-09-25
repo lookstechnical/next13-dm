@@ -23,6 +23,8 @@ import { PlayerService } from "~/services/playerService";
 import { step1 } from "~/validations/player-registration";
 import z from "zod";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
   const eventService = new EventService(supabaseClient);

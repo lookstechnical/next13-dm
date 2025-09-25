@@ -3,15 +3,14 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { redirect, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import { ReflectForm } from "~/components/forms/form/reflect";
-import { ItemView } from "~/components/session/item-view";
 import SheetPage from "~/components/sheet-page";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { EventService } from "~/services/eventService";
 import { SessionService } from "~/services/sessionService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

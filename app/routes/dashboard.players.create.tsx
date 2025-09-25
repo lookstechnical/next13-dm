@@ -1,17 +1,20 @@
 import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { redirect, useLoaderData } from "@remix-run/react";
 import { PlayerForm } from "~/components/forms/player";
+import { AllowedRoles } from "~/components/route-protections";
 import SheetPage from "~/components/sheet-page";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
 import { Player } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/sheet-error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader = withAuth(async ({ supabaseClient }) => {
+export const loader = withAuth(AllowedRoles.all, async ({ supabaseClient }) => {
   const clubsService = new ClubService(supabaseClient);
   const clubs = await clubsService.getAllClubs();
 

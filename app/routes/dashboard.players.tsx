@@ -1,12 +1,6 @@
 import type { MetaFunction } from "@remix-run/node";
-import {
-  Form,
-  Link,
-  Outlet,
-  useLoaderData,
-  useSubmit,
-} from "@remix-run/react";
-import { DownloadIcon, UserPlus } from "lucide-react";
+import { Form, Link, Outlet, useLoaderData, useSubmit } from "@remix-run/react";
+import { UserPlus } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
 import { SelectField } from "~/components/forms/select";
 import { ListingHeader } from "~/components/layout/listing-header";
@@ -21,6 +15,8 @@ import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { Player } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];

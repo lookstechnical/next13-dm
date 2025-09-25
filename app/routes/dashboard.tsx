@@ -3,6 +3,8 @@ import { Outlet, useLoaderData } from "@remix-run/react";
 import { Authenticated } from "~/components/layout/authenticated";
 import { dashboardLayoutLoader } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [
     { title: "beCoachable" },
@@ -13,7 +15,7 @@ export const meta: MetaFunction = () => {
 export const loader = dashboardLayoutLoader;
 
 export default function Layout() {
-  const { user } = useLoaderData();
+  const { user } = useLoaderData<typeof dashboardLayoutLoader>();
 
   return (
     <Authenticated user={user}>

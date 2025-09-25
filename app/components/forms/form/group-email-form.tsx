@@ -18,7 +18,10 @@ export const GroupEmailForm: React.FC<GroupEmailForm> = ({ libraryItem }) => {
           <SelectField
             name="type"
             label="Type"
-            options={[{ id: "invite", name: "Invite" }]}
+            options={[
+              { id: "invite", name: "Invite" },
+              { id: "reminder", name: "Reminder" },
+            ]}
           />
         </div>
         <div className="flex flex-row w-full gap-5">

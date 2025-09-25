@@ -6,6 +6,8 @@ import { TeamService } from "~/services/teamService";
 import { Team } from "~/types";
 import { withAuthAction } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [
     { title: "Add Event" },

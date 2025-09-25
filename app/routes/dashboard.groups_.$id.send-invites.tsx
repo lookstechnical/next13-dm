@@ -3,17 +3,17 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { redirect, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import { GroupEmailForm } from "~/components/forms/form/group-email-form";
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { GroupService } from "~/services/groupService";
 import { InvitationService } from "~/services/invitationService";
-import { getAppUser, requireUser } from "~/utils/require-user";
 import { Resend } from "resend";
 import { emailTemplate } from "~/services/email";
 import { delay } from "~/utils/helpers";
 import SheetPage from "~/components/sheet-page";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
@@ -90,6 +90,26 @@ export const action: ActionFunction = withAuthAction(
                 await delay(500);
               }
             }
+          } catch (error) {
+            console.error("Error sending email:", error);
+          }
+        } else {
+          try {
+            // if (process.env.VITE_ENABLE_INVITE_EMAILS === "1") {
+            const data = await resend.emails.send({
+              from: "St Helens RLFC - beCoachable <noreply@be-coachable.com>",
+              to: [player.players.email],
+              subject,
+              html: emailTemplate(
+                description,
+                footer,
+                undefined,
+                player.players
+              ),
+            });
+
+            await delay(500);
+            // }
           } catch (error) {
             console.error("Error sending email:", error);
           }

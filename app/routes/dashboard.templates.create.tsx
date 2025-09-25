@@ -7,12 +7,11 @@ import { redirect, useLoaderData } from "@remix-run/react";
 import { TemplateForm } from "~/components/forms/form/template";
 import SheetPage from "~/components/sheet-page";
 
-import { getSupabaseServerClient } from "~/lib/supabase";
 import { AttributesService } from "~/services/attributesService";
 import { TemplateService } from "~/services/templateService";
 import { Template } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { getAppUser, requireUser } from "~/utils/require-user";
+export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [

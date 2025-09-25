@@ -20,6 +20,8 @@ import { EventService } from "~/services/eventService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { formatDate } from "~/utils/helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };

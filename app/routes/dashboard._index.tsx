@@ -9,28 +9,14 @@ import { EventService } from "~/services/eventService";
 import { ReportService } from "~/services/reportService";
 import { withAuth } from "~/utils/auth-helpers";
 
+export { ErrorBoundary } from "~/components/error-boundry";
+
 export const meta: MetaFunction = () => {
   return [
     { title: "beCoachable" },
     { name: "description", content: "Welcome to beCoachable" },
   ];
 };
-
-export function ErrorBoundary() {
-  return (
-    <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
-      <div className="w-full py-6 flex flex-col w-[50rem] items-center">
-        <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
-
-        <h1 className="text-4xl">There Was an error please try again </h1>
-        <p className="text-muted">
-          if the problem persists and your on mobile please try on a laptop or
-          desktop pc
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export const loader = withAuth(async ({ user, supabaseClient }) => {
   const dashService = new DashboardService(supabaseClient);
