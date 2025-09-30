@@ -9,8 +9,8 @@ import { Input } from "../ui/input";
 import { MultiSelectField } from "./multi-select";
 import { Search } from "lucide-react";
 
-export const DrillField = () => {
-  const [drill, setDrill] = useState<Drill>();
+export const DrillField = ({ defaultValue }: { defaultValue?: any }) => {
+  const [drill, setDrill] = useState<Drill>(defaultValue);
   const fetcher = useFetcher();
 
   useEffect(() => {

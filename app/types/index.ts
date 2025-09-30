@@ -86,6 +86,7 @@ export type SessionItem = {
   eventId: string;
   drillId?: string;
   responsible?: string;
+  type: string;
   events?: Event;
   drills?: Drill;
 };

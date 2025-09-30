@@ -3,6 +3,8 @@ import { SessionItem, User } from "~/types";
 import { DeleteConfirm } from "../forms/delete-confirm";
 import { ActionProtection } from "../action-protection";
 import { AllowedRoles } from "../route-protections";
+import { Button } from "../ui/button";
+import { MoreActions } from "../layout/more-actions";
 
 export const SessionItemCard = ({
   sessionItem,
@@ -51,13 +53,27 @@ export const SessionItemCard = ({
   if (sessionItem.type === "section") {
     return (
       <div className="flex flex-col lg:flex-row gap-4 justify-between py-4 text-foreground">
-        <h3 className="text-muted text-xl">{sessionItem.description} </h3>
+        <h3
+          className="text-muted text-xl"
+          dangerouslySetInnerHTML={{ __html: sessionItem.description }}
+        />
         <div className="w-fit">
-          <DeleteConfirm
-            name={sessionItem?.drills?.name}
-            id={sessionItem.id}
-            term="Remove"
-          />
+          <MoreActions>
+            <DeleteConfirm
+              name={sessionItem?.drills?.name}
+              id={sessionItem.id}
+              term="Remove"
+            >
+              <Button className="w-full">Delete</Button>
+            </DeleteConfirm>
+            <Button className="w-full" variant="outline">
+              <Link
+                to={`/dashboard/events/${sessionItem.eventId}/session-plan/edit/${sessionItem.id}`}
+              >
+                Edit
+              </Link>
+            </Button>
+          </MoreActions>
         </div>
       </div>
     );
@@ -73,11 +89,22 @@ export const SessionItemCard = ({
       {!to && renderContent()}
       <ActionProtection allowedRoles={AllowedRoles.headOfDept} user={user}>
         <div className="w-fit">
-          <DeleteConfirm
-            name={sessionItem?.drills?.name}
-            id={sessionItem.id}
-            term="Remove"
-          />
+          <MoreActions>
+            <DeleteConfirm
+              name={sessionItem?.drills?.name}
+              id={sessionItem.id}
+              term="Remove"
+            >
+              <Button className="w-full">Delete</Button>
+            </DeleteConfirm>
+            <Button className="w-full" variant="outline">
+              <Link
+                to={`/dashboard/events/${sessionItem.eventId}/session-plan/edit/${sessionItem.id}`}
+              >
+                Edit
+              </Link>
+            </Button>
+          </MoreActions>
         </div>
       </ActionProtection>
     </div>
