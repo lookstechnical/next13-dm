@@ -4,6 +4,7 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
+import type { ShouldRevalidateFunctionArgs } from "@remix-run/react";
 import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin, MoreVertical } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
@@ -34,6 +35,23 @@ export const loader: LoaderFunction = withAuth(
     return { event, user };
   }
 );
+
+// Prevent revalidation when navigating between tabs on the same event
+export function shouldRevalidate({ currentUrl, nextUrl, formAction }: ShouldRevalidateFunctionArgs) {
+  // Always revalidate after form submissions (attendance changes, etc)
+  if (formAction) return true;
+
+  // If staying on the same event (just changing tabs), don't revalidate
+  const currentEventId = currentUrl.pathname.match(/\/events\/([^/]+)/)?.[1];
+  const nextEventId = nextUrl.pathname.match(/\/events\/([^/]+)/)?.[1];
+
+  if (currentEventId === nextEventId) {
+    return false;
+  }
+
+  // Different event or returning to list, revalidate
+  return true;
+}
 
 export const action: ActionFunction = withAuthAction(
   async ({ request, params, supabaseClient }) => {

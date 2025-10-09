@@ -1,4 +1,5 @@
 import type { MetaFunction } from "@remix-run/node";
+import type { ShouldRevalidateFunctionArgs } from "@remix-run/react";
 import { Form, Link, Outlet, useLoaderData, useSubmit } from "@remix-run/react";
 import { UserPlus } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
@@ -59,6 +60,29 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
     },
   };
 });
+
+// Prevent revalidation when navigating to child player routes or when filters change
+export function shouldRevalidate({ currentUrl, nextUrl, formAction }: ShouldRevalidateFunctionArgs) {
+  // Always revalidate after form submissions
+  if (formAction) return true;
+
+  // If just navigating to a player detail page, don't revalidate the list
+  if (currentUrl.pathname === '/dashboard/players' && nextUrl.pathname.startsWith('/dashboard/players/')) {
+    return false;
+  }
+
+  // If navigating back from player detail, revalidate to get fresh data
+  if (currentUrl.pathname.startsWith('/dashboard/players/') && nextUrl.pathname === '/dashboard/players') {
+    return true;
+  }
+
+  // If search params changed (filters), use default behavior
+  if (currentUrl.search !== nextUrl.search) {
+    return true;
+  }
+
+  return false;
+}
 
 export default function Players() {
   const { players, user, appliedFilters, groups } =

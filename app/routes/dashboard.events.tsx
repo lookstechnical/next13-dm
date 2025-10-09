@@ -1,5 +1,6 @@
 import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 import { type MetaFunction } from "@remix-run/node";
+import type { ShouldRevalidateFunctionArgs } from "@remix-run/react";
 import { Link, Outlet, useLoaderData } from "@remix-run/react";
 import { ActionProtection } from "~/components/action-protection";
 import { EventCard } from "~/components/events/event-card";
@@ -24,6 +25,25 @@ export const loader = withAuth(async ({ user, supabaseClient }) => {
 
   return { events, user };
 });
+
+// Prevent revalidation when navigating to child event routes
+export function shouldRevalidate({ currentUrl, nextUrl, formAction }: ShouldRevalidateFunctionArgs) {
+  // Always revalidate after form submissions
+  if (formAction) return true;
+
+  // If navigating from /dashboard/events to /dashboard/events/xxx, don't revalidate
+  // The events list doesn't change when viewing a single event
+  if (currentUrl.pathname === '/dashboard/events' && nextUrl.pathname.startsWith('/dashboard/events/')) {
+    return false;
+  }
+
+  // If navigating back to the list from a child route, revalidate to get fresh data
+  if (currentUrl.pathname.startsWith('/dashboard/events/') && nextUrl.pathname === '/dashboard/events') {
+    return true;
+  }
+
+  return false;
+}
 
 export default function Events() {
   const { events, user } = useLoaderData<typeof loader>();

@@ -1,5 +1,6 @@
 import { DropdownMenuItem } from "@radix-ui/react-dropdown-menu";
 import { type MetaFunction } from "@remix-run/node";
+import type { ShouldRevalidateFunctionArgs } from "@remix-run/react";
 import { Link, Outlet, useLoaderData } from "@remix-run/react";
 import { GroupCard } from "~/components/groups/group-card";
 import { ListingHeader } from "~/components/layout/listing-header";
@@ -25,6 +26,24 @@ export const loader = withAuth(
     return { groups, user };
   }
 );
+
+// Prevent revalidation when navigating to child group routes
+export function shouldRevalidate({ currentUrl, nextUrl, formAction }: ShouldRevalidateFunctionArgs) {
+  // Always revalidate after form submissions
+  if (formAction) return true;
+
+  // If navigating to a group detail page, don't revalidate the list
+  if (currentUrl.pathname === '/dashboard/groups' && nextUrl.pathname.startsWith('/dashboard/groups/')) {
+    return false;
+  }
+
+  // If navigating back to the list from a child route, revalidate to get fresh data
+  if (currentUrl.pathname.startsWith('/dashboard/groups/') && nextUrl.pathname === '/dashboard/groups') {
+    return true;
+  }
+
+  return false;
+}
 
 export default function Groups() {
   const { groups, user } = useLoaderData<typeof loader>();
