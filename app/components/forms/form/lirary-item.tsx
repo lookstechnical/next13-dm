@@ -2,7 +2,6 @@ import { Input } from "~/components/ui/input";
 import { Field } from "~/components/forms/field";
 import { RichTextField } from "../rich-text";
 import { DrillField } from "../drill";
-import { Select } from "~/components/ui/select";
 import { SelectField } from "../select";
 import { MultiSelectField } from "../multi-select";
 import { User } from "~/types";
@@ -18,7 +17,6 @@ export const LibraryItemForm: React.FC<LibraryItemForm> = ({
   item,
   teamMembers = [],
 }) => {
-  console.log({ teamMembers });
   const userOptions = teamMembers.map((member) => ({
     id: member.name,
     label: member.name,

@@ -12,7 +12,6 @@ type DrillForm = {
 };
 
 export const DrillForm: React.FC<DrillForm> = ({ drill, categories }) => {
-  console.log({ drill });
   return (
     <div className="flex gap-4 flex-col">
       {drill && <input type="hidden" name="playerId" value={drill.id} />}

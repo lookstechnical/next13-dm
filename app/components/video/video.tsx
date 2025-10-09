@@ -5,7 +5,6 @@ type VideoPlayerProps = {
 };
 
 const VideoPlayer = ({ url }: VideoPlayerProps) => {
-  console.log({ url });
   if (!url) return <p>No video URL provided</p>;
 
   // Check if it's YouTube

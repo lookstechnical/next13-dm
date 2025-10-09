@@ -378,8 +378,6 @@ export const RichTextField = ({
 }) => {
   const [html, setHtml] = React.useState<string>(defaultValue);
 
-  console.log({ html });
-
   return (
     <Field name={name} label={label}>
       <input type="hidden" name={name} value={html} />

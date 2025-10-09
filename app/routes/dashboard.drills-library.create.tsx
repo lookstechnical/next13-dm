@@ -50,8 +50,6 @@ export const action: ActionFunction = async ({ request }) => {
     imageUrl: formData.get("imageUrl") as string,
   };
 
-  console.log({ data });
-
   const drill = await drillService.addDrill(data);
 
   const image = formData.get("image");
