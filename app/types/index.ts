@@ -83,10 +83,12 @@ export type SessionItem = {
   description: string;
   duration: string;
   assignedTo: string;
+  assignedToNames?: string[];
   eventId: string;
   drillId?: string;
-  responsible?: string;
+  responsible?: string | string[];
   type: string;
+  order?: number;
   events?: Event;
   drills?: Drill;
 };

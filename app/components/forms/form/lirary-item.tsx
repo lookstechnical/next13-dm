@@ -4,16 +4,25 @@ import { RichTextField } from "../rich-text";
 import { DrillField } from "../drill";
 import { Select } from "~/components/ui/select";
 import { SelectField } from "../select";
+import { MultiSelectField } from "../multi-select";
+import { User } from "~/types";
 
 type LibraryItemForm = {
   libraryItem?: any;
   item?: any;
+  teamMembers?: User[];
 };
 
 export const LibraryItemForm: React.FC<LibraryItemForm> = ({
   libraryItem,
   item,
+  teamMembers = [],
 }) => {
+  console.log({ teamMembers });
+  const userOptions = teamMembers.map((member) => ({
+    id: member.name,
+    label: member.name,
+  }));
   return (
     <div className="flex gap-4 flex-col p-4 text-foreground">
       {libraryItem && (
@@ -43,14 +52,14 @@ export const LibraryItemForm: React.FC<LibraryItemForm> = ({
         </div>
 
         <div className="flex flex-row w-full gap-5">
-          <Field name="assignedTo" label="Assigned to">
-            <Input
-              name="assignedTo"
-              placeholder="Who is responsible"
-              defaultValue={item?.assignedTo}
-              className="bg-card border-gray-600 text-white placeholder:text-gray-400"
-            />
-          </Field>
+          <MultiSelectField
+            onChange={() => {}}
+            name="assignedTo"
+            label="Assigned to"
+            placeholder="Select responsible users..."
+            options={userOptions}
+            defaultValue={item?.assignedTo.split(",")}
+          />
           <Field name="duration" label="Duration">
             <Input
               name="duration"

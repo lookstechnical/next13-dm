@@ -1,4 +1,5 @@
 import { Link } from "@remix-run/react";
+import { GripVertical } from "lucide-react";
 import { SessionItem, User } from "~/types";
 import { DeleteConfirm } from "../forms/delete-confirm";
 import { ActionProtection } from "../action-protection";
@@ -10,10 +11,12 @@ export const SessionItemCard = ({
   sessionItem,
   to,
   user,
+  dragHandleProps,
 }: {
   sessionItem: SessionItem;
   to: string;
   user: User;
+  dragHandleProps?: any;
 }) => {
   const renderContent = () => {
     return (
@@ -38,7 +41,11 @@ export const SessionItemCard = ({
           <div className="lg:w-1/6 flex flex-col">
             {" "}
             <div className="text-sm text-muted">Responsible</div>
-            {sessionItem.assignedTo}
+            {sessionItem.assignedToNames
+              ? sessionItem.assignedToNames.join(", ")
+              : Array.isArray(sessionItem.assignedTo)
+              ? sessionItem.assignedTo.join(", ")
+              : sessionItem.assignedTo}
           </div>
           <div className="lg:w-1/6 flex flex-col">
             {" "}
@@ -80,7 +87,15 @@ export const SessionItemCard = ({
   }
 
   return (
-    <div className="flex flex-row bg-wkbackground w-full text-foreground p-4">
+    <div className="flex flex-row bg-wkbackground w-full text-foreground p-4 gap-2">
+      {dragHandleProps && (
+        <div
+          {...dragHandleProps}
+          className="flex items-center cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
+        >
+          <GripVertical className="h-5 w-5" />
+        </div>
+      )}
       {to && (
         <Link to={to} className="w-full">
           {renderContent()}

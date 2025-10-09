@@ -36,9 +36,36 @@ export class SessionService {
     const { data, error } = await this.client
       .from("session_items")
       .select("*, drills(*)")
-      .eq("event_id", eventId);
+      .eq("event_id", eventId)
+      .order("order");
 
-    return convertKeysToCamelCase(data);
+    if (error) {
+      console.log(error);
+      throw error;
+    }
+
+    // Convert and fetch user names for assigned_to IDs
+    const items = convertKeysToCamelCase(data);
+
+    if (items && items.length > 0) {
+      for (const item of items) {
+        if (Array.isArray(item.assignedTo)) {
+          const { data: users } = await this.client
+            .from("users")
+            .select("id, name")
+            .in("id", item.assignedTo);
+
+          if (users) {
+            // Create a map of ID to name
+            const userMap = new Map(users.map((u: any) => [u.id, u.name]));
+            // Replace IDs with names
+            item.assignedToNames = item.assignedTo.map((id: string) => userMap.get(id) || id);
+          }
+        }
+      }
+    }
+
+    return items;
   }
 
   async getSessionItemsById(itemId: string) {
@@ -48,27 +75,32 @@ export class SessionService {
       .eq("id", itemId)
       .single();
 
+    if (error) {
+      console.log(error);
+      throw error;
+    }
+
     if (data?.drills?.image_url) {
-      const { data: imageData, error } = await this.client.storage
+      const { data: imageData, error: imageError } = await this.client.storage
         .from("drill-images")
         .createSignedUrl(data?.drills?.image_url, 30);
 
       data.drills = { ...data.drills, image_url: imageData?.signedUrl };
 
-      if (error) {
-        console.log({ error });
+      if (imageError) {
+        console.log({ error: imageError });
       }
     }
 
     if (data?.drills?.video_url) {
-      const { data: videoData, error } = await this.client.storage
+      const { data: videoData, error: videoError } = await this.client.storage
         .from("drill-images")
         .createSignedUrl(data?.drills?.video_url, 30);
 
       data.drills = { ...data.drills, video_url: videoData?.signedUrl };
 
-      if (error) {
-        console.log({ error });
+      if (videoError) {
+        console.log({ error: videoError });
       }
     }
 
@@ -134,5 +166,26 @@ export class SessionService {
       console.log(error);
     }
     return convertKeysToCamelCase(data);
+  }
+
+  async updateSessionItemsOrder(
+    items: Array<{ id: string; order: number }>
+  ) {
+    const updates = items.map((item) =>
+      this.client
+        .from("session_items")
+        .update({ order: item.order })
+        .eq("id", item.id)
+    );
+
+    const results = await Promise.all(updates);
+
+    const errors = results.filter((r) => r.error);
+    if (errors.length > 0) {
+      console.log("Errors updating order:", errors);
+      throw new Error("Failed to update some items");
+    }
+
+    return { status: "success" };
   }
 }

@@ -157,4 +157,24 @@ export class TeamService {
 
     if (error) throw error;
   }
+
+  async getTeamMembers(teamId: string): Promise<User[]> {
+    const cacheKey = cacheManager.generateKey('teams', 'getTeamMembers', { teamId });
+
+    return withCache(
+      cacheKey,
+      async () => {
+        const { data, error } = await this.client
+          .from("team_memberships")
+          .select("users(*)")
+          .eq("team_id", teamId);
+
+        if (error) throw error;
+
+        const users = data?.map((membership: any) => membership.users).filter(Boolean) || [];
+        return convertKeysToCamelCase(users);
+      },
+      { ttl: CacheTTL.TEAMS }
+    );
+  }
 }
