@@ -5,6 +5,8 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 type DownloadButton = {
   sessionItems: SessionItem[];
+  eventName: string;
+  eventDate: string;
 };
 
 function stripHtml(html) {
@@ -35,7 +37,11 @@ function wrapText(text, font, fontSize, maxWidth) {
   return lines;
 }
 
-export async function generateSessionPlanPDF(items) {
+export async function generateSessionPlanPDF(
+  items,
+  eventName: string,
+  eventDate: string
+) {
   const pdfDoc = await PDFDocument.create();
   let page = pdfDoc.addPage([595.28, 841.89]); // A4
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -43,6 +49,7 @@ export async function generateSessionPlanPDF(items) {
 
   const fontSize = 11;
   const margin = 40;
+  const headerHeight = 80; // Space for header
   const usableWidth = page.getWidth() - margin * 2;
   const baseWidths = [145, 250, 120, 60]; // proportions
   const totalBase = baseWidths.reduce((a, b) => a + b, 0);
@@ -50,7 +57,68 @@ export async function generateSessionPlanPDF(items) {
   const colWidths = baseWidths.map((w) => w * scale);
   const rowMinHeight = 22;
   const cellPadding = 5;
-  let y = page.getHeight() - margin;
+  let y = page.getHeight() - margin - headerHeight; // Start below header
+
+  // Load logo (same as generateTeamPDF)
+  const logoBytes = await fetch("/logo.png")
+    .then((res) => res.arrayBuffer())
+    .then((buf) => new Uint8Array(buf));
+
+  const logoImage = await pdfDoc.embedPng(logoBytes);
+  const logoDims = logoImage.scale(0.02); // Same scale as teamsheet
+
+  // --- Draw Page Header ---
+  function drawPageHeader(currentPage) {
+    const pageWidth = currentPage.getWidth();
+    const pageHeight = currentPage.getHeight();
+    const headerY = pageHeight - margin - 30; // Top of header area
+
+    // Draw logo top right (same as teamsheet)
+    const logoX = pageWidth - logoDims.width - 50;
+    const logoY = pageHeight - logoDims.height - 30;
+    currentPage.drawImage(logoImage, {
+      x: logoX,
+      y: logoY,
+      width: logoDims.width,
+      height: logoDims.height,
+    });
+
+    // Draw title on left
+    currentPage.drawText(eventName || 'Session Plan', {
+      x: margin,
+      y: headerY,
+      font: boldFont,
+      size: 18,
+      color: rgb(0, 0, 0),
+    });
+
+    // Draw date below title
+    const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) : '';
+
+    currentPage.drawText(formattedDate, {
+      x: margin,
+      y: headerY - 20,
+      font: font,
+      size: 12,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    // Draw horizontal line below header
+    currentPage.drawLine({
+      start: { x: margin, y: headerY - 35 },
+      end: { x: pageWidth - margin, y: headerY - 35 },
+      thickness: 1,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+  }
+
+  // Draw header on first page
+  drawPageHeader(page);
 
   // --- Draw Header ---
   function drawHeader() {
@@ -83,7 +151,7 @@ export async function generateSessionPlanPDF(items) {
   function drawRow(item) {
     const drillName = item.drills?.name || "";
     const drillDescription = stripHtml(item.drills?.description || "");
-    const rootDescription = item.description || "";
+    const rootDescription = stripHtml(item.description) || "";
     const intensity = item.drills?.intensity || "";
     const responsible = item.assignedTo || "";
     const duration = item.duration || "";
@@ -135,7 +203,8 @@ export async function generateSessionPlanPDF(items) {
     // Page break if needed
     if (y - rowHeight < margin) {
       page = pdfDoc.addPage([595.28, 841.89]);
-      y = page.getHeight() - margin;
+      y = page.getHeight() - margin - headerHeight;
+      drawPageHeader(page); // Draw header on new page
       drawHeader();
     }
 
@@ -265,18 +334,25 @@ export async function generateSessionPlanPDF(items) {
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "session-plan.pdf";
+
+  // Generate filename from event name and date
+  const dateStr = eventDate ? new Date(eventDate).toISOString().split('T')[0] : '';
+  const sanitizedName = (eventName || 'session-plan').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+  link.download = `${sanitizedName}-${dateStr}.pdf`;
+
   link.click();
 }
 
 export const SessionDownloadButton: React.FC<DownloadButton> = ({
   sessionItems,
+  eventName,
+  eventDate,
 }) => {
   return (
     <Button
       variant="outline"
       className="text-foreground"
-      onClick={() => generateSessionPlanPDF(sessionItems)}
+      onClick={() => generateSessionPlanPDF(sessionItems, eventName, eventDate)}
     >
       <DownloadIcon />
       <span>Download PDF</span>

@@ -162,7 +162,11 @@ export default function SessionPlan() {
           <div className="w-full flex flex-row justify-between gap-2">
             <div></div>
             <div className="flex flex-row">
-              <SessionDownloadButton sessionItems={sessionItems} />
+              <SessionDownloadButton
+                sessionItems={sessionItems}
+                eventName={event.name}
+                eventDate={event.date}
+              />
               <ActionProtection
                 allowedRoles={AllowedRoles.headOfDept}
                 user={user}
