@@ -1,10 +1,9 @@
 import type {
-  ActionFunction,
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Form, useActionData, useLoaderData, useNavigate } from "@remix-run/react";
-import { useEffect } from "react";
+import { useLoaderData, useNavigate } from "@remix-run/react";
+import { useEffect, useState } from "react";
 import ActionButton from "~/components/ui/action-button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -23,46 +22,21 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const url = new URL(request.url);
   const error = url.searchParams.get("error");
   const message = url.searchParams.get("message");
+  const debug = url.searchParams.get("debug");
 
   await isLoggedIn(supabaseClient);
 
-  return { error, message };
+  return { error, message, debug };
 };
 
-export const action: ActionFunction = async ({ request }) => {
-  let formData = await request.formData();
-  const email = formData.get("email") as string;
-  const { supabaseClient, headers } = getSupabaseServerClient(request);
-  headers.set("Content-Type", "application/json");
-
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${import.meta.env.VITE_URL}/auth-callback`,
-    },
-  });
-
-  if (!error) {
-    return new Response(
-      JSON.stringify({ status: 200, message: "Email sent" }),
-      {
-        headers,
-      }
-    );
-  }
-
-  return new Response(
-    JSON.stringify({ status: 500, message: "Email not sent" }),
-    {
-      headers,
-    }
-  );
-};
+// No server action needed - handled client-side for PKCE
 
 export default function Index() {
-  const action = useActionData<{ status: number; message: string }>();
-  const loaderData = useLoaderData<{ error?: string; message?: string }>();
+  const loaderData = useLoaderData<{ error?: string; message?: string; debug?: string }>();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -71,7 +45,48 @@ export default function Index() {
         navigate("/dashboard");
       }
     });
-  }, []);
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+
+    try {
+      const redirectUrl = `${window.location.origin}/auth-callback`;
+      console.log("Requesting magic link with redirect URL:", redirectUrl);
+
+      // Call signInWithOtp client-side so PKCE verifier is stored in localStorage
+      const { error, data } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      console.log("signInWithOtp response:", { error, data });
+
+      if (error) {
+        console.error("Sign in error:", error);
+        setError(error.message || "Failed to send email. Please try again.");
+      } else {
+        console.log("Magic link sent successfully. Check localStorage for PKCE verifier:");
+        const storageKeys = Object.keys(localStorage).filter(k =>
+          k.startsWith('sb-') || k.includes('supabase')
+        );
+        console.log("Supabase keys in localStorage:", storageKeys);
+        setEmailSent(true);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex h-screen items-center justify-center bg-background text-foreground">
@@ -82,14 +97,36 @@ export default function Index() {
           {/* Display auth callback errors */}
           {loaderData?.error && loaderData?.message && (
             <div className="mb-4 p-3 bg-red-900/20 border border-red-700 rounded text-red-300 text-sm">
-              {loaderData.message}
+              <p>{loaderData.message}</p>
+              {loaderData.debug && (
+                <details className="mt-2 text-xs opacity-75">
+                  <summary className="cursor-pointer hover:opacity-100">
+                    Technical details
+                  </summary>
+                  <pre className="mt-2 p-2 bg-black/30 rounded overflow-x-auto">
+                    {loaderData.debug}
+                  </pre>
+                </details>
+              )}
             </div>
           )}
 
-          {action?.status === 200 ? (
-            <p>An email with a link has been sent to login</p>
+          {/* Display client-side errors */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-900/20 border border-red-700 rounded text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
+          {emailSent ? (
+            <div className="space-y-2">
+              <p className="text-green-400">An email with a link has been sent to login</p>
+              <p className="text-sm text-muted-foreground">
+                Please check your email and click the link to sign in.
+              </p>
+            </div>
           ) : (
-            <Form action="" method="post">
+            <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-300">
@@ -97,15 +134,18 @@ export default function Index() {
                   </label>
                   <Input
                     name="email"
+                    type="email"
+                    required
                     placeholder="Enter your email"
                     className="bg-dashboard-card border-gray-600 text-black placeholder:text-gray-400"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="flex justify-end flex-row w-full">
-                  <ActionButton title="Login" />
+                  <ActionButton title={isLoading ? "Sending..." : "Login"} disabled={isLoading} />
                 </div>
               </div>
-            </Form>
+            </form>
           )}
         </CardContent>
       </Card>

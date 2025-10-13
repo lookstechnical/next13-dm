@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import {
+  createBrowserClient,
   createServerClient,
   parseCookieHeader,
   serializeCookieHeader,
@@ -26,13 +27,17 @@ try {
 
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-});
+// Use createBrowserClient for proper cookie-based session storage
+// This ensures the server can read the session from cookies
+export const supabase = typeof window !== 'undefined'
+  ? createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  : createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: false, // No session persistence on server
+        detectSessionInUrl: false,
+      },
+    });
 
 // Helper functions for common operations
 export const getCurrentUser = async () => {
