@@ -23,16 +23,17 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const error = url.searchParams.get("error");
   const message = url.searchParams.get("message");
   const debug = url.searchParams.get("debug");
+  const instructions = url.searchParams.get("instructions");
 
   await isLoggedIn(supabaseClient);
 
-  return { error, message, debug };
+  return { error, message, debug, instructions };
 };
 
 // No server action needed - handled client-side for PKCE
 
 export default function Index() {
-  const loaderData = useLoaderData<{ error?: string; message?: string; debug?: string }>();
+  const loaderData = useLoaderData<{ error?: string; message?: string; debug?: string; instructions?: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -96,18 +97,44 @@ export default function Index() {
 
           {/* Display auth callback errors */}
           {loaderData?.error && loaderData?.message && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-700 rounded text-red-300 text-sm">
-              <p>{loaderData.message}</p>
-              {loaderData.debug && (
-                <details className="mt-2 text-xs opacity-75">
-                  <summary className="cursor-pointer hover:opacity-100">
-                    Technical details
-                  </summary>
-                  <pre className="mt-2 p-2 bg-black/30 rounded overflow-x-auto">
-                    {loaderData.debug}
-                  </pre>
-                </details>
-              )}
+            <div className="mb-4 p-4 bg-red-900/20 border border-red-700 rounded text-red-300 text-sm">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <div className="flex-1">
+                  <p className="font-medium mb-1">{loaderData.message}</p>
+
+                  {loaderData.instructions && (
+                    <div className="mt-3 p-3 bg-black/20 rounded border border-red-800">
+                      <p className="font-medium mb-1 text-red-200">How to fix:</p>
+                      <p className="text-xs">{loaderData.instructions}</p>
+                    </div>
+                  )}
+
+                  {loaderData.error === 'storage_blocked' && (
+                    <div className="mt-3 text-xs space-y-1 text-red-200">
+                      <p className="font-medium">Common causes:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>Private/Incognito browsing mode</li>
+                        <li>Browser privacy settings blocking cookies</li>
+                        <li>Browser extensions (ad blockers, privacy tools)</li>
+                      </ul>
+                    </div>
+                  )}
+
+                  {loaderData.debug && (
+                    <details className="mt-2 text-xs opacity-75">
+                      <summary className="cursor-pointer hover:opacity-100">
+                        Technical details
+                      </summary>
+                      <pre className="mt-2 p-2 bg-black/30 rounded overflow-x-auto">
+                        {loaderData.debug}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

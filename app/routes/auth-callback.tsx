@@ -3,6 +3,7 @@ import { redirect } from "@remix-run/node";
 import { useNavigate } from "@remix-run/react";
 import { useEffect, useState } from "react";
 import supabase from "~/lib/supabase";
+import { checkAuthRequirements, getCookieEnableInstructions } from "~/utils/browser-detect";
 
 /**
  * OAuth callback handler for Supabase magic links
@@ -44,6 +45,17 @@ export default function AuthCallback() {
       try {
         console.log("Auth callback: Starting - waiting for Supabase auto-detection");
         console.log("Auth callback: Full URL:", window.location.href);
+
+        // Check browser storage capabilities first
+        const authCheck = checkAuthRequirements();
+        console.log("Auth callback: Storage check:", authCheck);
+
+        if (!authCheck.supported) {
+          console.error("Auth callback: Storage not supported:", authCheck.error);
+          const instructions = getCookieEnableInstructions(authCheck.details.browser);
+          navigate(`/?error=storage_blocked&message=${encodeURIComponent(authCheck.error || 'Storage blocked')}&instructions=${encodeURIComponent(instructions)}`);
+          return;
+        }
 
         // Log localStorage state at start
         const allKeys = Object.keys(localStorage);
