@@ -3,7 +3,7 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Form, useActionData, useNavigate } from "@remix-run/react";
+import { Form, useActionData, useLoaderData, useNavigate } from "@remix-run/react";
 import { useEffect } from "react";
 import ActionButton from "~/components/ui/action-button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -20,7 +20,13 @@ export const meta: MetaFunction = () => {
 
 export const loader: LoaderFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
-  return isLoggedIn(supabaseClient);
+  const url = new URL(request.url);
+  const error = url.searchParams.get("error");
+  const message = url.searchParams.get("message");
+
+  await isLoggedIn(supabaseClient);
+
+  return { error, message };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -55,6 +61,7 @@ export const action: ActionFunction = async ({ request }) => {
 
 export default function Index() {
   const action = useActionData<{ status: number; message: string }>();
+  const loaderData = useLoaderData<{ error?: string; message?: string }>();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,6 +78,14 @@ export default function Index() {
       <Card className="w-3/4 md:w-1/4">
         <CardContent className="p-10 ">
           <h1 className="text-2xl uppercase my-2">Login</h1>
+
+          {/* Display auth callback errors */}
+          {loaderData?.error && loaderData?.message && (
+            <div className="mb-4 p-3 bg-red-900/20 border border-red-700 rounded text-red-300 text-sm">
+              {loaderData.message}
+            </div>
+          )}
+
           {action?.status === 200 ? (
             <p>An email with a link has been sent to login</p>
           ) : (
