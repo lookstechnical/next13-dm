@@ -1,7 +1,7 @@
 import { Event, EventRegistration, ValidationCode } from "../types";
 import { convertKeysToCamelCase } from "../utils/helpers";
-import { withCache, cacheManager } from './cache';
-import { CacheInvalidationService, CacheTTL } from './cacheInvalidation';
+import { withCache, cacheManager } from "./cache";
+import { CacheInvalidationService, CacheTTL } from "./cacheInvalidation";
 
 export class EventService {
   client;
@@ -9,8 +9,8 @@ export class EventService {
     this.client = client;
   }
   async getAllEvents(): Promise<Event[]> {
-    const cacheKey = cacheManager.generateKey('events', 'getAllEvents');
-    
+    const cacheKey = cacheManager.generateKey("events", "getAllEvents");
+
     return withCache(
       cacheKey,
       async () => {
@@ -62,18 +62,22 @@ export class EventService {
     return data || [];
   }
 
-  async getNextEvent(teamId: string): Promise<Event[]> {
+  async getNextEvent(teamId: string): Promise<Event | null> {
+    const now = new Date().toISOString();
     const { data, error } = await this.client
       .from("events")
       .select("*")
       .eq("team_id", teamId)
-      // .
-      .order("date", { ascending: false })
+      .gte("date", now)
+      .order("date", { ascending: true })
       .limit(1)
       .single();
 
-    if (error) throw error;
-    return data || [];
+    if (error) {
+      if (error.code === "PGRST116") return null; // Not found
+      throw error;
+    }
+    return data;
   }
 
   async getVisibleEvents(
