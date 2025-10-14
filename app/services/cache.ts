@@ -31,6 +31,13 @@ class CacheManager {
   };
 
   /**
+   * Check if we're in a browser environment with localStorage
+   */
+  private get isLocalStorageAvailable(): boolean {
+    return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+  }
+
+  /**
    * Generate a cache key from query parameters
    */
   generateKey(table: string, method: string, params?: Record<string, any>): string {
@@ -48,8 +55,8 @@ class CacheManager {
       return memoryEntry.data;
     }
 
-    // Check localStorage if enabled
-    if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+    // Check localStorage if enabled and available
+    if (this.isLocalStorageAvailable && (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage')) {
       try {
         const stored = localStorage.getItem(`cache:${key}`);
         if (stored) {
@@ -85,8 +92,8 @@ class CacheManager {
     // Store in memory
     this.memoryCache.set(key, entry);
 
-    // Store in localStorage if enabled
-    if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+    // Store in localStorage if enabled and available
+    if (this.isLocalStorageAvailable && (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage')) {
       try {
         localStorage.setItem(`cache:${key}`, JSON.stringify(entry));
       } catch (error) {
@@ -122,7 +129,7 @@ class CacheManager {
 
     toDelete.forEach(key => {
       this.memoryCache.delete(key);
-      if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+      if (this.isLocalStorageAvailable && (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage')) {
         try {
           localStorage.removeItem(`cache:${key}`);
         } catch (error) {
@@ -146,8 +153,8 @@ class CacheManager {
         }
       }
 
-      // Check localStorage
-      if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+      // Check localStorage if available
+      if (this.isLocalStorageAvailable && (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage')) {
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -166,7 +173,7 @@ class CacheManager {
       // Delete identified keys
       keysToDelete.forEach(key => {
         this.memoryCache.delete(key);
-        if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+        if (this.isLocalStorageAvailable && (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage')) {
           try {
             localStorage.removeItem(`cache:${key}`);
           } catch (error) {
@@ -202,8 +209,8 @@ class CacheManager {
    */
   clear(): void {
     this.memoryCache.clear();
-    
-    if (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage') {
+
+    if (this.isLocalStorageAvailable && (this.defaultConfig.storage === 'both' || this.defaultConfig.storage === 'localStorage')) {
       try {
         const keysToDelete: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
