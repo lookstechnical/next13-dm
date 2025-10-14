@@ -30,7 +30,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   return { error, message, debug, instructions };
 };
 
-// No server action needed - handled client-side for PKCE
+// No server action needed - handled client-side with implicit flow
 
 export default function Index() {
   const loaderData = useLoaderData<{ error?: string; message?: string; debug?: string; instructions?: string }>();
@@ -60,11 +60,14 @@ export default function Index() {
       const redirectUrl = `${window.location.origin}/auth-callback`;
       console.log("Requesting magic link with redirect URL:", redirectUrl);
 
-      // Call signInWithOtp client-side so PKCE verifier is stored in localStorage
+      // Call signInWithOtp client-side
+      // Using implicit flow (configured in supabase.ts) which works better
+      // with Safari's privacy features like "Privacy Preserving Ad Measurement"
       const { error, data } = await supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: redirectUrl,
+          shouldCreateUser: true,
         },
       });
 
@@ -74,11 +77,18 @@ export default function Index() {
         console.error("Sign in error:", error);
         setError(error.message || "Failed to send email. Please try again.");
       } else {
-        console.log("Magic link sent successfully. Check localStorage for PKCE verifier:");
-        const storageKeys = Object.keys(localStorage).filter(k =>
-          k.startsWith('sb-') || k.includes('supabase')
-        );
-        console.log("Supabase keys in localStorage:", storageKeys);
+        console.log("Magic link sent successfully");
+
+        // Safely check storage without throwing errors (Safari PPAM can block this)
+        try {
+          const storageKeys = Object.keys(localStorage).filter(k =>
+            k.startsWith('sb-') || k.includes('supabase')
+          );
+          console.log("Auth keys in storage:", storageKeys);
+        } catch (storageErr) {
+          console.warn("Could not access storage for logging:", storageErr);
+        }
+
         setEmailSent(true);
       }
     } catch (err) {

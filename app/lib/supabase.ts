@@ -27,10 +27,48 @@ try {
 
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 
+// Custom storage adapter that falls back to sessionStorage when localStorage is blocked
+// This helps with Safari's "Privacy Preserving Ad Measurement" and other privacy features
+const createSafeStorage = () => {
+  const testStorage = (storage: Storage) => {
+    try {
+      const test = '__storage_test__';
+      storage.setItem(test, test);
+      storage.removeItem(test);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Try localStorage first, fall back to sessionStorage
+  const useLocalStorage = testStorage(localStorage);
+  const storage = useLocalStorage ? localStorage : sessionStorage;
+
+  console.log('Supabase using storage:', useLocalStorage ? 'localStorage' : 'sessionStorage (fallback)');
+
+  return {
+    getItem: (key: string) => storage.getItem(key),
+    setItem: (key: string, value: string) => storage.setItem(key, value),
+    removeItem: (key: string) => storage.removeItem(key),
+  };
+};
+
 // Use createBrowserClient for proper cookie-based session storage
 // This ensures the server can read the session from cookies
 export const supabase = typeof window !== 'undefined'
-  ? createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  ? createBrowserClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        // Use implicit flow instead of PKCE - works better with Safari privacy features
+        flowType: 'implicit',
+        // Still detect sessions in URL
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+        // Use custom storage that falls back to sessionStorage
+        storage: createSafeStorage(),
+      },
+    })
   : createClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
