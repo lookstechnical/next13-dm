@@ -110,8 +110,8 @@ export const MobileUserMenu: React.FC<UserMenu> = ({ user }) => {
         </Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="w-full text-foreground">
-        <SheetTitle>Switch Teams</SheetTitle>
-        <div>
+        <SheetTitle className="text-lg font-semibold mb-4">Switch Teams</SheetTitle>
+        <div className="space-y-2 mb-6">
           {user?.teams?.map((team) => (
             <Form
               key={`team-context-switch-${team.id}`}
@@ -125,24 +125,32 @@ export const MobileUserMenu: React.FC<UserMenu> = ({ user }) => {
                 value={location.pathname}
               />
               <SheetClose asChild key={`context-${team.id}`}>
-                <button type="submit" className="w-full">
+                <button
+                  type="submit"
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors text-base font-medium min-h-[48px] flex items-center"
+                >
                   {team?.name}
                 </button>
               </SheetClose>
             </Form>
           ))}
         </div>
-        <h2>Account</h2>
-        <div>
-          <Form
-            className="w-full flex items-end"
-            method="post"
-            action="/logout"
-          >
-            <SheetClose asChild>
-              <button className="w-full text-left text-sm">Logout</button>
-            </SheetClose>
-          </Form>
+
+        <div className="border-t border-border pt-4 mt-4">
+          <h2 className="text-lg font-semibold mb-4">Account</h2>
+          <div>
+            <Form
+              className="w-full"
+              method="post"
+              action="/logout"
+            >
+              <SheetClose asChild>
+                <button className="w-full text-left px-4 py-3 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-base font-medium min-h-[48px] flex items-center">
+                  Logout
+                </button>
+              </SheetClose>
+            </Form>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
