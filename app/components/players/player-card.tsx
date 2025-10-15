@@ -75,12 +75,14 @@ export const PlayerCard: React.FC<PlayerCard> = ({
             <div className="text-xs text-gray-400">
               <span className="mr-2">{player?.club}</span>
             </div>
-            <div className="text-xs mt-2  text-gray-200">
-              <span className="mr-2 flex flex-row gap-2 items-center">
-                <UserCheck />
-                {player?.mentor?.name}
-              </span>
-            </div>
+            {player?.mentor && (
+              <div className="text-xs mt-2  text-gray-200">
+                <span className="mr-2 flex flex-row gap-2 items-center">
+                  <UserCheck />
+                  {player?.mentor?.name}
+                </span>
+              </div>
+            )}
             <div className="flex items-center space-x-2 mt-2">
               <div className="bg-red-600 text-white px-2 py-1 rounded-lg text-xs font-medium">
                 {calculateAgeGroup(player?.dateOfBirth)}
