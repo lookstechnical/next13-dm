@@ -262,7 +262,7 @@ export class PlayerService {
         mobile,
         email,
         player_group_members(group_id),
-        mentor(name)
+        mentor(id,name)
       `
       )
       .eq("team_id", teamId);

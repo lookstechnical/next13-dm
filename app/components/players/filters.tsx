@@ -22,7 +22,6 @@ export const PlayerFilters: React.FC<PlayerFilters> = ({
 }) => {
   const [open, setOpen] = useState(false);
 
-  console.log({ mentors });
   return (
     <Sheet open={open} onOpenChange={(val) => setOpen(val)}>
       <SheetTrigger asChild onClick={() => setOpen(true)}>
