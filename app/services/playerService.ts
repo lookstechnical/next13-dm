@@ -426,6 +426,7 @@ export class PlayerService {
       mobile: formData.get("mobile") as string,
       shirt: formData.get("shirt") as string,
       shorts: formData.get("shorts") as string,
+      mentor: formData.get("mentor") as string,
     };
 
     return { data, playerId };
@@ -452,6 +453,7 @@ export class PlayerService {
     if (updates.mobile !== undefined) updateData.mobile = updates.mobile;
     if (updates.shorts !== undefined) updateData.shorts = updates.shorts;
     if (updates.shirt !== undefined) updateData.shirt = updates.shirt;
+    if (updates.mentor !== undefined) updateData.mentor = updates.mentor;
 
     const { data, error } = await this.client
       .from("players")
