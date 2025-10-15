@@ -3,8 +3,8 @@ import {
   convertKeysToCamelCase,
   getDateRangeForAgeGroup,
 } from "../utils/helpers";
-import { withCache, cacheManager } from './cache';
-import { CacheInvalidationService, CacheTTL } from './cacheInvalidation';
+import { withCache, cacheManager } from "./cache";
+import { CacheInvalidationService, CacheTTL } from "./cacheInvalidation";
 
 type AvScore = { score: string };
 
@@ -15,8 +15,8 @@ export class PlayerService {
   }
 
   async getAllPlayers(): Promise<Player[]> {
-    const cacheKey = cacheManager.generateKey('players', 'getAllPlayers');
-    
+    const cacheKey = cacheManager.generateKey("players", "getAllPlayers");
+
     return withCache(
       cacheKey,
       async () => {
@@ -53,8 +53,10 @@ export class PlayerService {
   }
 
   async getPlayerById(id: string): Promise<Player | null> {
-    const cacheKey = cacheManager.generateKey('players', 'getPlayerById', { id });
-    
+    const cacheKey = cacheManager.generateKey("players", "getPlayerById", {
+      id,
+    });
+
     return withCache(
       cacheKey,
       async () => {
@@ -80,7 +82,8 @@ export class PlayerService {
             created_at,
             updated_at,
             shirt,
-            shorts
+            shorts,
+            mentor
           `
           )
           .eq("id", id)
@@ -399,10 +402,10 @@ export class PlayerService {
       .single();
 
     if (error) throw error;
-    
+
     // Invalidate related cache
     CacheInvalidationService.invalidatePlayerCache(playerData.teamId);
-    
+
     return data;
   }
 
@@ -461,12 +464,12 @@ export class PlayerService {
       if (error.code === "PGRST116") return null;
       throw error;
     }
-    
+
     const result = this.transformFromDb(data);
-    
+
     // Invalidate related cache
     CacheInvalidationService.invalidatePlayerCache(result.teamId, id);
-    
+
     return result;
   }
 
@@ -509,16 +512,16 @@ export class PlayerService {
   async deletePlayer(id: string): Promise<boolean> {
     // Get player data before deletion for cache invalidation
     const player = await this.getPlayerById(id);
-    
+
     const { error } = await this.client.from("players").delete().eq("id", id);
 
     if (error) throw error;
-    
+
     // Invalidate related cache
     if (player) {
       CacheInvalidationService.invalidatePlayerCache(player.teamId, id);
     }
-    
+
     return true;
   }
 

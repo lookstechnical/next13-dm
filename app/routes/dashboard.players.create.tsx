@@ -5,6 +5,7 @@ import { AllowedRoles } from "~/components/route-protections";
 import SheetPage from "~/components/sheet-page";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
+import { ScoutService } from "~/services/scoutService";
 import { Player } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
@@ -14,12 +15,18 @@ export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-export const loader = withAuth(AllowedRoles.all, async ({ supabaseClient }) => {
-  const clubsService = new ClubService(supabaseClient);
-  const clubs = await clubsService.getAllClubs();
+export const loader = withAuth(
+  AllowedRoles.all,
+  async ({ supabaseClient, user }) => {
+    const clubsService = new ClubService(supabaseClient);
+    const clubs = await clubsService.getAllClubs();
 
-  return { clubs };
-});
+    const usersService = new ScoutService(supabaseClient);
+    const users = await usersService.getAllScoutsByTeam(user.current_team);
+
+    return { clubs, users };
+  }
+);
 
 export const action = withAuthAction(
   async ({ request, user, supabaseClient }) => {
@@ -41,6 +48,7 @@ export const action = withAuthAction(
       email: formData.get("email") as string,
       scoutId: user.id as string,
       teamId: user.current_team as string,
+      mentor: formData.get("mentor") as string,
     };
 
     const player = await playerService.createPlayer(data);
@@ -54,7 +62,7 @@ export const action = withAuthAction(
 );
 
 export default function PlayersCreate() {
-  const { clubs } = useLoaderData<typeof loader>();
+  const { clubs, users } = useLoaderData<typeof loader>();
 
   return (
     <SheetPage
@@ -64,7 +72,7 @@ export default function PlayersCreate() {
       description="Add a new player to the team"
       hasForm
     >
-      <PlayerForm clubs={clubs} />
+      <PlayerForm clubs={clubs} users={users} />
     </SheetPage>
   );
 }

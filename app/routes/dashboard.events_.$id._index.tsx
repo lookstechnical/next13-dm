@@ -7,14 +7,17 @@ import { Form, Link, redirect, useLoaderData } from "@remix-run/react";
 import { User2 } from "lucide-react";
 import { useState } from "react";
 import { ActionProtection } from "~/components/action-protection";
+import { Field } from "~/components/forms/field";
 import { SelectField } from "~/components/forms/select";
 import { PlayerCard } from "~/components/players/player-card";
 import { AllowedRoles } from "~/components/route-protections";
 import { Button } from "~/components/ui/button copy";
 import { CardGrid } from "~/components/ui/card-grid";
+import { Checkbox } from "~/components/ui/checkbox";
 import { cn } from "~/lib/utils";
 import { EventService } from "~/services/eventService";
 import { GroupService } from "~/services/groupService";
+import { ScoutService } from "~/services/scoutService";
 import { EventRegistration } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
@@ -35,6 +38,7 @@ export const loader: LoaderFunction = withAuth(
 
     const groupService = new GroupService(supabaseClient);
     const groups = (await groupService.getGroupsByTeam(user.team.id)) || [];
+
     return { event, players, groups, user };
   }
 );
@@ -74,8 +78,10 @@ export const action: ActionFunction = withAuthAction(
 );
 
 export default function PlayerPage() {
-  const { event, players, groups, user } = useLoaderData<typeof loader>();
+  const { event, players, groups, user, mentors } =
+    useLoaderData<typeof loader>();
   const [status, setStatus] = useState<string>();
+  const [mentor, setMentor] = useState<boolean>();
   const [group, setGroup] = useState<string>();
 
   const getVariant = (player: EventRegistration) => {
@@ -99,6 +105,10 @@ export default function PlayerPage() {
       )
     : filteredPlayers;
 
+  filteredPlayers = mentor
+    ? filteredPlayers.filter((p) => p.players.mentor === user.id)
+    : filteredPlayers;
+
   return (
     <>
       <div className="bg-card min-h-screen py-10 ">
@@ -115,12 +125,15 @@ export default function PlayerPage() {
               { id: "confirmed", name: "Confirmed" },
             ]}
           />
-          <SelectField
-            name="group"
-            label="Group"
-            onValueChange={(group) => setGroup(group)}
-            options={groups.map((g) => ({ id: g.id, name: g.name }))}
-          />
+
+          <Field label="Mentor" name="mentor">
+            <Checkbox
+              name="mentor"
+              onCheckedChange={(b) => {
+                setMentor(b);
+              }}
+            />
+          </Field>
           <div className="w-1/5 text-foreground flex flex-row gap-2 items-center justify-start">
             <User2 /> {filteredPlayers.length}{" "}
             <span className="hidden md:inline-block">players</span>

@@ -9,6 +9,7 @@ import { AllowedRoles, RouteProtection } from "~/components/route-protections";
 import SheetPage from "~/components/sheet-page";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
+import { ScoutService } from "~/services/scoutService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { requireUser, getAppUser } from "~/utils/require-user";
 
@@ -28,7 +29,10 @@ export const loader: LoaderFunction = withAuth(
     const clubsService = new ClubService(supabaseClient);
     const clubs = await clubsService.getAllClubs();
 
-    return { player, clubs, user };
+    const usersService = new ScoutService(supabaseClient);
+    const users = await usersService.getAllScouts();
+
+    return { player, clubs, user, users };
   }
 );
 
@@ -36,13 +40,6 @@ export const action: ActionFunction = withAuthAction(
   async ({ request, supabaseClient }) => {
     const formdata = await request.formData();
     const avatar = formdata.get("avatar");
-
-    const { user: authUser } = await requireUser(supabaseClient);
-    const user = await getAppUser(authUser.id, supabaseClient);
-
-    if (!user) {
-      return redirect("/");
-    }
 
     const playerService = new PlayerService(supabaseClient);
 
@@ -59,7 +56,7 @@ export const action: ActionFunction = withAuthAction(
 );
 
 export default function PlayersCreate() {
-  const { player, clubs, user } = useLoaderData<typeof loader>();
+  const { player, clubs, user, users } = useLoaderData<typeof loader>();
 
   return (
     <SheetPage
@@ -70,7 +67,7 @@ export default function PlayersCreate() {
       hasForm
     >
       <RouteProtection allowedRoles={AllowedRoles.headOfDept} user={user}>
-        <PlayerForm player={player} clubs={clubs} />
+        <PlayerForm player={player} clubs={clubs} users={users} />
       </RouteProtection>
     </SheetPage>
   );

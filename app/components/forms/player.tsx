@@ -1,4 +1,4 @@
-import { Club, Player } from "~/types";
+import { Club, Player, User } from "~/types";
 import { Input } from "../ui/input";
 import { Field } from "./field";
 import { PositionSelect } from "./position";
@@ -10,11 +10,17 @@ type PlayerForm = {
   player?: Player;
   clubs?: Club[];
   errors?: any[];
+  users?: User[];
 };
 
 const sizes = ["XS", "SM", "M", "LG", "XL", "XXL", "XXXL"];
 
-export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs, errors }) => {
+export const PlayerForm: React.FC<PlayerForm> = ({
+  player,
+  clubs,
+  errors,
+  users,
+}) => {
   return (
     <div className="flex gap-4 flex-col">
       {player && <input type="hidden" name="playerId" value={player.id} />}
@@ -107,6 +113,17 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs, errors }) => {
               options={sizes?.map((c) => ({ id: c, name: c })) || []}
             />
           </div>
+          {users && (
+            <div>
+              <SelectField
+                name="mentor"
+                label="Mentor"
+                defaultValue={player?.mentor}
+                errors={errors}
+                options={users?.map((c) => ({ id: c.id, name: c.name })) || []}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

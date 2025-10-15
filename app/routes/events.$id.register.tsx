@@ -90,6 +90,7 @@ export const action: ActionFunction = async ({ request }) => {
       email: formData.get("email") as string,
       scoutId: null,
       teamId: event?.teamId,
+      mentor: formData.get("mentor") as string,
     };
 
     const playerId = formData.get("playerId") as string;

@@ -75,6 +75,7 @@ export interface Player {
     avgOverallScore?: string;
   };
   playerGroupMembers?: { id: string }[];
+  mentor?: string;
 }
 
 export type SessionItem = {
