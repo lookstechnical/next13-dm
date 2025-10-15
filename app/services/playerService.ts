@@ -261,7 +261,8 @@ export class PlayerService {
         photo_url,
         mobile,
         email,
-        player_group_members(group_id)
+        player_group_members(group_id),
+        mentor(name)
       `
       )
       .eq("team_id", teamId);

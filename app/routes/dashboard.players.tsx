@@ -14,6 +14,7 @@ import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
+import { ScoutService } from "~/services/scoutService";
 import { Player } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
 
@@ -26,11 +27,13 @@ export const meta: MetaFunction = () => {
 export const loader = withAuth(async ({ request, user, supabaseClient }) => {
   const playerService = new PlayerService(supabaseClient);
   const groupService = new GroupService(supabaseClient);
+  const scoutService = new ScoutService(supabaseClient);
 
   const url = new URL(request.url);
   const order = url.searchParams.get("order");
   const nameFilter = url.searchParams.get("name");
   const ageGroupFilter = url.searchParams.get("age-group");
+  const mentor = url.searchParams.get("mentor");
   const position = url.searchParams.get("position");
   const group = url.searchParams.get("group") || user.team?.defaultGroup;
 
@@ -45,10 +48,21 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
 
   const groupsPromise = groupService.getGroupsByTeam(user.team?.id as string);
 
-  const [players, groups] = await Promise.all([playersPromise, groupsPromise]);
+  const mentorPromise = scoutService.getAllScouts();
+
+  const [players, groups, mentors] = await Promise.all([
+    playersPromise,
+    groupsPromise,
+    mentorPromise,
+  ]);
+
+  const filteredByMentor = mentor
+    ? players.filter((p) => p.mentor?.id === mentor)
+    : players;
 
   return {
-    players,
+    players: filteredByMentor,
+    mentors,
     user,
     groups,
     appliedFilters: {
@@ -57,22 +71,33 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
       ageGroup: ageGroupFilter,
       group,
       position,
+      mentor,
     },
   };
 });
 
 // Prevent revalidation when navigating to child player routes or when filters change
-export function shouldRevalidate({ currentUrl, nextUrl, formAction }: ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  formAction,
+}: ShouldRevalidateFunctionArgs) {
   // Always revalidate after form submissions
   if (formAction) return true;
 
   // If just navigating to a player detail page, don't revalidate the list
-  if (currentUrl.pathname === '/dashboard/players' && nextUrl.pathname.startsWith('/dashboard/players/')) {
+  if (
+    currentUrl.pathname === "/dashboard/players" &&
+    nextUrl.pathname.startsWith("/dashboard/players/")
+  ) {
     return false;
   }
 
   // If navigating back from player detail, revalidate to get fresh data
-  if (currentUrl.pathname.startsWith('/dashboard/players/') && nextUrl.pathname === '/dashboard/players') {
+  if (
+    currentUrl.pathname.startsWith("/dashboard/players/") &&
+    nextUrl.pathname === "/dashboard/players"
+  ) {
     return true;
   }
 
@@ -85,7 +110,7 @@ export function shouldRevalidate({ currentUrl, nextUrl, formAction }: ShouldReva
 }
 
 export default function Players() {
-  const { players, user, appliedFilters, groups } =
+  const { players, user, appliedFilters, groups, mentors } =
     useLoaderData<typeof loader>();
 
   const submit = useSubmit();
@@ -101,7 +126,11 @@ export default function Players() {
           title={`${user.team.name} Players`}
           renderActions={() => (
             <div className="flex flex-row items-end justify-center gap-4 p-0 m-0">
-              <PlayerFilters appliedFilters={appliedFilters} groups={groups} />
+              <PlayerFilters
+                appliedFilters={appliedFilters}
+                groups={groups}
+                mentors={mentors}
+              />
               <Form
                 onChange={(event) => {
                   submit(event.currentTarget);

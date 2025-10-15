@@ -6,19 +6,23 @@ import { Field } from "../forms/field";
 import { Input } from "../ui/input";
 import { useState } from "react";
 import { SelectField } from "../forms/select";
-import { PlayerGroup } from "~/types";
+import { PlayerGroup, User } from "~/types";
 import { POSITIONS } from "~/utils/helpers";
 import { Button } from "../ui/button";
 
 type PlayerFilters = {
   appliedFilters: any;
   groups?: PlayerGroup[];
+  mentors: User[];
 };
 export const PlayerFilters: React.FC<PlayerFilters> = ({
   appliedFilters,
   groups,
+  mentors,
 }) => {
   const [open, setOpen] = useState(false);
+
+  console.log({ mentors });
   return (
     <Sheet open={open} onOpenChange={(val) => setOpen(val)}>
       <SheetTrigger asChild onClick={() => setOpen(true)}>
@@ -63,6 +67,15 @@ export const PlayerFilters: React.FC<PlayerFilters> = ({
               label="Position"
               defaultValue={appliedFilters?.position}
               options={POSITIONS?.map((p) => ({ id: p, name: p }))}
+            />
+          )}
+
+          {mentors && (
+            <SelectField
+              name="mentor"
+              label="Mentor"
+              defaultValue={appliedFilters?.mentor}
+              options={mentors?.map((p) => ({ id: p.id, name: p.name }))}
             />
           )}
 

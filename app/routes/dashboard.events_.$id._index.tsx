@@ -106,7 +106,7 @@ export default function PlayerPage() {
     : filteredPlayers;
 
   filteredPlayers = mentor
-    ? filteredPlayers.filter((p) => p.players.mentor === user.id)
+    ? filteredPlayers.filter((p) => p.players.mentor?.id === user.id)
     : filteredPlayers;
 
   return (

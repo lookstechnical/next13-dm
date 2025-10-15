@@ -6,7 +6,14 @@ import {
   calculateRelativeAgeQuartile,
 } from "~/utils/helpers";
 import { cn } from "~/lib/utils";
-import { Mail, MailCheck, MailMinus, Phone, User } from "lucide-react";
+import {
+  Mail,
+  MailCheck,
+  MailMinus,
+  Phone,
+  User,
+  UserCheck,
+} from "lucide-react";
 import { PropsWithChildren } from "react";
 import { Tooltip, TooltipContent, TooltipProvider } from "../ui/tooltip";
 import { TooltipTrigger } from "@radix-ui/react-tooltip";
@@ -67,6 +74,12 @@ export const PlayerCard: React.FC<PlayerCard> = ({
             </div>
             <div className="text-xs text-gray-400">
               <span className="mr-2">{player?.club}</span>
+            </div>
+            <div className="text-xs mt-2  text-gray-200">
+              <span className="mr-2 flex flex-row gap-2 items-center">
+                <UserCheck />
+                {player?.mentor?.name}
+              </span>
             </div>
             <div className="flex items-center space-x-2 mt-2">
               <div className="bg-red-600 text-white px-2 py-1 rounded-lg text-xs font-medium">

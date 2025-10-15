@@ -96,7 +96,7 @@ export class GroupService {
         id, name, type,
         player_group_members (
           player_id,
-          players(id,name)
+          players(id,name, mentor)
         )
       `
       )
