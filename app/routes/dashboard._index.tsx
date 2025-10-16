@@ -43,11 +43,12 @@ export default function Index() {
     <div className="container mx-auto p-4">
       <CardGrid items={[{ test: "" }]} title="Dashboard">
         <AttributeHeatmap
+          className="col-span-2 xl:col-span-1"
           attributes={teamProgress?.scores}
           onCellClick={() => {}}
         />
 
-        <Card className="card-gradient-green text-white border-0">
+        <Card className="card-gradient-green text-white border-0 col-span-2 md:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90 text-muted">
               Events
@@ -63,13 +64,13 @@ export default function Index() {
           </CardContent>
         </Card>
 
-        <Card className="card-gradient-green text-white border-0 col-span-2">
+        <Card className="card-gradient-green text-white border-0 col-span-2 md:col-span-3 xl:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90 text-muted">
               Players
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
             <div>
               <h3 className="text-lg">Top Performers</h3>
               {/* <ul className="py-4">
@@ -89,7 +90,7 @@ export default function Index() {
           </CardContent>
         </Card>
 
-        <Card className="card-gradient-green text-white border-0">
+        <Card className="card-gradient-green text-white border-0 col-span-2 md:col-span-3 xl:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90 text-muted">
               Quote of the day

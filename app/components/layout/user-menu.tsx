@@ -145,7 +145,7 @@ export const MobileUserMenu: React.FC<UserMenu> = ({ user }) => {
               action="/logout"
             >
               <SheetClose asChild>
-                <button className="w-full text-left px-4 py-3 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-base font-medium min-h-[48px] flex items-center">
+                <button type="submit" className="w-full text-left px-4 py-3 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-base font-medium min-h-[48px] flex items-center">
                   Logout
                 </button>
               </SheetClose>

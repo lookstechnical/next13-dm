@@ -6,10 +6,24 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 import { getHeatmapColor } from "./heat-block";
+import { cn } from "~/lib/utils";
 
-export function AttributeHeatmap({ attributes, onCellClick }) {
+export function AttributeHeatmap({
+  attributes,
+  onCellClick,
+  className,
+}: {
+  attributes: any[];
+  onCellClick: any;
+  className?: string;
+}) {
   return (
-    <Card className="bg-background border-gray-800 shadow-lg rounded-lg text-foreground">
+    <Card
+      className={cn(
+        "bg-background border-gray-800 shadow-lg rounded-lg text-foreground ",
+        className
+      )}
+    >
       <CardHeader>
         <CardTitle className="text-lg">Attribute Heatmap</CardTitle>
       </CardHeader>
