@@ -40,7 +40,7 @@ export const AttributeCard: React.FC<AttributeCard> = ({
       className={cn("border-border relative", isSelected && "bg-wkbackground")}
       onClick={handleClick}
     >
-      {link && <Link to={link}>{renderContent()}</Link>}
+      {link && <Link to={link} className="block transition-all hover:opacity-80 active:opacity-60">{renderContent()}</Link>}
       {!link && renderContent()}
       {onSelect && (
         <div className="flex flex-row justify-end p-4 absolute bottom-0 mt-10 w-full">

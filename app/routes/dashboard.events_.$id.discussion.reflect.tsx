@@ -3,7 +3,7 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { redirect, useLoaderData } from "@remix-run/react";
 import { ReflectForm } from "~/components/forms/form/reflect";
 import SheetPage from "~/components/sheet-page";
 import { EventService } from "~/services/eventService";
@@ -44,7 +44,7 @@ export const action: ActionFunction = withAuthAction(
       coach_id: user.id,
     });
 
-    return {};
+    return redirect(`/dashboard/${params.id}/discussion`);
   }
 );
 

@@ -39,7 +39,7 @@ export const EventCard: React.FC<EventCard> = ({ to, event }) => {
 
   return (
     <Card className="border-border">
-      {link && <Link to={link}>{renderContent()}</Link>}
+      {link && <Link to={link} className="block transition-all hover:opacity-80 active:opacity-60">{renderContent()}</Link>}
       {!link && renderContent()}
     </Card>
   );

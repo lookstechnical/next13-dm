@@ -55,7 +55,10 @@ export default function Index() {
           </CardHeader>
           <CardContent>
             <h3 className="text-lg mb-2">Next Event</h3>
-            <EventCard event={event} />
+            <EventCard
+              event={event}
+              to={(eventId) => `/dashboard/events/${eventId}`}
+            />
             {/* <p className="text-xs opacity-90">+20.1% from last month</p> */}
           </CardContent>
         </Card>

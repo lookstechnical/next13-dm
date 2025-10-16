@@ -97,7 +97,7 @@ export const SessionItemCard = ({
         </div>
       )}
       {to && (
-        <Link to={to} className="w-full">
+        <Link to={to} className="w-full block transition-all hover:opacity-80 active:opacity-60">
           {renderContent()}
         </Link>
       )}

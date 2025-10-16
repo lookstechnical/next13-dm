@@ -67,7 +67,7 @@ export const DrillCard: React.FC<DrillCard> = ({
       )}
       onClick={handleClick}
     >
-      {link && <Link to={link}>{renderContent()}</Link>}
+      {link && <Link to={link} className="block transition-all hover:opacity-80 active:opacity-60">{renderContent()}</Link>}
       {!link && renderContent()}
       {children && (
         <div className="mt-10 text-foreground">

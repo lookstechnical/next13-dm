@@ -161,7 +161,7 @@ export const PlayerCard: React.FC<PlayerCard> = ({
       className={cn("border-border relative", isSelected && "bg-wkbackground")}
       onClick={handleClick}
     >
-      {link && <Link to={link}>{renderContent()}</Link>}
+      {link && <Link to={link} className="block transition-all hover:opacity-80 active:opacity-60">{renderContent()}</Link>}
       {!link && renderContent()}
       {children && (
         <div className="mt-10 text-foreground">
