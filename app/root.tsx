@@ -28,9 +28,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="apple-touch-icon" sizes="128x128" href="be-coachable.png" />
-        <link rel="shortcut icon" type="image/png" href="be-coachable.png" />
-        <link rel="icon" sizes="192x192" href="be-coachable.png" />
+        <link rel="apple-touch-icon" sizes="128x128" href="/be-coachable.png" />
+        <link rel="shortcut icon" type="image/png" href="/be-coachable.png" />
+        <link rel="icon" sizes="192x192" href="/be-coachable.png" />
         <Meta />
         <Links />
       </head>

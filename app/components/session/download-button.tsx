@@ -84,7 +84,7 @@ export async function generateSessionPlanPDF(
     });
 
     // Draw title on left
-    currentPage.drawText(eventName || 'Session Plan', {
+    currentPage.drawText(eventName || "Session Plan", {
       x: margin,
       y: headerY,
       font: boldFont,
@@ -93,12 +93,14 @@ export async function generateSessionPlanPDF(
     });
 
     // Draw date below title
-    const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    }) : '';
+    const formattedDate = eventDate
+      ? new Date(eventDate).toLocaleDateString("en-GB", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "";
 
     currentPage.drawText(formattedDate, {
       x: margin,
@@ -148,7 +150,7 @@ export async function generateSessionPlanPDF(
   drawHeader();
 
   // --- Draw Row ---
-  function drawRow(item) {
+  function drawRow(item: SessionItem) {
     const drillName = item.drills?.name || "";
     const drillDescription = stripHtml(item.drills?.description || "");
     const rootDescription = stripHtml(item.description) || "";
@@ -325,9 +327,53 @@ export async function generateSessionPlanPDF(
     y -= rowHeight;
   }
 
+  // --- Draw Section Header ---
+  function drawSectionHeader(item: SessionItem) {
+    const sectionText = stripHtml(item.description) || "Section";
+    const sectionHeight = 30;
+    const sectionPadding = 10;
+
+    // Add some space before section
+    y -= 15;
+
+    // Page break if needed
+    if (y - sectionHeight < margin) {
+      page = pdfDoc.addPage([595.28, 841.89]);
+      y = page.getHeight() - margin - headerHeight;
+      drawPageHeader(page);
+    }
+
+    // Draw section background
+    page.drawRectangle({
+      x: margin,
+      y: y - sectionHeight,
+      width: usableWidth,
+      height: sectionHeight,
+      color: rgb(0.8, 0, 0), // Red background
+      borderColor: rgb(0.6, 0, 0), // Darker red border
+      borderWidth: 1,
+    });
+
+    // Draw section text
+    page.drawText(sectionText, {
+      x: margin + sectionPadding,
+      y: y - 20,
+      font: boldFont,
+      size: 10,
+      color: rgb(1, 1, 1), // White text for contrast
+    });
+
+    y -= sectionHeight + 10; // Add spacing after section
+  }
+
   // --- Draw all items ---
   items.forEach((item) => {
-    drawRow(item);
+    if (item.type === "section") {
+      drawSectionHeader(item);
+      drawHeader(); // Start new table after section
+    } else {
+      drawRow(item);
+    }
   });
 
   const pdfBytes = await pdfDoc.save();
@@ -336,8 +382,12 @@ export async function generateSessionPlanPDF(
   link.href = URL.createObjectURL(blob);
 
   // Generate filename from event name and date
-  const dateStr = eventDate ? new Date(eventDate).toISOString().split('T')[0] : '';
-  const sanitizedName = (eventName || 'session-plan').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+  const dateStr = eventDate
+    ? new Date(eventDate).toISOString().split("T")[0]
+    : "";
+  const sanitizedName = (eventName || "session-plan")
+    .replace(/[^a-z0-9]/gi, "-")
+    .toLowerCase();
   link.download = `${sanitizedName}-${dateStr}.pdf`;
 
   link.click();

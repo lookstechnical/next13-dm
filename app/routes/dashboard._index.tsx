@@ -17,6 +17,75 @@ export const meta: MetaFunction = () => {
     { name: "description", content: "Welcome to beCoachable" },
   ];
 };
+type CoachQuote = {
+  content: string;
+  author: string;
+  position: string;
+};
+
+const coachQuotes: CoachQuote[] = [
+  {
+    content:
+      "A coach is someone who can give correction without causing resentment.",
+    author: "John Wooden",
+    position: "Basketball Coach",
+  },
+  {
+    content: "The secret to winning is constant, consistent management.",
+    author: "Tom Landry",
+    position: "Football Coach",
+  },
+  {
+    content:
+      "A good coach will make his players see what they can be rather than what they are.",
+    author: "Ara Parseghian",
+    position: "Football Coach",
+  },
+  {
+    content: "The best motivation always comes from within.",
+    author: "Michael Jordan",
+    position: "Athlete",
+  },
+  {
+    content:
+      "The difference between ordinary and extraordinary is that little extra.",
+    author: "Jimmy Johnson",
+    position: "Football Coach",
+  },
+  {
+    content:
+      "A coach is someone who tells you what you don’t want to hear so you can be who you’ve always known you could be.",
+    author: "Tom Landry",
+    position: "Football Coach",
+  },
+  {
+    content: "It’s not whether you get knocked down, it’s whether you get up.",
+    author: "Vince Lombardi",
+    position: "Football Coach",
+  },
+  {
+    content:
+      "Don’t measure yourself by what you have accomplished, but by what you should have accomplished with your ability.",
+    author: "John Wooden",
+    position: "Basketball Coach",
+  },
+  {
+    content:
+      "The greatest compliment you can give a coach is to listen to them.",
+    author: "Nick Saban",
+    position: "Football Coach",
+  },
+  {
+    content: "Winning takes talent, to repeat takes character.",
+    author: "John Wooden",
+    position: "Basketball Coach",
+  },
+];
+
+export function getRandomCoachQuote(): CoachQuote {
+  const index = Math.floor(Math.random() * coachQuotes.length);
+  return coachQuotes[index];
+}
 
 export const loader = withAuth(async ({ user, supabaseClient }) => {
   const dashService = new DashboardService(supabaseClient);
@@ -28,11 +97,8 @@ export const loader = withAuth(async ({ user, supabaseClient }) => {
   );
 
   const event = await eventService.getNextEvent(user.current_team as string);
-  const quote = {
-    content: "A coach is someone who can give correction without resentment",
-    author: "John Wooden",
-    position: "Coach",
-  };
+  const quote = getRandomCoachQuote();
+
   return { quote, event, teamProgress, user };
 });
 
