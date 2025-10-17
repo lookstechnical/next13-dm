@@ -37,6 +37,8 @@ export default function Index() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,25 +50,22 @@ export default function Index() {
     });
   }, [navigate]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
+    const emailValue = formData.get("email") as string;
+    setEmail(emailValue);
 
     try {
-      const redirectUrl = `${window.location.origin}/auth-callback`;
-      console.log("Requesting magic link with redirect URL:", redirectUrl);
+      console.log("Requesting OTP code for email:", emailValue);
 
-      // Call signInWithOtp client-side
-      // Using implicit flow (configured in supabase.ts) which works better
-      // with Safari's privacy features like "Privacy Preserving Ad Measurement"
+      // Send OTP without redirect - user will enter code on same page
       const { error, data } = await supabase.auth.signInWithOtp({
-        email,
+        email: emailValue,
         options: {
-          emailRedirectTo: redirectUrl,
           shouldCreateUser: true,
         },
       });
@@ -75,21 +74,47 @@ export default function Index() {
 
       if (error) {
         console.error("Sign in error:", error);
-        setError(error.message || "Failed to send email. Please try again.");
+        setError(error.message || "Failed to send verification code. Please try again.");
       } else {
-        console.log("Magic link sent successfully");
-
-        // Safely check storage without throwing errors (Safari PPAM can block this)
-        try {
-          const storageKeys = Object.keys(localStorage).filter(k =>
-            k.startsWith('sb-') || k.includes('supabase')
-          );
-          console.log("Auth keys in storage:", storageKeys);
-        } catch (storageErr) {
-          console.warn("Could not access storage for logging:", storageErr);
-        }
-
+        console.log("Verification code sent successfully");
         setEmailSent(true);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      console.log("Verifying OTP code for email:", email);
+
+      const { error, data } = await supabase.auth.verifyOtp({
+        email,
+        token: verificationCode,
+        type: 'email',
+      });
+
+      console.log("verifyOtp response:", { error, data });
+
+      if (error) {
+        console.error("Verification error:", error);
+        setError(error.message || "Invalid verification code. Please try again.");
+      } else if (data.session) {
+        console.log("Verification successful, session established");
+        // Wait a moment for cookies to be set
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // Navigate to dashboard
+        navigate("/dashboard");
+      } else {
+        console.error("Verification succeeded but no session returned");
+        setError("Authentication failed. Please try again.");
       }
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -156,14 +181,48 @@ export default function Index() {
           )}
 
           {emailSent ? (
-            <div className="space-y-2">
-              <p className="text-green-400">An email with a link has been sent to login</p>
-              <p className="text-sm text-muted-foreground">
-                Please check your email and click the link to sign in.
-              </p>
-            </div>
+            <form onSubmit={handleVerifyCode}>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-green-400 mb-2">Verification code sent to {email}</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Please enter the 6-digit code from your email.
+                  </p>
+                  <label className="text-sm font-medium text-gray-300">
+                    Verification Code
+                  </label>
+                  <Input
+                    name="code"
+                    type="text"
+                    required
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                    pattern="[0-9]{6}"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    className="bg-dashboard-card border-gray-600 text-black placeholder:text-gray-400"
+                    disabled={isLoading}
+                    autoComplete="one-time-code"
+                  />
+                </div>
+                <div className="flex justify-between items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmailSent(false);
+                      setVerificationCode("");
+                      setError(null);
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Change email
+                  </button>
+                  <ActionButton title={isLoading ? "Verifying..." : "Verify"} disabled={isLoading} />
+                </div>
+              </div>
+            </form>
           ) : (
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleEmailSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-300">
@@ -179,7 +238,7 @@ export default function Index() {
                   />
                 </div>
                 <div className="flex justify-end flex-row w-full">
-                  <ActionButton title={isLoading ? "Sending..." : "Login"} disabled={isLoading} />
+                  <ActionButton title={isLoading ? "Sending..." : "Send Code"} disabled={isLoading} />
                 </div>
               </div>
             </form>
