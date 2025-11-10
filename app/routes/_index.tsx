@@ -1,7 +1,4 @@
-import type {
-  LoaderFunction,
-  MetaFunction,
-} from "@remix-run/node";
+import type { LoaderFunction, MetaFunction } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
 import { useEffect, useState } from "react";
 import ActionButton from "~/components/ui/action-button";
@@ -33,7 +30,12 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 // No server action needed - handled client-side with implicit flow
 
 export default function Index() {
-  const loaderData = useLoaderData<{ error?: string; message?: string; debug?: string; instructions?: string }>();
+  const loaderData = useLoaderData<{
+    error?: string;
+    message?: string;
+    debug?: string;
+    instructions?: string;
+  }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -74,7 +76,9 @@ export default function Index() {
 
       if (error) {
         console.error("Sign in error:", error);
-        setError(error.message || "Failed to send verification code. Please try again.");
+        setError(
+          error.message || "Failed to send verification code. Please try again."
+        );
       } else {
         console.log("Verification code sent successfully");
         setEmailSent(true);
@@ -98,18 +102,20 @@ export default function Index() {
       const { error, data } = await supabase.auth.verifyOtp({
         email,
         token: verificationCode,
-        type: 'email',
+        type: "email",
       });
 
       console.log("verifyOtp response:", { error, data });
 
       if (error) {
         console.error("Verification error:", error);
-        setError(error.message || "Invalid verification code. Please try again.");
+        setError(
+          error.message || "Invalid verification code. Please try again."
+        );
       } else if (data.session) {
         console.log("Verification successful, session established");
         // Wait a moment for cookies to be set
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         // Navigate to dashboard
         navigate("/dashboard");
       } else {
@@ -134,20 +140,30 @@ export default function Index() {
           {loaderData?.error && loaderData?.message && (
             <div className="mb-4 p-4 bg-red-900/20 border border-red-700 rounded text-red-300 text-sm">
               <div className="flex items-start">
-                <svg className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg
+                  className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <div className="flex-1">
                   <p className="font-medium mb-1">{loaderData.message}</p>
 
                   {loaderData.instructions && (
                     <div className="mt-3 p-3 bg-black/20 rounded border border-red-800">
-                      <p className="font-medium mb-1 text-red-200">How to fix:</p>
+                      <p className="font-medium mb-1 text-red-200">
+                        How to fix:
+                      </p>
                       <p className="text-xs">{loaderData.instructions}</p>
                     </div>
                   )}
 
-                  {loaderData.error === 'storage_blocked' && (
+                  {loaderData.error === "storage_blocked" && (
                     <div className="mt-3 text-xs space-y-1 text-red-200">
                       <p className="font-medium">Common causes:</p>
                       <ul className="list-disc list-inside space-y-1 ml-2">
@@ -184,7 +200,9 @@ export default function Index() {
             <form onSubmit={handleVerifyCode}>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-green-400 mb-2">Verification code sent to {email}</p>
+                  <p className="text-green-400 mb-2">
+                    Verification code sent to {email}
+                  </p>
                   <p className="text-sm text-muted-foreground mb-4">
                     Please enter the 6-digit code from your email.
                   </p>
@@ -200,7 +218,7 @@ export default function Index() {
                     pattern="[0-9]{6}"
                     value={verificationCode}
                     onChange={(e) => setVerificationCode(e.target.value)}
-                    className="bg-dashboard-card border-gray-600 text-black placeholder:text-gray-400"
+                    className="bg-dashboard-card border-gray-600 placeholder:text-gray-400"
                     disabled={isLoading}
                     autoComplete="one-time-code"
                   />
@@ -217,7 +235,10 @@ export default function Index() {
                   >
                     Change email
                   </button>
-                  <ActionButton title={isLoading ? "Verifying..." : "Verify"} disabled={isLoading} />
+                  <ActionButton
+                    title={isLoading ? "Verifying..." : "Verify"}
+                    disabled={isLoading}
+                  />
                 </div>
               </div>
             </form>
@@ -233,12 +254,15 @@ export default function Index() {
                     type="email"
                     required
                     placeholder="Enter your email"
-                    className="bg-dashboard-card border-gray-600 text-black placeholder:text-gray-400"
+                    className="bg-dashboard-card border-gray-600  placeholder:text-gray-400"
                     disabled={isLoading}
                   />
                 </div>
                 <div className="flex justify-end flex-row w-full">
-                  <ActionButton title={isLoading ? "Sending..." : "Send Code"} disabled={isLoading} />
+                  <ActionButton
+                    title={isLoading ? "Sending..." : "Send Code"}
+                    disabled={isLoading}
+                  />
                 </div>
               </div>
             </form>
