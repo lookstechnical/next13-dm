@@ -13,7 +13,7 @@ type EventForm = {
 export const EventForm: React.FC<EventForm> = ({ event, templates }) => {
   return (
     <div className="flex gap-4 flex-col p-4">
-      {event && <input type="hidden" name="playerId" value={event.id} />}
+      {event && <input type="hidden" name="eventId" value={event.id} />}
       <div className="flex flex-col w-full gap-5">
         <div className="flex flex-row w-full gap-5">
           <Field name="name" label="Name">
@@ -54,6 +54,7 @@ export const EventForm: React.FC<EventForm> = ({ event, templates }) => {
             placeholder="Event Type"
             name="event-type"
             label="Event type"
+            defaultValue={event?.eventType}
             options={[
               { id: "programme", name: "Programme" },
               { id: "training", name: "Training" },
@@ -65,7 +66,7 @@ export const EventForm: React.FC<EventForm> = ({ event, templates }) => {
             <Input
               name="canRegister"
               type="checkbox"
-              checked={event?.canRegister}
+              defaultChecked={event?.canRegister}
               className="w-4 h-4"
             />
           </Field>
@@ -81,13 +82,14 @@ export const EventForm: React.FC<EventForm> = ({ event, templates }) => {
           </Field>
         </div>
         <div>
-          {templates.length > 0 && (
+          {templates && templates.length > 0 && (
             <SelectField
               placeholder="Select a Report Template"
               name="templateId"
               label="Template"
+              defaultValue={event?.templateId}
               options={
-                templates?.map((template) => ({
+                templates.map((template) => ({
                   id: template.id,
                   name: template.name,
                 })) || []

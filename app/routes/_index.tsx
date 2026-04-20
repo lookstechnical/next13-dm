@@ -77,7 +77,8 @@ export default function Index() {
       if (error) {
         console.error("Sign in error:", error);
         setError(
-          error.message || "Failed to send verification code. Please try again."
+          error.message ||
+            "Failed to send verification code. Please try again.",
         );
       } else {
         console.log("Verification code sent successfully");
@@ -110,7 +111,7 @@ export default function Index() {
       if (error) {
         console.error("Verification error:", error);
         setError(
-          error.message || "Invalid verification code. Please try again."
+          error.message || "Invalid verification code. Please try again.",
         );
       } else if (data.session) {
         console.log("Verification successful, session established");

@@ -11,6 +11,7 @@ type PlayerForm = {
   clubs?: Club[];
   errors?: any[];
   users?: User[];
+  hideKit?: boolean;
 };
 
 const sizes = ["XS", "SM", "M", "LG", "XL", "XXL", "XXXL"];
@@ -20,6 +21,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({
   clubs,
   errors,
   users,
+  hideKit,
 }) => {
   return (
     <div className="flex gap-4 flex-col">
@@ -96,23 +98,25 @@ export const PlayerForm: React.FC<PlayerForm> = ({
             errors={errors}
           />
 
-          <div className="flex flex-col lg:flex-row w-full gap-5">
-            <SelectField
-              name="shirt"
-              label="Shirt Size"
-              defaultValue={player?.shirt}
-              errors={errors}
-              options={sizes?.map((c) => ({ id: c, name: c })) || []}
-            />
+          {!hideKit && (
+            <div className="flex flex-col lg:flex-row w-full gap-5">
+              <SelectField
+                name="shirt"
+                label="Shirt Size"
+                defaultValue={player?.shirt}
+                errors={errors}
+                options={sizes?.map((c) => ({ id: c, name: c })) || []}
+              />
 
-            <SelectField
-              name="shorts"
-              label="Shorts Size"
-              defaultValue={player?.shorts}
-              errors={errors}
-              options={sizes?.map((c) => ({ id: c, name: c })) || []}
-            />
-          </div>
+              <SelectField
+                name="shorts"
+                label="Shorts Size"
+                defaultValue={player?.shorts}
+                errors={errors}
+                options={sizes?.map((c) => ({ id: c, name: c })) || []}
+              />
+            </div>
+          )}
           {users && (
             <div>
               <SelectField

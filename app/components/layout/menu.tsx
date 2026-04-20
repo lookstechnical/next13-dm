@@ -54,6 +54,9 @@ const MenuItems = ({ close, user }: { close?: boolean; user: User }) => {
       <MenuLink close={close} to="/dashboard/events">
         Events
       </MenuLink>
+      <MenuLink close={close} to="/dashboard/programmes">
+        Programmes
+      </MenuLink>
       <ActionProtection allowedRoles={AllowedRoles.headOfDept} user={user}>
         <MenuLink close={close} to="/dashboard/groups" data-discover="true">
           Groups

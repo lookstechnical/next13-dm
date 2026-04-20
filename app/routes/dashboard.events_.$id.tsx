@@ -125,6 +125,13 @@ export default function EventPage() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem className="p-0">
                       <Button asChild variant="outline" className="w-full">
+                        <Link to={`/dashboard/events/${event.id}/edit`}>
+                          Edit
+                        </Link>
+                      </Button>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="p-0">
+                      <Button asChild variant="outline" className="w-full">
                         <Link
                           to={`/dashboard/events/${event.id}/register-players`}
                         >

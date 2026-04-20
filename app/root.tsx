@@ -31,6 +31,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <link rel="apple-touch-icon" sizes="128x128" href="/be-coachable.png" />
         <link rel="shortcut icon" type="image/png" href="/be-coachable.png" />
         <link rel="icon" sizes="192x192" href="/be-coachable.png" />
+        <link
+          data-service="adobe-fonts"
+          data-category="marketing"
+          rel="stylesheet"
+          data-href="https://use.typekit.net/fpv1qvb.css"
+        ></link>
         <Meta />
         <Links />
       </head>

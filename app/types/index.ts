@@ -229,3 +229,49 @@ export interface Club {
   createdBy: string;
   status: "active" | "inactive";
 }
+
+export type ProgrammeSection =
+  | { type: "text"; content: string }
+  | { type: "image"; url: string; caption?: string };
+
+export interface Programme {
+  id: string;
+  teamId: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  registrationDeadline: string;
+  canRegister: boolean;
+  status: "upcoming" | "ongoing" | "completed" | "cancelled";
+  sections?: ProgrammeSection[];
+  availabilityDescription?: string;
+  eligibleDobFrom?: string;
+  eligibleDobTo?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ProgrammeEvent {
+  id: string;
+  programmeId: string;
+  eventId: string;
+  sortOrder: number;
+  events?: Event;
+}
+
+export interface ProgrammeRegistration {
+  id: string;
+  programmeId: string;
+  playerId: string;
+  email?: string;
+  status: "registered" | "confirmed" | "attended" | "no_show";
+  registeredAt: string;
+  players?: Player;
+}
+
+export interface ProgrammeEventAvailability {
+  id: string;
+  programmeRegistrationId: string;
+  eventId: string;
+  available: boolean;
+}

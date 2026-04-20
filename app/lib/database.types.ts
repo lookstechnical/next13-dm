@@ -515,6 +515,125 @@ export interface Database {
           created_at?: string;
         };
       };
+      programmes: {
+        Row: {
+          id: string;
+          team_id: string;
+          name: string;
+          description: string;
+          image_url: string | null;
+          registration_deadline: string;
+          can_register: boolean;
+          status: "upcoming" | "ongoing" | "completed" | "cancelled";
+          sections: Json | null;
+          availability_description: string | null;
+          eligible_dob_from: string | null;
+          eligible_dob_to: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          team_id: string;
+          name: string;
+          description: string;
+          image_url?: string | null;
+          registration_deadline: string;
+          can_register?: boolean;
+          status?: "upcoming" | "ongoing" | "completed" | "cancelled";
+          sections?: Json | null;
+          availability_description?: string | null;
+          eligible_dob_from?: string | null;
+          eligible_dob_to?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          team_id?: string;
+          name?: string;
+          description?: string;
+          image_url?: string | null;
+          registration_deadline?: string;
+          can_register?: boolean;
+          status?: "upcoming" | "ongoing" | "completed" | "cancelled";
+          sections?: Json | null;
+          availability_description?: string | null;
+          eligible_dob_from?: string | null;
+          eligible_dob_to?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      programme_events: {
+        Row: {
+          id: string;
+          programme_id: string;
+          event_id: string;
+          sort_order: number;
+        };
+        Insert: {
+          id?: string;
+          programme_id: string;
+          event_id: string;
+          sort_order?: number;
+        };
+        Update: {
+          id?: string;
+          programme_id?: string;
+          event_id?: string;
+          sort_order?: number;
+        };
+      };
+      programme_registrations: {
+        Row: {
+          id: string;
+          programme_id: string;
+          player_id: string;
+          email: string | null;
+          status: "registered" | "confirmed" | "attended" | "no_show";
+          registered_at: string;
+        };
+        Insert: {
+          id?: string;
+          programme_id: string;
+          player_id: string;
+          email?: string | null;
+          status?: "registered" | "confirmed" | "attended" | "no_show";
+          registered_at?: string;
+        };
+        Update: {
+          id?: string;
+          programme_id?: string;
+          player_id?: string;
+          email?: string | null;
+          status?: "registered" | "confirmed" | "attended" | "no_show";
+          registered_at?: string;
+        };
+      };
+      programme_event_availability: {
+        Row: {
+          id: string;
+          programme_registration_id: string;
+          event_id: string;
+          available: boolean;
+        };
+        Insert: {
+          id?: string;
+          programme_registration_id: string;
+          event_id: string;
+          available?: boolean;
+        };
+        Update: {
+          id?: string;
+          programme_registration_id?: string;
+          event_id?: string;
+          available?: boolean;
+        };
+      };
       report_attributes: {
           id: string;
           name: string;
