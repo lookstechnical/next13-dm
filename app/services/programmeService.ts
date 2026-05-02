@@ -47,6 +47,20 @@ export class ProgrammeService {
     return convertKeysToCamelCase(data);
   }
 
+  async getProgrammeByUrl(url: string): Promise<Programme | null> {
+    const { data, error } = await this.client
+      .from("programmes")
+      .select("*")
+      .eq("url", url)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      throw error;
+    }
+    return convertKeysToCamelCase(data);
+  }
+
   async getAllPublicProgrammes(): Promise<Programme[]> {
     const { data, error } = await this.client
       .from("programmes")
@@ -67,6 +81,7 @@ export class ProgrammeService {
       .insert({
         team_id: programmeData.teamId,
         name: programmeData.name,
+        url: programmeData.url || null,
         description: programmeData.description,
         image_url: programmeData.imageUrl,
         registration_deadline: programmeData.registrationDeadline,
@@ -92,6 +107,7 @@ export class ProgrammeService {
     const updateData: any = {};
 
     if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.url !== undefined) updateData.url = updates.url || null;
     if (updates.description !== undefined)
       updateData.description = updates.description;
     if (updates.imageUrl !== undefined)

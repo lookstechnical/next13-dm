@@ -34,13 +34,15 @@ export default function PublicProgrammes() {
       </div>
       <div className="container mx-auto max-w-[50rem] py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {programmes?.map((programme: Programme) => (
-            <ProgrammeCard
-              key={programme.id}
-              programme={programme}
-              to={(id) => `/programmes/${id}`}
-            />
-          ))}
+          {programmes
+            ?.filter((p: Programme) => p.url)
+            .map((programme: Programme) => (
+              <ProgrammeCard
+                key={programme.id}
+                programme={programme}
+                to={() => `/programmes/${programme.url}`}
+              />
+            ))}
         </div>
         {(!programmes || programmes.length === 0) && (
           <div className="text-center py-10 text-muted">

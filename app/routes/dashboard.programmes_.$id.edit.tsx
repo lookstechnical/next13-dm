@@ -41,6 +41,7 @@ export const action: ActionFunction = withAuthAction(
     const formData = await request.formData();
     const programmeId = formData.get("programmeId") as string;
     const name = formData.get("name") as string;
+    const url = formData.get("url") as string;
     const description = formData.get("description") as string;
     const registrationDeadline = formData.get("registrationDeadline") as string;
     const status = (formData.get("status") as string) || "upcoming";
@@ -55,6 +56,7 @@ export const action: ActionFunction = withAuthAction(
 
     await programmeService.updateProgramme(programmeId, {
       name,
+      url: url || null,
       description,
       registrationDeadline:
         registrationDeadline !== "" ? registrationDeadline : null,

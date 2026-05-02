@@ -38,6 +38,17 @@ export const ProgrammeForm: React.FC<ProgrammeFormProps> = ({
             className="bg-card border-gray-600 text-white placeholder:text-gray-400"
           />
         </Field>
+        <Field name="url" label="URL Slug">
+          <Input
+            name="url"
+            placeholder="e.g. summer-camp-2026"
+            defaultValue={programme?.url}
+            className="bg-card border-gray-600 text-white placeholder:text-gray-400"
+          />
+          <p className="text-xs text-muted mt-1">
+            Used in the public link: /programmes/your-slug
+          </p>
+        </Field>
         <RichTextField
           name="description"
           label="Description"

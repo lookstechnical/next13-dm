@@ -15,12 +15,12 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const { supabaseClient } = getSupabaseServerClient(request);
   const programmeService = new ProgrammeService(supabaseClient);
 
-  const programme = params.id
-    ? await programmeService.getProgrammeById(params.id)
+  const programme = params.url
+    ? await programmeService.getProgrammeByUrl(params.url)
     : null;
 
-  const programmeEvents = params.id
-    ? await programmeService.getProgrammeEvents(params.id)
+  const programmeEvents = programme
+    ? await programmeService.getProgrammeEvents(programme.id)
     : [];
 
   return { programme, programmeEvents };
@@ -114,7 +114,7 @@ export default function ProgrammeDetail() {
               size="lg"
               className="mt-4 w-full sm:w-auto uppercase"
             >
-              <Link to={`/programmes/${programme.id}/register`}>
+              <Link to={`/programmes/${programme.url}/register`}>
                 Register Now
               </Link>
             </Button>
@@ -244,7 +244,7 @@ export default function ProgrammeDetail() {
               Ready to join? Secure your spot now.
             </p>
             <Button asChild size="lg" className="uppercase">
-              <Link to={`/programmes/${programme.id}/register`}>
+              <Link to={`/programmes/${programme.url}/register`}>
                 Register Now
               </Link>
             </Button>

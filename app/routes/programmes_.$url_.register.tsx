@@ -27,12 +27,12 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const programmeService = new ProgrammeService(supabaseClient);
   const clubsService = new ClubService(supabaseClient);
 
-  const programme = params.id
-    ? await programmeService.getProgrammeById(params.id)
+  const programme = params.url
+    ? await programmeService.getProgrammeByUrl(params.url)
     : undefined;
 
-  const programmeEvents = params.id
-    ? await programmeService.getProgrammeEvents(params.id)
+  const programmeEvents = programme
+    ? await programmeService.getProgrammeEvents(programme.id)
     : [];
 
   const clubs = await clubsService.getAllClubs();
@@ -236,7 +236,7 @@ export default function ProgrammeRegister() {
       <div className="w-full bg-wkbackground border-b border-border">
         <div className="container mx-auto max-w-2xl px-4 py-4 flex items-center gap-3">
           <Link
-            to={`/programmes/${programme.id}`}
+            to={`/programmes/${programme.url}`}
             className="text-muted hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -392,7 +392,7 @@ export default function ProgrammeRegister() {
               You have been successfully registered for {programme.name}.
             </p>
             <Button asChild variant="outline" className="w-full sm:w-auto">
-              <Link to={`/programmes/${programme.id}`}>
+              <Link to={`/programmes/${programme.url}`}>
                 Back to Programme
               </Link>
             </Button>
@@ -410,7 +410,7 @@ export default function ProgrammeRegister() {
               You are already registered for this programme.
             </p>
             <Button asChild variant="outline" className="w-full sm:w-auto">
-              <Link to={`/programmes/${programme.id}`}>
+              <Link to={`/programmes/${programme.url}`}>
                 Back to Programme
               </Link>
             </Button>

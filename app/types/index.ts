@@ -238,6 +238,7 @@ export interface Programme {
   id: string;
   teamId: string;
   name: string;
+  url?: string;
   description: string;
   imageUrl?: string;
   registrationDeadline: string;
