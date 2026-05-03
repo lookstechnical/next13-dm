@@ -455,6 +455,13 @@ export class PlayerService {
     if (updates.shorts !== undefined) updateData.shorts = updates.shorts;
     if (updates.shirt !== undefined) updateData.shirt = updates.shirt;
     if (updates.mentor !== undefined) updateData.mentor = updates.mentor;
+    if (updates.teamId !== undefined) updateData.team_id = updates.teamId;
+
+    let previousTeamId: string | undefined;
+    if (updates.teamId !== undefined) {
+      const existing = await this.getPlayerById(id);
+      previousTeamId = existing?.teamId;
+    }
 
     const { data, error } = await this.client
       .from("players")
@@ -472,6 +479,9 @@ export class PlayerService {
 
     // Invalidate related cache
     CacheInvalidationService.invalidatePlayerCache(result.teamId, id);
+    if (previousTeamId && previousTeamId !== result.teamId) {
+      CacheInvalidationService.invalidatePlayerCache(previousTeamId, id);
+    }
 
     return result;
   }
