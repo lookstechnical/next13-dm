@@ -297,6 +297,58 @@ export class ProgrammeService {
     return convertKeysToCamelCase(data);
   }
 
+  async createValidationCode(
+    email: string,
+    playerId: string
+  ): Promise<string> {
+    const normalizedEmail = email.toLowerCase();
+
+    // Invalidate any existing unused codes for this email
+    await this.client
+      .from("validation_codes")
+      .update({ used: true })
+      .eq("email", normalizedEmail)
+      .eq("used", false);
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+    const { error } = await this.client.from("validation_codes").insert({
+      email: normalizedEmail,
+      code,
+      player_id: playerId,
+      expires_at: expiresAt.toISOString(),
+      used: false,
+    });
+
+    if (error) throw error;
+    return code;
+  }
+
+  async validateCode(
+    email: string,
+    code: string
+  ): Promise<{ valid: boolean; playerId?: string }> {
+    const { data, error } = await this.client
+      .from("validation_codes")
+      .select("*")
+      .eq("email", email.toLowerCase())
+      .eq("code", code)
+      .eq("used", false)
+      .gt("expires_at", new Date().toISOString())
+      .single();
+
+    if (error || !data) return { valid: false };
+
+    await this.client
+      .from("validation_codes")
+      .update({ used: true })
+      .eq("id", data.id);
+
+    return { valid: true, playerId: data.player_id };
+  }
+
   async uploadProgrammeImage(
     programmeId: string,
     file: any

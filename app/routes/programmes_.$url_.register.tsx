@@ -6,6 +6,7 @@ import {
   useLoaderData,
 } from "@remix-run/react";
 import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { Resend } from "resend";
 import { Field } from "~/components/forms/field";
 import { PlayerForm } from "~/components/forms/player";
 import { EventAvailabilitySelector } from "~/components/programmes/event-availability-selector";
@@ -58,15 +59,50 @@ export const action: ActionFunction = async ({ request }) => {
     const player = await playerService.getPlayerByEmail(email);
 
     if (player) {
-      const existingReg =
-        await programmeService.getPlayerProgrammeRegistration(
-          player.id,
-          programmeId
-        );
+      const code = await programmeService.createValidationCode(
+        email,
+        player.id
+      );
 
-      if (existingReg) {
-        return { step: 5 };
+      try {
+        const resend = new Resend(process.env.VITE_RESEND_API);
+        await resend.emails.send({
+          from: "St Helens RLFC - beCoachable <noreply@be-coachable.com>",
+          to: [email],
+          subject: "Your verification code",
+          html: verificationEmailHtml(code),
+        });
+      } catch (error) {
+        console.error("Error sending verification email:", error);
       }
+
+      return { step: "verify", email };
+    }
+
+    return { step: 2, player: { email } };
+  }
+
+  if (step === "verify") {
+    const code = formData.get("code") as string;
+    const result = await programmeService.validateCode(email, code);
+
+    if (!result.valid || !result.playerId) {
+      return {
+        step: "verify",
+        email,
+        codeError: "Invalid or expired code. Please try again.",
+      };
+    }
+
+    const player = await playerService.getPlayerById(result.playerId);
+
+    const existingReg = await programmeService.getPlayerProgrammeRegistration(
+      result.playerId,
+      programmeId
+    );
+
+    if (existingReg) {
+      return { step: 5 };
     }
 
     return { step: 2, player: { ...player, email } };
@@ -175,6 +211,29 @@ export const action: ActionFunction = async ({ request }) => {
   }
 };
 
+function verificationEmailHtml(code: string) {
+  return `<!DOCTYPE html>
+<html lang="en" style="margin: 0; padding: 0; background-color: #0f111a;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="dark" />
+    <title>Your verification code</title>
+  </head>
+  <body style="margin: 0; font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff;">
+    <div style="max-width: 600px; margin: 40px auto; background-color: #1b1d2a; padding: 30px; border-radius: 12px; border: 1px solid #2a2d3b;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="https://be-coachable.com/logo.png" alt="beCoachable" style="width:60px;" />
+      </div>
+      <p style="color: #c2c7d0; font-size: 16px;">Use this code to confirm your email and continue your registration:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <span style="display:inline-block; font-size: 32px; letter-spacing: 8px; font-weight: bold; background-color: #0f111a; color: #ffffff; padding: 16px 28px; border-radius: 8px; border: 1px solid #2a2d3b;">${code}</span>
+      </div>
+      <p style="color: #c2c7d0; font-size: 14px;">The code expires in 15 minutes. If you did not request this, you can safely ignore this email.</p>
+    </div>
+  </body>
+</html>`;
+}
+
 const stepLabels = ["Email", "Profile", "Availability", "Done"];
 
 function StepIndicator({
@@ -228,7 +287,10 @@ export default function ProgrammeRegister() {
   const { programme, clubs } = useLoaderData<typeof loader>();
   const action = useActionData<typeof action>();
 
-  const currentStep = action?.step === 5 ? 1 : action?.step || 1;
+  const currentStep =
+    action?.step === 5 || action?.step === "verify"
+      ? 1
+      : (action?.step as number) || 1;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -253,9 +315,11 @@ export default function ProgrammeRegister() {
       {/* Content */}
       <div className="container mx-auto max-w-2xl px-4 py-6">
         {/* Step indicator - hide on confirmation/already registered */}
-        {action?.step !== 4 && action?.step !== 5 && (
-          <StepIndicator currentStep={currentStep} />
-        )}
+        {action?.step !== 4 &&
+          action?.step !== 5 &&
+          action?.step !== "verify" && (
+            <StepIndicator currentStep={currentStep} />
+          )}
 
         {/* Step 1: Email */}
         {!action?.step && (
@@ -287,6 +351,61 @@ export default function ProgrammeRegister() {
                 <ActionButton title="Continue" className="w-full h-12" />
               </div>
             </Form>
+          </Card>
+        )}
+
+        {/* Verify step: existing player must confirm email ownership */}
+        {action?.step === "verify" && (
+          <Card className="border-border p-6">
+            <h2 className="text-lg font-semibold text-white mb-1">
+              Check your email
+            </h2>
+            <p className="text-sm text-muted mb-6">
+              We've sent a 6-digit code to{" "}
+              <span className="text-white">{action.email}</span>. Enter it
+              below to continue.
+            </p>
+            {action.codeError && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-4">
+                <p className="text-sm text-destructive flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {action.codeError}
+                </p>
+              </div>
+            )}
+            <Form method="post">
+              <input type="hidden" name="step" value="verify" />
+              <input
+                type="hidden"
+                name="programmeId"
+                value={programme.id}
+              />
+              <input type="hidden" name="email" value={action.email} />
+              <Field name="code" label="Verification code">
+                <Input
+                  name="code"
+                  placeholder="123456"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                  autoFocus
+                  className="bg-card border-gray-600 text-white placeholder:text-gray-400 h-12 text-base tracking-widest text-center"
+                />
+              </Field>
+              <div className="pt-6">
+                <ActionButton title="Verify" className="w-full h-12" />
+              </div>
+            </Form>
+            <p className="text-xs text-muted mt-4 text-center">
+              Didn't get the email?{" "}
+              <Link
+                to={`/programmes/${programme.url}/register`}
+                className="text-primary hover:underline"
+              >
+                Start over
+              </Link>
+            </p>
           </Card>
         )}
 
