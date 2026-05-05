@@ -66,6 +66,14 @@ const PlayerRow: React.FC<{
       <td className="py-3 px-2">
         <span className="text-xs text-muted">{ageGroup}</span>
       </td>
+      <td className="py-3 px-2">
+        <span className="text-xs text-white">{reg.players?.position || "-"}</span>
+      </td>
+      <td className="py-3 px-2">
+        <span className="text-xs text-muted">
+          {reg.players?.secondaryPosition || "-"}
+        </span>
+      </td>
       {playerGroups && playerGroups.length > 0 && (
         <td className="py-3 px-2">
           {availableGroups && availableGroups.length > 0 ? (
@@ -172,6 +180,12 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             <th className="text-left py-3 px-2 text-muted font-medium">
               Age Group
             </th>
+            <th className="text-left py-3 px-2 text-muted font-medium">
+              Position
+            </th>
+            <th className="text-left py-3 px-2 text-muted font-medium">
+              Secondary
+            </th>
             {playerGroups && playerGroups.length > 0 && (
               <th className="text-left py-3 px-2 text-muted font-medium min-w-[160px]">
                 Assign to Group
@@ -207,6 +221,8 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             <td className="py-3 px-2 font-medium text-white">
               Expected Attendance
             </td>
+            <td />
+            <td />
             <td />
             {playerGroups && playerGroups.length > 0 && <td />}
             {programmeEvents.map((pe) => (

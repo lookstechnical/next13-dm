@@ -234,6 +234,41 @@ export class ProgrammeService {
       if (availError) throw availError;
     }
 
+    // Register the player for each event they marked as available, skipping
+    // any events they're already registered for so re-registration is safe.
+    const availableEventIds = data.eventAvailability
+      .filter((ea) => ea.available)
+      .map((ea) => ea.eventId);
+
+    if (availableEventIds.length > 0) {
+      const { data: existing, error: existingError } = await this.client
+        .from("event_registrations")
+        .select("event_id")
+        .eq("player_id", data.playerId)
+        .in("event_id", availableEventIds);
+
+      if (existingError) throw existingError;
+
+      const existingIds = new Set(
+        (existing || []).map((r: { event_id: string }) => r.event_id)
+      );
+      const newEventRegistrations = availableEventIds
+        .filter((eventId) => !existingIds.has(eventId))
+        .map((eventId) => ({
+          event_id: eventId,
+          player_id: data.playerId,
+          status: "confirmed",
+        }));
+
+      if (newEventRegistrations.length > 0) {
+        const { error: eventRegError } = await this.client
+          .from("event_registrations")
+          .insert(newEventRegistrations);
+
+        if (eventRegError) throw eventRegError;
+      }
+    }
+
     return convertKeysToCamelCase(registration);
   }
 
@@ -243,7 +278,7 @@ export class ProgrammeService {
     const { data, error } = await this.client
       .from("programme_registrations")
       .select(
-        "*, players ( id, name, photo_url, position, date_of_birth, club, email )"
+        "*, players ( id, name, photo_url, position, secondary_position, date_of_birth, club, email )"
       )
       .eq("programme_id", programmeId)
       .order("registered_at", { ascending: false });
@@ -270,6 +305,37 @@ export class ProgrammeService {
   }
 
   async removeRegistration(registrationId: string): Promise<boolean> {
+    const { data: registration, error: regError } = await this.client
+      .from("programme_registrations")
+      .select("player_id, programme_id")
+      .eq("id", registrationId)
+      .single();
+
+    if (regError) throw regError;
+
+    if (registration) {
+      const { data: programmeEventRows, error: peError } = await this.client
+        .from("programme_events")
+        .select("event_id")
+        .eq("programme_id", registration.programme_id);
+
+      if (peError) throw peError;
+
+      const eventIds = (programmeEventRows || []).map(
+        (pe: { event_id: string }) => pe.event_id
+      );
+
+      if (eventIds.length > 0) {
+        const { error: eventRegError } = await this.client
+          .from("event_registrations")
+          .delete()
+          .eq("player_id", registration.player_id)
+          .in("event_id", eventIds);
+
+        if (eventRegError) throw eventRegError;
+      }
+    }
+
     const { error } = await this.client
       .from("programme_registrations")
       .delete()
