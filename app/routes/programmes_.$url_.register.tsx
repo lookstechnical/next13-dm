@@ -18,7 +18,7 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
 import { ProgrammeService } from "~/services/programmeService";
-import { step1 } from "~/validations/player-registration";
+import { step1, step2 } from "~/validations/player-registration";
 import z from "zod";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -111,44 +111,10 @@ export const action: ActionFunction = async ({ request }) => {
   if (step === "2") {
     const programme = await programmeService.getProgrammeById(programmeId);
     const avatar = formData.get("avatar");
-
+    const playerId = formData.get("playerId") as string;
     const dateOfBirth = formData.get("dateOfBirth") as string;
 
-    // Validate DOB against programme eligibility range
-    if (dateOfBirth && programme) {
-      if (
-        programme.eligibleDobFrom &&
-        dateOfBirth < programme.eligibleDobFrom
-      ) {
-        return {
-          step: 2,
-          player: {
-            id: formData.get("playerId") as string,
-            name: formData.get("name") as string,
-            email: formData.get("email") as string,
-            dateOfBirth,
-          },
-          dobError: `Date of birth must be on or after ${new Date(programme.eligibleDobFrom).toLocaleDateString()}.`,
-        };
-      }
-      if (
-        programme.eligibleDobTo &&
-        dateOfBirth > programme.eligibleDobTo
-      ) {
-        return {
-          step: 2,
-          player: {
-            id: formData.get("playerId") as string,
-            name: formData.get("name") as string,
-            email: formData.get("email") as string,
-            dateOfBirth,
-          },
-          dobError: `Date of birth must be on or before ${new Date(programme.eligibleDobTo).toLocaleDateString()}.`,
-        };
-      }
-    }
-
-    const data = {
+    const submitted = {
       name: formData.get("name") as string,
       position: formData.get("position") as string,
       secondaryPosition: formData.get("secondaryPosition") as string,
@@ -158,12 +124,53 @@ export const action: ActionFunction = async ({ request }) => {
       school: formData.get("school") as string,
       photoUrl: formData.get("photoUrl") as string,
       email: formData.get("email") as string,
-      scoutId: null,
-      teamId: programme?.teamId,
       mentor: formData.get("mentor") as string,
     };
 
-    const playerId = formData.get("playerId") as string;
+    const validation = step2.safeParse({
+      name: submitted.name,
+      email: submitted.email,
+      position: submitted.position,
+      club: submitted.club,
+    });
+
+    if (!validation.success) {
+      return {
+        step: 2,
+        player: { id: playerId, ...submitted },
+        errors: z.treeifyError(validation.error),
+      };
+    }
+
+    // Validate DOB against programme eligibility range
+    if (dateOfBirth && programme) {
+      if (
+        programme.eligibleDobFrom &&
+        dateOfBirth < programme.eligibleDobFrom
+      ) {
+        return {
+          step: 2,
+          player: { id: playerId, ...submitted },
+          dobError: `Date of birth must be on or after ${new Date(programme.eligibleDobFrom).toLocaleDateString()}.`,
+        };
+      }
+      if (
+        programme.eligibleDobTo &&
+        dateOfBirth > programme.eligibleDobTo
+      ) {
+        return {
+          step: 2,
+          player: { id: playerId, ...submitted },
+          dobError: `Date of birth must be on or before ${new Date(programme.eligibleDobTo).toLocaleDateString()}.`,
+        };
+      }
+    }
+
+    const data = {
+      ...submitted,
+      scoutId: null,
+      teamId: programme?.teamId,
+    };
 
     let player;
     if (playerId) {
@@ -441,6 +448,10 @@ export default function ProgrammeRegister() {
                 </p>
               </div>
             )}
+            <p className="text-xs text-muted mb-4">
+              Please upload a profile photo — it helps our coaches identify
+              you when you attend sessions.
+            </p>
             <Form method="post" encType="multipart/form-data">
               <input type="hidden" name="step" value="2" />
               <input
@@ -451,6 +462,7 @@ export default function ProgrammeRegister() {
               <PlayerForm
                 clubs={clubs}
                 player={action.player}
+                errors={action.errors}
                 hideKit
               />
               <div className="pt-6">

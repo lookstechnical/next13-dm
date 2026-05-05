@@ -5,8 +5,12 @@ export const step1 = z.object({
 });
 
 export const step2 = z.object({
-  email: z.email(),
-  name: z.string(),
+  email: z.email("Please enter a valid email address"),
+  name: z.string().nonempty("Please enter your full name"),
+  position: z
+    .string()
+    .nonempty("Please select your preferred playing position"),
+  club: z.string().nonempty("Please select the club you currently play for"),
 });
 
 export const inviteRegistration = z
