@@ -44,10 +44,11 @@ const PlayerRow: React.FC<{
     );
   };
 
-  // Filter out groups the player is already in
-  const availableGroups = playerGroups?.filter(
-    (g) => !g.playerIds?.includes(reg.players?.id || "")
-  );
+  const playerId = reg.players?.id || "";
+  const assignedGroupIds = playerGroups
+    ?.filter((g) => g.playerIds?.includes(playerId))
+    .map((g) => g.id);
+  const currentGroupId = assignedGroupIds?.[0];
 
   return (
     <tr className="border-b border-border/50">
@@ -76,25 +77,31 @@ const PlayerRow: React.FC<{
       </td>
       {playerGroups && playerGroups.length > 0 && (
         <td className="py-3 px-2">
-          {availableGroups && availableGroups.length > 0 ? (
-            <Select onValueChange={handleGroupAssign}>
-              <SelectTrigger className="h-8 text-xs w-full text-foreground border-input">
-                <SelectValue placeholder="Select group" />
-              </SelectTrigger>
-              <SelectContent className="text-foreground">
-                <SelectGroup>
-                  <SelectLabel className="text-foreground">Groups</SelectLabel>
-                  {availableGroups.map((g) => (
-                    <SelectItem key={g.id} value={g.id} className="text-foreground">
+          <Select value={currentGroupId} onValueChange={handleGroupAssign}>
+            <SelectTrigger className="h-8 text-xs w-full text-foreground border-input">
+              <SelectValue placeholder="Select group" />
+            </SelectTrigger>
+            <SelectContent className="text-foreground">
+              <SelectGroup>
+                <SelectLabel className="text-foreground">Groups</SelectLabel>
+                {playerGroups.map((g) => {
+                  const isAssigned = assignedGroupIds?.includes(g.id);
+                  return (
+                    <SelectItem
+                      key={g.id}
+                      value={g.id}
+                      className="text-foreground"
+                    >
                       {g.name}
+                      {isAssigned && (
+                        <Check className="inline w-3 h-3 ml-1 text-green-500" />
+                      )}
                     </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          ) : (
-            <span className="text-xs text-muted">In all groups</span>
-          )}
+                  );
+                })}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
           {fetcher.state === "submitting" && (
             <span className="text-xs text-muted ml-1">Saving...</span>
           )}

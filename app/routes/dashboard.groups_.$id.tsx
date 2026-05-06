@@ -26,6 +26,14 @@ import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
+const POSITION_GROUPS: { label: string; positions: string[] }[] = [
+  { label: "Outside Backs", positions: ["Winger", "Centre"] },
+  { label: "Half Backs", positions: ["Scrum-half", "Stand-off", "Fullback"] },
+  { label: "Hookers", positions: ["Hooker"] },
+  { label: "Middles", positions: ["Prop", "Loose Forward"] },
+  { label: "Back Row", positions: ["Second Row"] },
+];
+
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
@@ -43,7 +51,7 @@ export const loader: LoaderFunction = withAuth(
     const playerGroupMembers = players;
 
     return { group: { ...group, playerGroupMembers } };
-  }
+  },
 );
 
 export const action: ActionFunction = withAuthAction(
@@ -67,7 +75,7 @@ export const action: ActionFunction = withAuthAction(
     }
 
     return { message: "Successfully removed" };
-  }
+  },
 );
 
 export default function PlayerPage() {
@@ -143,21 +151,88 @@ export default function PlayerPage() {
             )}
           />
 
-          <CardGrid items={group.playerGroupMembers} name="Players">
-            {group.playerGroupMembers.map((player: any) => (
-              <PlayerCard key={`group-player-${player.id}`} player={player}>
-                <Form method="delete">
-                  <input type="hidden" name="playerId" value={player.id} />
-                  <input type="hidden" name="groupId" value={group.id} />
-
-                  <ActionButton
-                    className={cn("w-full text-white uppercase border-muted")}
-                    title="Remove"
-                  />
-                </Form>
-              </PlayerCard>
-            ))}
-          </CardGrid>
+          {POSITION_GROUPS.map((pg) => {
+            const players = group.playerGroupMembers.filter((p: any) =>
+              pg.positions.includes(p.position),
+            );
+            if (players.length === 0) return null;
+            return (
+              <section key={pg.label} className="mb-8">
+                <h2 className="text-xl font-semibold text-white mb-4">
+                  {pg.label}{" "}
+                  <span className="text-muted text-base font-normal">
+                    ({players.length})
+                  </span>
+                </h2>
+                <CardGrid items={players} name="Players">
+                  {players.map((player: any) => (
+                    <PlayerCard
+                      key={`group-player-${player.id}`}
+                      player={player}
+                    >
+                      <Form method="delete">
+                        <input
+                          type="hidden"
+                          name="playerId"
+                          value={player.id}
+                        />
+                        <input type="hidden" name="groupId" value={group.id} />
+                        <ActionButton
+                          className={cn(
+                            "w-full text-white uppercase border-muted",
+                          )}
+                          title="Remove"
+                        />
+                      </Form>
+                    </PlayerCard>
+                  ))}
+                </CardGrid>
+              </section>
+            );
+          })}
+          {(() => {
+            const known = new Set(POSITION_GROUPS.flatMap((g) => g.positions));
+            const others = group.playerGroupMembers.filter(
+              (p: any) => !known.has(p.position),
+            );
+            if (others.length === 0) return null;
+            return (
+              <section className="mb-8">
+                <h2 className="text-xl font-semibold text-white mb-4">
+                  Other{" "}
+                  <span className="text-muted text-base font-normal">
+                    ({others.length})
+                  </span>
+                </h2>
+                <CardGrid items={others} name="Players">
+                  {others.map((player: any) => (
+                    <PlayerCard
+                      key={`group-player-${player.id}`}
+                      player={player}
+                    >
+                      <Form method="delete">
+                        <input
+                          type="hidden"
+                          name="playerId"
+                          value={player.id}
+                        />
+                        <input type="hidden" name="groupId" value={group.id} />
+                        <ActionButton
+                          className={cn(
+                            "w-full text-white uppercase border-muted",
+                          )}
+                          title="Remove"
+                        />
+                      </Form>
+                    </PlayerCard>
+                  ))}
+                </CardGrid>
+              </section>
+            );
+          })()}
+          {group.playerGroupMembers.length === 0 && (
+            <CardGrid items={[]} name="Players" />
+          )}
           <Outlet />
         </div>
       </div>
