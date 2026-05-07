@@ -25,7 +25,7 @@ export const ProgrammeCard: React.FC<ProgrammeCardProps> = ({
           <img
             src={programme.imageUrl}
             alt={programme.name}
-            className="w-full aspect-video object-cover rounded-md mb-4"
+            className="w-full aspect-video object-cover object-top rounded-md mb-4"
           />
         )}
         <div className="flex">

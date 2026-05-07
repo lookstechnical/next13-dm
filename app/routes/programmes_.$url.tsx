@@ -100,7 +100,9 @@ export default function ProgrammeDetail() {
             <p className="text-sm text-muted mt-3">
               Open to players born{" "}
               {programme.eligibleDobFrom && programme.eligibleDobTo
-                ? `between ${formatDate(programme.eligibleDobFrom)} and ${formatDate(programme.eligibleDobTo)}`
+                ? `between ${formatDate(
+                    programme.eligibleDobFrom,
+                  )} and ${formatDate(programme.eligibleDobTo)}`
                 : programme.eligibleDobFrom
                 ? `on or after ${formatDate(programme.eligibleDobFrom)}`
                 : `on or before ${formatDate(programme.eligibleDobTo)}`}
@@ -133,7 +135,7 @@ export default function ProgrammeDetail() {
           <img
             src={programme.imageUrl}
             alt={programme.name}
-            className="w-full aspect-video object-cover rounded-lg"
+            className="w-full object-cover rounded-lg"
           />
         )}
 
