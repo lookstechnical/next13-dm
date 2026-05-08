@@ -7,6 +7,7 @@ import {
   ProgrammeEvent,
 } from "~/types";
 import { calculateAgeGroup, formatDate } from "~/utils/helpers";
+import { POSITION_GROUPS } from "~/utils/position-groups";
 import { Check, X, Trash2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -209,20 +210,30 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   }, [playerGroups]);
 
   const positionOptions = useMemo(() => {
-    const set = new Set<string>();
+    const present = new Set<string>();
     for (const r of registrations) {
-      if (r.players?.position) set.add(r.players.position);
+      if (r.players?.position) present.add(r.players.position);
+      if (r.players?.secondaryPosition)
+        present.add(r.players.secondaryPosition);
     }
-    return Array.from(set).sort();
+    return POSITION_GROUPS.filter((g) =>
+      g.positions.some((p) => present.has(p)),
+    );
   }, [registrations]);
 
   const visibleRegistrations = useMemo(() => {
+    const activeGroup =
+      positionFilter === ALL_VALUE
+        ? null
+        : POSITION_GROUPS.find((g) => g.label === positionFilter);
     const filtered = registrations.filter((r) => {
-      if (
-        positionFilter !== ALL_VALUE &&
-        r.players?.position !== positionFilter
-      ) {
-        return false;
+      if (activeGroup) {
+        const primary = r.players?.position;
+        const secondary = r.players?.secondaryPosition;
+        const matches =
+          (primary && activeGroup.positions.includes(primary)) ||
+          (secondary && activeGroup.positions.includes(secondary));
+        if (!matches) return false;
       }
       if (groupFilter !== "all") {
         const hasGroup =
@@ -317,9 +328,13 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                 <SelectItem value={ALL_VALUE} className="text-foreground">
                   All positions
                 </SelectItem>
-                {positionOptions.map((p) => (
-                  <SelectItem key={p} value={p} className="text-foreground">
-                    {p}
+                {positionOptions.map((g) => (
+                  <SelectItem
+                    key={g.label}
+                    value={g.label}
+                    className="text-foreground"
+                  >
+                    {g.label}
                   </SelectItem>
                 ))}
               </SelectGroup>

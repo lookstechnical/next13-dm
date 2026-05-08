@@ -23,16 +23,9 @@ import { cn } from "~/lib/utils";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { POSITION_GROUPS } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
-
-const POSITION_GROUPS: { label: string; positions: string[] }[] = [
-  { label: "Outside Backs", positions: ["Winger", "Centre"] },
-  { label: "Half Backs", positions: ["Scrum-half", "Stand-off", "Fullback"] },
-  { label: "Hookers", positions: ["Hooker"] },
-  { label: "Middles", positions: ["Prop", "Loose Forward"] },
-  { label: "Back Row", positions: ["Second Row"] },
-];
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
