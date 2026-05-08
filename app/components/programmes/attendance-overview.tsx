@@ -170,6 +170,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   playerGroups,
 }) => {
   const [positionFilter, setPositionFilter] = useState<string>(ALL_VALUE);
+  const [ageGroupFilter, setAgeGroupFilter] = useState<string>(ALL_VALUE);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [sortBy, setSortBy] = useState<SortKey>("name");
 
@@ -209,6 +210,23 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     return map;
   }, [playerGroups]);
 
+  const ageGroupOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of registrations) {
+      const dob = r.players?.dateOfBirth;
+      if (dob) set.add(calculateAgeGroup(dob));
+    }
+    const order = ["U12", "U13", "U14", "U15", "U16", "U17", "U18", "Senior"];
+    return Array.from(set).sort((a, b) => {
+      const ai = order.indexOf(a);
+      const bi = order.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+  }, [registrations]);
+
   const positionOptions = useMemo(() => {
     const present = new Set<string>();
     for (const r of registrations) {
@@ -234,6 +252,12 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           (primary && activeGroup.positions.includes(primary)) ||
           (secondary && activeGroup.positions.includes(secondary));
         if (!matches) return false;
+      }
+      if (ageGroupFilter !== ALL_VALUE) {
+        const ag = r.players?.dateOfBirth
+          ? calculateAgeGroup(r.players.dateOfBirth)
+          : "Unknown";
+        if (ag !== ageGroupFilter) return false;
       }
       if (groupFilter !== "all") {
         const hasGroup =
@@ -282,6 +306,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   }, [
     registrations,
     positionFilter,
+    ageGroupFilter,
     groupFilter,
     sortBy,
     availableCountByRegistration,
@@ -312,7 +337,10 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
 
   const hasGroupColumn = !!(playerGroups && playerGroups.length > 0);
   const filtersActive =
-    positionFilter !== ALL_VALUE || groupFilter !== "all" || sortBy !== "name";
+    positionFilter !== ALL_VALUE ||
+    ageGroupFilter !== ALL_VALUE ||
+    groupFilter !== "all" ||
+    sortBy !== "name";
 
   return (
     <div>
@@ -335,6 +363,31 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                     className="text-foreground"
                   >
                     {g.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted">Age group</label>
+          <Select value={ageGroupFilter} onValueChange={setAgeGroupFilter}>
+            <SelectTrigger className="h-9 w-[160px] text-foreground border-input">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="text-foreground">
+              <SelectGroup>
+                <SelectItem value={ALL_VALUE} className="text-foreground">
+                  All age groups
+                </SelectItem>
+                {ageGroupOptions.map((ag) => (
+                  <SelectItem
+                    key={ag}
+                    value={ag}
+                    className="text-foreground"
+                  >
+                    {ag}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -412,6 +465,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             className="h-9"
             onClick={() => {
               setPositionFilter(ALL_VALUE);
+              setAgeGroupFilter(ALL_VALUE);
               setGroupFilter("all");
               setSortBy("name");
             }}
