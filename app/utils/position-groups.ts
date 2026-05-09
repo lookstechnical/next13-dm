@@ -2,8 +2,9 @@ export type PositionGroup = { label: string; positions: string[] };
 
 export const POSITION_GROUPS: PositionGroup[] = [
   { label: "Outside Backs", positions: ["Winger", "Centre"] },
-  { label: "Half Backs", positions: ["Scrum-half", "Stand-off", "Fullback"] },
+  { label: "Half Backs", positions: ["Scrum-half", "Stand-off"] },
   { label: "Hookers", positions: ["Hooker"] },
+  { label: "Fullback", positions: ["Fullback"] },
   { label: "Middles", positions: ["Prop", "Loose Forward"] },
   { label: "Back Row", positions: ["Second Row"] },
 ];

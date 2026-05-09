@@ -28,6 +28,7 @@ type AttendanceOverviewProps = {
 };
 
 type GroupFilter = "all" | "with" | "without";
+type PositionScope = "primary" | "secondary" | "both";
 type SortKey =
   | "name"
   | "position"
@@ -170,6 +171,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   playerGroups,
 }) => {
   const [positionFilter, setPositionFilter] = useState<string>(ALL_VALUE);
+  const [positionScope, setPositionScope] = useState<PositionScope>("both");
   const [ageGroupFilter, setAgeGroupFilter] = useState<string>(ALL_VALUE);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [sortBy, setSortBy] = useState<SortKey>("name");
@@ -239,6 +241,74 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     );
   }, [registrations]);
 
+  const matchesPositionGroup = (
+    primary: string | null | undefined,
+    secondary: string | null | undefined,
+    positions: string[],
+  ): boolean => {
+    const primaryMatch = !!primary && positions.includes(primary);
+    const secondaryMatch = !!secondary && positions.includes(secondary);
+    return positionScope === "primary"
+      ? primaryMatch
+      : positionScope === "secondary"
+        ? secondaryMatch
+        : primaryMatch || secondaryMatch;
+  };
+
+  const positionGroupCounts = useMemo(() => {
+    return POSITION_GROUPS.map((g) => {
+      let count = 0;
+      for (const r of registrations) {
+        if (
+          matchesPositionGroup(
+            r.players?.position,
+            r.players?.secondaryPosition,
+            g.positions,
+          )
+        ) {
+          count += 1;
+        }
+      }
+      return { label: g.label, count };
+    }).filter((entry) => entry.count > 0);
+  }, [registrations, positionScope]);
+
+  const playerIdToRegistration = useMemo(() => {
+    const map = new Map<string, ProgrammeRegistration>();
+    for (const r of registrations) {
+      if (r.players?.id) map.set(r.players.id, r);
+    }
+    return map;
+  }, [registrations]);
+
+  const playerGroupBreakdowns = useMemo(() => {
+    if (!playerGroups) return [];
+    return playerGroups
+      .map((pg) => {
+        const playerIds = pg.playerIds ?? [];
+        const total = playerIds.length;
+        const breakdown = POSITION_GROUPS.map((g) => {
+          let count = 0;
+          for (const pid of playerIds) {
+            const reg = playerIdToRegistration.get(pid);
+            if (!reg) continue;
+            if (
+              matchesPositionGroup(
+                reg.players?.position,
+                reg.players?.secondaryPosition,
+                g.positions,
+              )
+            ) {
+              count += 1;
+            }
+          }
+          return { label: g.label, count };
+        }).filter((entry) => entry.count > 0);
+        return { id: pg.id, name: pg.name, total, breakdown };
+      })
+      .filter((entry) => entry.total > 0);
+  }, [playerGroups, playerIdToRegistration, positionScope]);
+
   const visibleRegistrations = useMemo(() => {
     const activeGroup =
       positionFilter === ALL_VALUE
@@ -248,9 +318,16 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
       if (activeGroup) {
         const primary = r.players?.position;
         const secondary = r.players?.secondaryPosition;
+        const primaryMatch =
+          !!primary && activeGroup.positions.includes(primary);
+        const secondaryMatch =
+          !!secondary && activeGroup.positions.includes(secondary);
         const matches =
-          (primary && activeGroup.positions.includes(primary)) ||
-          (secondary && activeGroup.positions.includes(secondary));
+          positionScope === "primary"
+            ? primaryMatch
+            : positionScope === "secondary"
+              ? secondaryMatch
+              : primaryMatch || secondaryMatch;
         if (!matches) return false;
       }
       if (ageGroupFilter !== ALL_VALUE) {
@@ -306,6 +383,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   }, [
     registrations,
     positionFilter,
+    positionScope,
     ageGroupFilter,
     groupFilter,
     sortBy,
@@ -338,6 +416,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   const hasGroupColumn = !!(playerGroups && playerGroups.length > 0);
   const filtersActive =
     positionFilter !== ALL_VALUE ||
+    positionScope !== "both" ||
     ageGroupFilter !== ALL_VALUE ||
     groupFilter !== "all" ||
     sortBy !== "name";
@@ -368,6 +447,45 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               </SelectGroup>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted">Match on</label>
+          <div
+            className="inline-flex h-9 rounded-md border border-input overflow-hidden"
+            role="group"
+            aria-label="Position match scope"
+          >
+            {(
+              [
+                { value: "primary", label: "Primary" },
+                { value: "secondary", label: "Secondary" },
+                { value: "both", label: "Both" },
+              ] as { value: PositionScope; label: string }[]
+            ).map((opt, i) => {
+              const active = positionScope === opt.value;
+              const disabled = positionFilter === ALL_VALUE;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setPositionScope(opt.value)}
+                  className={[
+                    "px-3 text-xs",
+                    i > 0 ? "border-l border-input" : "",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-transparent text-foreground hover:bg-card/50",
+                    disabled ? "opacity-50 cursor-not-allowed" : "",
+                  ].join(" ")}
+                  aria-pressed={active}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex flex-col gap-1">
@@ -465,6 +583,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             className="h-9"
             onClick={() => {
               setPositionFilter(ALL_VALUE);
+              setPositionScope("both");
               setAgeGroupFilter(ALL_VALUE);
               setGroupFilter("all");
               setSortBy("name");
@@ -478,6 +597,77 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           Showing {visibleRegistrations.length} of {registrations.length}
         </div>
       </div>
+
+      {positionGroupCounts.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {positionGroupCounts.map((entry) => {
+            const active = positionFilter === entry.label;
+            return (
+              <button
+                key={entry.label}
+                type="button"
+                onClick={() =>
+                  setPositionFilter(active ? ALL_VALUE : entry.label)
+                }
+                className={[
+                  "flex items-center gap-2 px-3 py-2 rounded-md border text-left transition-colors",
+                  active
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:bg-card/50",
+                ].join(" ")}
+                aria-pressed={active}
+              >
+                <span className="text-xs text-muted">{entry.label}</span>
+                <span className="text-sm font-medium text-white">
+                  {entry.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {playerGroupBreakdowns.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs text-muted mb-2">By group</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {playerGroupBreakdowns.map((pg) => (
+              <div
+                key={pg.id}
+                className="p-3 rounded-md border border-border bg-card/30"
+              >
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-sm font-medium text-white">
+                    {pg.name}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {pg.total} player{pg.total === 1 ? "" : "s"}
+                  </span>
+                </div>
+                {pg.breakdown.length === 0 ? (
+                  <p className="text-xs text-muted">
+                    No matching positions
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {pg.breakdown.map((entry) => (
+                      <li
+                        key={entry.label}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <span className="text-muted">{entry.label}</span>
+                        <span className="text-white font-medium">
+                          {entry.count}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
