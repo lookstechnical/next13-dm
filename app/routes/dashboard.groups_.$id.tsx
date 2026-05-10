@@ -5,24 +5,33 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import { MoreVertical, Users2Icon } from "lucide-react";
+import { Calendar, MapPin, MoreVertical, Users2Icon } from "lucide-react";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
 import { ListingHeader } from "~/components/layout/listing-header";
+import { Avatar } from "~/components/players/avatar";
 import { PlayerFilters } from "~/components/players/filters";
 import { PlayerCard } from "~/components/players/player-card";
 import ActionButton from "~/components/ui/action-button";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button copy";
+import { Card } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "~/components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "~/components/ui/tabs";
 import { cn } from "~/lib/utils";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { formatDate } from "~/utils/helpers";
 import { POSITION_GROUPS } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -43,7 +52,42 @@ export const loader: LoaderFunction = withAuth(
 
     const playerGroupMembers = players;
 
-    return { group: { ...group, playerGroupMembers } };
+    const groupPlayerIds = players.map((p: any) => p.id);
+    const now = new Date().toISOString();
+
+    const { data: rawEvents } = await supabaseClient
+      .from("events")
+      .select("id, name, date, location, status")
+      .eq("team_id", (group as any).teamId)
+      .gte("date", now)
+      .order("date", { ascending: true });
+
+    let events: any[] = [];
+    if (rawEvents && rawEvents.length > 0 && groupPlayerIds.length > 0) {
+      const eventIds = rawEvents.map((e: any) => e.id);
+      const { data: registrations } = await supabaseClient
+        .from("event_registrations")
+        .select(
+          "event_id, player_id, status, players ( id, name, position, photo_url )",
+        )
+        .in("event_id", eventIds)
+        .in("player_id", groupPlayerIds)
+        .in("status", ["registered", "confirmed", "attended"]);
+
+      events = rawEvents.map((event: any) => ({
+        ...event,
+        availablePlayers: (registrations || [])
+          .filter((r: any) => r.event_id === event.id)
+          .map((r: any) => r.players),
+      }));
+    } else {
+      events = (rawEvents || []).map((event: any) => ({
+        ...event,
+        availablePlayers: [],
+      }));
+    }
+
+    return { group: { ...group, playerGroupMembers }, events };
   },
 );
 
@@ -72,7 +116,7 @@ export const action: ActionFunction = withAuthAction(
 );
 
 export default function PlayerPage() {
-  const { group } = useLoaderData<typeof loader>();
+  const { group, events } = useLoaderData<typeof loader>();
 
   return (
     <>
@@ -135,16 +179,92 @@ export default function PlayerPage() {
       </div>
       <div className="bg-card min-h-screen py-10">
         <div className="container mx-auto px-4">
-          <ListingHeader
-            title={`${group.name} Players`}
-            renderFilters={() => (
-              <div className="flex flex-row items-center justify-center gap-4">
-                <PlayerFilters />
-              </div>
-            )}
-          />
+          <Tabs defaultValue="players" className="w-full">
+            <TabsList className="mb-6">
+              <TabsTrigger value="players">
+                Players ({group.playerGroupMembers.length})
+              </TabsTrigger>
+              <TabsTrigger value="events">
+                Events ({events?.length || 0})
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="events">
+              {events && events.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {events.map((event: any) => (
+                    <Link
+                      key={event.id}
+                      to={`/dashboard/events/${event.id}`}
+                      className="block transition-all hover:opacity-80 active:opacity-60"
+                    >
+                      <Card className="border-border h-full">
+                        <div className="p-6 flex flex-col gap-3">
+                          <div>
+                            <h3 className="text-lg font-semibold text-white">
+                              {event.name}
+                            </h3>
+                            <p className="text-sm flex flex-row gap-2 items-center">
+                              <Calendar className="w-4" />
+                              {formatDate(event.date)}
+                            </p>
+                            {event.location && (
+                              <p className="text-sm text-muted flex flex-row gap-2 items-center">
+                                <MapPin className="w-3" /> {event.location}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-row gap-2 items-center text-sm text-muted">
+                            <Users2Icon className="w-4" />
+                            <span>
+                              {event.availablePlayers.length} of{" "}
+                              {group.playerGroupMembers.length} from{" "}
+                              {group.name}
+                            </span>
+                          </div>
+                          {event.availablePlayers.length > 0 && (
+                            <div className="flex flex-row flex-wrap gap-1">
+                              {event.availablePlayers
+                                .slice(0, 10)
+                                .map((player: any) => (
+                                  <div
+                                    key={`${event.id}-${player.id}`}
+                                    title={player.name}
+                                  >
+                                    <Avatar
+                                      photoUrl={player.photo_url}
+                                      name={player.name}
+                                      size={16}
+                                      containerSize="w-8 h-8"
+                                    />
+                                  </div>
+                                ))}
+                              {event.availablePlayers.length > 10 && (
+                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-700">
+                                  +{event.availablePlayers.length - 10}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted">No upcoming events.</p>
+              )}
+            </TabsContent>
+            <TabsContent value="players">
+              <ListingHeader
+                title={`${group.name} Players`}
+                renderFilters={() => (
+                  <div className="flex flex-row items-center justify-center gap-4">
+                    <PlayerFilters />
+                  </div>
+                )}
+              />
 
-          {POSITION_GROUPS.map((pg) => {
+              {POSITION_GROUPS.map((pg) => {
             const players = group.playerGroupMembers.filter((p: any) =>
               pg.positions.includes(p.position),
             );
@@ -223,9 +343,11 @@ export default function PlayerPage() {
               </section>
             );
           })()}
-          {group.playerGroupMembers.length === 0 && (
-            <CardGrid items={[]} name="Players" />
-          )}
+              {group.playerGroupMembers.length === 0 && (
+                <CardGrid items={[]} name="Players" />
+              )}
+            </TabsContent>
+          </Tabs>
           <Outlet />
         </div>
       </div>
