@@ -126,6 +126,19 @@ export default function PlayerPage() {
             ]}
           />
 
+          <SelectField
+            name="group"
+            label="Group"
+            placeholder="All groups"
+            onValueChange={(value) => {
+              setGroup(value ? value : undefined);
+            }}
+            options={(groups || []).map((g: any) => ({
+              id: g.id,
+              name: g.name,
+            }))}
+          />
+
           <Field label="Mentor" name="mentor">
             <Checkbox
               name="mentor"
