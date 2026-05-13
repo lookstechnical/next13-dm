@@ -171,7 +171,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   playerGroups,
 }) => {
   const [positionFilter, setPositionFilter] = useState<string>(ALL_VALUE);
-  const [positionScope, setPositionScope] = useState<PositionScope>("both");
+  const [positionScope, setPositionScope] = useState<PositionScope>("primary");
   const [ageGroupFilter, setAgeGroupFilter] = useState<string>(ALL_VALUE);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [sortBy, setSortBy] = useState<SortKey>("name");
@@ -229,6 +229,27 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     });
   }, [registrations]);
 
+  const ageGroupCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of registrations) {
+      const ag = r.players?.dateOfBirth
+        ? calculateAgeGroup(r.players.dateOfBirth)
+        : "Unknown";
+      counts.set(ag, (counts.get(ag) ?? 0) + 1);
+    }
+    const order = ["U12", "U13", "U14", "U15", "U16", "U17", "U18", "Senior"];
+    return Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => {
+        const ai = order.indexOf(a.label);
+        const bi = order.indexOf(b.label);
+        if (ai === -1 && bi === -1) return a.label.localeCompare(b.label);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+  }, [registrations]);
+
   const positionOptions = useMemo(() => {
     const present = new Set<string>();
     for (const r of registrations) {
@@ -283,6 +304,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
 
   const playerGroupBreakdowns = useMemo(() => {
     if (!playerGroups) return [];
+    const order = ["U12", "U13", "U14", "U15", "U16", "U17", "U18", "Senior"];
     return playerGroups
       .map((pg) => {
         const playerIds = pg.playerIds ?? [];
@@ -304,7 +326,24 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           }
           return { label: g.label, count };
         }).filter((entry) => entry.count > 0);
-        return { id: pg.id, name: pg.name, total, breakdown };
+        const ageCounts = new Map<string, number>();
+        for (const pid of playerIds) {
+          const reg = playerIdToRegistration.get(pid);
+          const dob = reg?.players?.dateOfBirth;
+          const ag = dob ? calculateAgeGroup(dob) : "Unknown";
+          ageCounts.set(ag, (ageCounts.get(ag) ?? 0) + 1);
+        }
+        const ageBreakdown = Array.from(ageCounts.entries())
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => {
+            const ai = order.indexOf(a.label);
+            const bi = order.indexOf(b.label);
+            if (ai === -1 && bi === -1) return a.label.localeCompare(b.label);
+            if (ai === -1) return 1;
+            if (bi === -1) return -1;
+            return ai - bi;
+          });
+        return { id: pg.id, name: pg.name, total, breakdown, ageBreakdown };
       })
       .filter((entry) => entry.total > 0);
   }, [playerGroups, playerIdToRegistration, positionScope]);
@@ -416,7 +455,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   const hasGroupColumn = !!(playerGroups && playerGroups.length > 0);
   const filtersActive =
     positionFilter !== ALL_VALUE ||
-    positionScope !== "both" ||
+    positionScope !== "primary" ||
     ageGroupFilter !== ALL_VALUE ||
     groupFilter !== "all" ||
     sortBy !== "name";
@@ -583,7 +622,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             className="h-9"
             onClick={() => {
               setPositionFilter(ALL_VALUE);
-              setPositionScope("both");
+              setPositionScope("primary");
               setAgeGroupFilter(ALL_VALUE);
               setGroupFilter("all");
               setSortBy("name");
@@ -627,6 +666,38 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
         </div>
       )}
 
+      {ageGroupCounts.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs text-muted mb-2">By age group</p>
+          <div className="flex flex-wrap gap-2">
+            {ageGroupCounts.map((entry) => {
+              const active = ageGroupFilter === entry.label;
+              return (
+                <button
+                  key={entry.label}
+                  type="button"
+                  onClick={() =>
+                    setAgeGroupFilter(active ? ALL_VALUE : entry.label)
+                  }
+                  className={[
+                    "flex items-center gap-2 px-3 py-2 rounded-md border text-left transition-colors",
+                    active
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:bg-card/50",
+                  ].join(" ")}
+                  aria-pressed={active}
+                >
+                  <span className="text-xs text-muted">{entry.label}</span>
+                  <span className="text-sm font-medium text-white">
+                    {entry.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {playerGroupBreakdowns.length > 0 && (
         <div className="mb-4">
           <p className="text-xs text-muted mb-2">By group</p>
@@ -644,6 +715,21 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                     {pg.total} player{pg.total === 1 ? "" : "s"}
                   </span>
                 </div>
+                {pg.ageBreakdown.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {pg.ageBreakdown.map((entry) => (
+                      <span
+                        key={entry.label}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-card/50 text-xs"
+                      >
+                        <span className="text-muted">{entry.label}</span>
+                        <span className="text-white font-medium">
+                          {entry.count}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {pg.breakdown.length === 0 ? (
                   <p className="text-xs text-muted">
                     No matching positions
