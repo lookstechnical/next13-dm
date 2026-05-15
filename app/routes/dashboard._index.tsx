@@ -1,7 +1,8 @@
 import type { MetaFunction } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import { Link, useLoaderData } from "@remix-run/react";
 import { EventCard } from "~/components/events/event-card";
 import { AttributeHeatmap } from "~/components/heatmap";
+import { Avatar } from "~/components/players/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DashboardService } from "~/services/dashboardService";
@@ -97,13 +98,39 @@ export const loader = withAuth(async ({ user, supabaseClient }) => {
   );
 
   const event = await eventService.getNextEvent(user.current_team as string);
+  const clubSummary = await dashService.getPlayersByClubSummary(
+    user.current_team as string
+  );
+  const upcomingBirthdays = await dashService.getUpcomingBirthdays(
+    user.current_team as string
+  );
   const quote = getRandomCoachQuote();
 
-  return { quote, event, teamProgress, user };
+  return {
+    quote,
+    event,
+    teamProgress,
+    clubSummary,
+    upcomingBirthdays,
+    user,
+  };
 });
 
 export default function Index() {
-  const { quote, event, teamProgress } = useLoaderData<typeof loader>();
+  const { quote, event, teamProgress, clubSummary, upcomingBirthdays } =
+    useLoaderData<typeof loader>();
+
+  const totalClubPlayers = (clubSummary || []).reduce(
+    (sum, c) => sum + c.count,
+    0
+  );
+
+  const formatBirthday = (iso: string) =>
+    new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
 
   return (
     <div className="container mx-auto p-4">
@@ -153,6 +180,81 @@ export default function Index() {
                 <li>Peter Williams</li>
               </ul> */}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-gradient-green text-white border-0 col-span-2 md:col-span-3 xl:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90 text-muted">
+              Players by Club
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {clubSummary && clubSummary.length > 0 ? (
+              <ul className="divide-y divide-white/10">
+                {clubSummary.map((c) => {
+                  const pct = totalClubPlayers
+                    ? Math.round((c.count / totalClubPlayers) * 100)
+                    : 0;
+                  return (
+                    <li
+                      key={c.club}
+                      className="flex items-center justify-between py-2 text-sm"
+                    >
+                      <span className="truncate pr-3">{c.club}</span>
+                      <span className="flex items-center gap-3 shrink-0">
+                        <span className="opacity-75 text-xs">{pct}%</span>
+                        <span className="font-medium">{c.count}</span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm">No players assigned to a club yet</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="card-gradient-green text-white border-0 col-span-2 md:col-span-3 xl:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90 text-muted">
+              Upcoming Birthdays
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {upcomingBirthdays && upcomingBirthdays.length > 0 ? (
+              <ul className="divide-y divide-white/10">
+                {upcomingBirthdays.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      to={`/dashboard/players/${p.id}`}
+                      className="flex items-center justify-between py-2 text-sm hover:opacity-90"
+                    >
+                      <span className="flex items-center min-w-0 pr-3">
+                        <Avatar
+                          photoUrl={p.photoUrl ?? ""}
+                          name={p.name}
+                          size={16}
+                          containerSize="w-8 h-8"
+                        />
+                        <span className="truncate">{p.name}</span>
+                      </span>
+                      <span className="flex items-center gap-3 shrink-0">
+                        <span className="opacity-75 text-xs">
+                          turns {p.turningAge}
+                        </span>
+                        <span className="font-medium">
+                          {formatBirthday(p.nextBirthday)}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm">No birthdays in the next 7 days</p>
+            )}
           </CardContent>
         </Card>
 
