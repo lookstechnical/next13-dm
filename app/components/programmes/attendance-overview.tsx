@@ -41,10 +41,19 @@ const ALL_VALUE = "__all__";
 const PlayerRow: React.FC<{
   reg: ProgrammeRegistration;
   programmeEvents: ProgrammeEvent[];
-  getAvailability: (registrationId: string, eventId: string) => boolean | undefined;
+  getAvailability: (
+    registrationId: string,
+    eventId: string,
+  ) => boolean | undefined;
   playerGroups?: PlayerGroup[];
   totalAvailable: number;
-}> = ({ reg, programmeEvents, getAvailability, playerGroups, totalAvailable }) => {
+}> = ({
+  reg,
+  programmeEvents,
+  getAvailability,
+  playerGroups,
+  totalAvailable,
+}) => {
   const fetcher = useFetcher();
   const ageGroup = reg.players?.dateOfBirth
     ? calculateAgeGroup(reg.players.dateOfBirth)
@@ -54,7 +63,7 @@ const PlayerRow: React.FC<{
     if (!reg.players?.id) return;
     fetcher.submit(
       { intent: "assignToGroup", groupId, playerId: reg.players.id },
-      { method: "post" }
+      { method: "post" },
     );
   };
 
@@ -68,21 +77,42 @@ const PlayerRow: React.FC<{
     <tr className="border-b border-border/50">
       <td className="py-3 px-2">
         <div className="flex items-center gap-2">
-          {reg.players?.photoUrl && (
+          {reg.players?.photoUrl ? (
             <img
               src={reg.players.photoUrl}
               alt={reg.players.name}
               className="w-8 h-8 rounded-full object-cover"
             />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                className="lucide lucide-user text-gray-400"
+                aria-hidden="true"
+              >
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
           )}
-          <span className="text-white">{reg.players?.name}</span>
+          <span className="text-white flex-1">{reg.players?.name}</span>
         </div>
       </td>
       <td className="py-3 px-2">
         <span className="text-xs text-muted">{ageGroup}</span>
       </td>
       <td className="py-3 px-2">
-        <span className="text-xs text-white">{reg.players?.position || "-"}</span>
+        <span className="text-xs text-white">
+          {reg.players?.position || "-"}
+        </span>
       </td>
       <td className="py-3 px-2">
         <span className="text-xs text-muted">
@@ -131,9 +161,7 @@ const PlayerRow: React.FC<{
             {isAvailable === false && (
               <X className="w-4 h-4 text-red-500 mx-auto" />
             )}
-            {isAvailable === undefined && (
-              <span className="text-muted">-</span>
-            )}
+            {isAvailable === undefined && <span className="text-muted">-</span>}
           </td>
         );
       })}
@@ -151,7 +179,9 @@ const PlayerRow: React.FC<{
             size="sm"
             className="text-destructive hover:text-destructive h-8 w-8 p-0"
             onClick={(e) => {
-              if (!confirm(`Remove ${reg.players?.name} from this programme?`)) {
+              if (
+                !confirm(`Remove ${reg.players?.name} from this programme?`)
+              ) {
                 e.preventDefault();
               }
             }}
@@ -178,11 +208,11 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
 
   const getAvailability = (
     registrationId: string,
-    eventId: string
+    eventId: string,
   ): boolean | undefined => {
     const record = availability.find(
       (a) =>
-        a.programmeRegistrationId === registrationId && a.eventId === eventId
+        a.programmeRegistrationId === registrationId && a.eventId === eventId,
     );
     return record?.available;
   };
@@ -193,7 +223,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
       if (a.available) {
         map.set(
           a.programmeRegistrationId,
-          (map.get(a.programmeRegistrationId) ?? 0) + 1
+          (map.get(a.programmeRegistrationId) ?? 0) + 1,
         );
       }
     }
@@ -272,8 +302,8 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     return positionScope === "primary"
       ? primaryMatch
       : positionScope === "secondary"
-        ? secondaryMatch
-        : primaryMatch || secondaryMatch;
+      ? secondaryMatch
+      : primaryMatch || secondaryMatch;
   };
 
   const positionGroupCounts = useMemo(() => {
@@ -365,8 +395,8 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           positionScope === "primary"
             ? primaryMatch
             : positionScope === "secondary"
-              ? secondaryMatch
-              : primaryMatch || secondaryMatch;
+            ? secondaryMatch
+            : primaryMatch || secondaryMatch;
         if (!matches) return false;
       }
       if (ageGroupFilter !== ALL_VALUE) {
@@ -399,7 +429,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           );
         case "position":
           return (a.players?.position ?? "").localeCompare(
-            b.players?.position ?? ""
+            b.players?.position ?? "",
           );
         case "group": {
           const aHas =
@@ -432,7 +462,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
 
   const visibleRegistrationIds = useMemo(
     () => new Set(visibleRegistrations.map((r) => r.id)),
-    [visibleRegistrations]
+    [visibleRegistrations],
   );
 
   const getEventAttendanceCount = (eventId: string): number => {
@@ -440,7 +470,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
       (a) =>
         a.eventId === eventId &&
         a.available &&
-        visibleRegistrationIds.has(a.programmeRegistrationId)
+        visibleRegistrationIds.has(a.programmeRegistrationId),
     ).length;
   };
 
@@ -539,11 +569,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   All age groups
                 </SelectItem>
                 {ageGroupOptions.map((ag) => (
-                  <SelectItem
-                    key={ag}
-                    value={ag}
-                    className="text-foreground"
-                  >
+                  <SelectItem key={ag} value={ag} className="text-foreground">
                     {ag}
                   </SelectItem>
                 ))}
@@ -579,10 +605,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
 
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted">Sort by</label>
-          <Select
-            value={sortBy}
-            onValueChange={(v) => setSortBy(v as SortKey)}
-          >
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
             <SelectTrigger className="h-9 w-[200px] text-foreground border-input">
               <SelectValue />
             </SelectTrigger>
@@ -731,9 +754,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   </div>
                 )}
                 {pg.breakdown.length === 0 ? (
-                  <p className="text-xs text-muted">
-                    No matching positions
-                  </p>
+                  <p className="text-xs text-muted">No matching positions</p>
                 ) : (
                   <ul className="flex flex-col gap-1">
                     {pg.breakdown.map((entry) => (
@@ -800,10 +821,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               <tr>
                 <td
                   colSpan={
-                    4 +
-                    (hasGroupColumn ? 1 : 0) +
-                    programmeEvents.length +
-                    2
+                    4 + (hasGroupColumn ? 1 : 0) + programmeEvents.length + 2
                   }
                   className="text-center py-6 text-muted"
                 >
@@ -818,9 +836,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   programmeEvents={programmeEvents}
                   getAvailability={getAvailability}
                   playerGroups={playerGroups}
-                  totalAvailable={
-                    availableCountByRegistration.get(reg.id) ?? 0
-                  }
+                  totalAvailable={availableCountByRegistration.get(reg.id) ?? 0}
                 />
               ))
             )}
