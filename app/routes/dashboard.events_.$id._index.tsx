@@ -20,6 +20,7 @@ import { GroupService } from "~/services/groupService";
 import { ScoutService } from "~/services/scoutService";
 import { EventRegistration } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { POSITION_GROUPS, findPositionGroup } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -83,6 +84,7 @@ export default function PlayerPage() {
   const [status, setStatus] = useState<string>();
   const [mentor, setMentor] = useState<boolean>();
   const [group, setGroup] = useState<string>();
+  const [groupBy, setGroupBy] = useState<string>("position_group");
 
   const getVariant = (player: EventRegistration) => {
     switch (player.status) {
@@ -108,6 +110,57 @@ export default function PlayerPage() {
   filteredPlayers = mentor
     ? filteredPlayers.filter((p) => p.players.mentor?.id === user.id)
     : filteredPlayers;
+
+  const groupedSections =
+    groupBy === "position_group"
+      ? (() => {
+          const buckets = new Map<string, EventRegistration[]>();
+          for (const g of POSITION_GROUPS) buckets.set(g.label, []);
+          const other: EventRegistration[] = [];
+          for (const reg of filteredPlayers) {
+            const pg = findPositionGroup(reg.players?.position);
+            if (pg) buckets.get(pg.label)!.push(reg);
+            else other.push(reg);
+          }
+          const sections = POSITION_GROUPS.map((g) => ({
+            label: g.label,
+            items: buckets.get(g.label) ?? [],
+          })).filter((s) => s.items.length > 0);
+          if (other.length > 0)
+            sections.push({ label: "Other", items: other });
+          return sections;
+        })()
+      : null;
+
+  const renderPlayerCard = (player: EventRegistration, key: string) => (
+    <PlayerCard player={player.players} key={key}>
+      <div className="flex flex-row w-full ">
+        <ActionProtection allowedRoles={AllowedRoles.headOfDept} user={user}>
+          <Form method="POST" className="w-full">
+            <input type="hidden" name="playerId" value={player.players.id} />
+            <input type="hidden" name="eventId" value={player.eventId} />
+
+            <Button
+              type="submit"
+              variant={getVariant(player)}
+              className={cn(
+                "w-full flex-1 text-white uppercase border-muted"
+              )}
+            >
+              {player.status}
+            </Button>
+          </Form>
+        </ActionProtection>
+        <Button asChild className="w-full border-muted" variant="outline">
+          <Link
+            to={`/dashboard/events/${event.id}/report/${player.playerId}`}
+          >
+            Add Report
+          </Link>
+        </Button>
+      </div>
+    </PlayerCard>
+  );
 
   return (
     <>
@@ -147,61 +200,66 @@ export default function PlayerPage() {
               }}
             />
           </Field>
+          <SelectField
+            name="groupBy"
+            label="Group By"
+            defaultValue="position_group"
+            onValueChange={(value) => {
+              setGroupBy(value || "none");
+            }}
+            options={[
+              { id: "position_group", name: "Position Group" },
+              { id: "none", name: "None" },
+            ]}
+          />
           <div className="w-1/5 text-foreground flex flex-row gap-2 items-center justify-start">
             <User2 /> {filteredPlayers.length}{" "}
             <span className="hidden md:inline-block">players</span>
           </div>
         </div>
         <div className="container mx-auto px-4">
-          <CardGrid
-            items={filteredPlayers}
-            name="No Players currently for this event"
-          >
-            {filteredPlayers.map((player: EventRegistration, index: number) => (
-              <PlayerCard player={player.players} key={`player-card-${index}`}>
-                <div className="flex flex-row w-full ">
-                  <ActionProtection
-                    allowedRoles={AllowedRoles.headOfDept}
-                    user={user}
-                  >
-                    <Form method="POST" className="w-full">
-                      <input
-                        type="hidden"
-                        name="playerId"
-                        value={player.players.id}
-                      />
-                      <input
-                        type="hidden"
-                        name="eventId"
-                        value={player.eventId}
-                      />
-
-                      <Button
-                        type="submit"
-                        variant={getVariant(player)}
-                        className={cn(
-                          "w-full flex-1 text-white uppercase border-muted"
-                        )}
-                      >
-                        {player.status}
-                      </Button>
-                    </Form>
-                  </ActionProtection>
-                  <Button
-                    asChild
-                    className="w-full border-muted"
-                    variant="outline"
-                  >
-                    <Link
-                      to={`/dashboard/events/${event.id}/report/${player.playerId}`}
-                    >
-                      Add Report
-                    </Link>
-                  </Button>
-                </div>
-              </PlayerCard>
-            ))}
-          </CardGrid>
+          {groupedSections ? (
+            filteredPlayers.length === 0 ? (
+              <CardGrid
+                items={filteredPlayers}
+                name="No Players currently for this event"
+              >
+                {null}
+              </CardGrid>
+            ) : (
+              <div className="flex flex-col gap-8 py-10">
+                {groupedSections.map((section) => (
+                  <div key={section.label}>
+                    <div className="flex items-baseline gap-3 mb-4">
+                      <h2 className="text-lg font-semibold text-white">
+                        {section.label}
+                      </h2>
+                      <span className="text-sm text-muted">
+                        {section.items.length}
+                      </span>
+                    </div>
+                    <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {section.items.map((player, index) =>
+                        renderPlayerCard(
+                          player,
+                          `player-card-${section.label}-${index}`
+                        )
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            <CardGrid
+              items={filteredPlayers}
+              name="No Players currently for this event"
+            >
+              {filteredPlayers.map((player: EventRegistration, index: number) =>
+                renderPlayerCard(player, `player-card-${index}`)
+              )}
+            </CardGrid>
+          )}
         </div>
       </div>
     </>

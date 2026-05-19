@@ -17,6 +17,7 @@ import { PlayerService } from "~/services/playerService";
 import { ScoutService } from "~/services/scoutService";
 import { Player } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
+import { POSITION_GROUPS, findPositionGroup } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -36,6 +37,7 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
   const mentor = url.searchParams.get("mentor");
   const position = url.searchParams.get("position");
   const group = url.searchParams.get("group") || user.team?.defaultGroup;
+  const groupBy = url.searchParams.get("groupBy") ?? "position_group";
 
   const playersPromise = playerService.getPlayersByTeam(
     user.team?.id as string,
@@ -72,6 +74,7 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
       group,
       position,
       mentor,
+      groupBy,
     },
   };
 });
@@ -119,6 +122,27 @@ export default function Players() {
     return `/dashboard/players/${id}`;
   };
 
+  const groupedPlayers =
+    appliedFilters?.groupBy === "position_group"
+      ? (() => {
+          const buckets = new Map<string, Player[]>();
+          for (const g of POSITION_GROUPS) buckets.set(g.label, []);
+          const other: Player[] = [];
+          for (const p of players as Player[]) {
+            const pg = findPositionGroup(p.position);
+            if (pg) buckets.get(pg.label)!.push(p);
+            else other.push(p);
+          }
+          const sections = POSITION_GROUPS.map((g) => ({
+            label: g.label,
+            players: buckets.get(g.label) ?? [],
+          })).filter((s) => s.players.length > 0);
+          if (other.length > 0)
+            sections.push({ label: "Other", players: other });
+          return sections;
+        })()
+      : null;
+
   return (
     <div className="flex flex-column space-y-10 container px-4 mx-auto py-10 text-foreground">
       <div className="w-full">
@@ -131,6 +155,22 @@ export default function Players() {
                 groups={groups}
                 mentors={mentors}
               />
+              <Form
+                onChange={(event) => {
+                  submit(event.currentTarget);
+                }}
+              >
+                <SelectField
+                  name="groupBy"
+                  label=""
+                  placeholder="Group By"
+                  defaultValue={appliedFilters?.groupBy ?? "position_group"}
+                  options={[
+                    { id: "position_group", name: "Position Group" },
+                    { id: "none", name: "None" },
+                  ]}
+                />
+              </Form>
               <Form
                 onChange={(event) => {
                   submit(event.currentTarget);
@@ -173,18 +213,53 @@ export default function Players() {
           )}
         />
 
-        <CardGrid
-          name={`${user.team.name} currently has 0 players`}
-          items={players}
-        >
-          {players?.map((player: Player) => (
-            <PlayerCard
-              key={`player-card-${player.id}`}
-              player={player}
-              to={cardUrl}
-            />
-          ))}
-        </CardGrid>
+        {groupedPlayers ? (
+          players.length === 0 ? (
+            <CardGrid
+              name={`${user.team.name} currently has 0 players`}
+              items={players}
+            >
+              {null}
+            </CardGrid>
+          ) : (
+            <div className="flex flex-col gap-8 py-10">
+              {groupedPlayers.map((section) => (
+                <div key={section.label}>
+                  <div className="flex items-baseline gap-3 mb-4">
+                    <h2 className="text-lg font-semibold text-white">
+                      {section.label}
+                    </h2>
+                    <span className="text-sm text-muted">
+                      {section.players.length}
+                    </span>
+                  </div>
+                  <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {section.players.map((player) => (
+                      <PlayerCard
+                        key={`player-card-${player.id}`}
+                        player={player}
+                        to={cardUrl}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <CardGrid
+            name={`${user.team.name} currently has 0 players`}
+            items={players}
+          >
+            {players?.map((player: Player) => (
+              <PlayerCard
+                key={`player-card-${player.id}`}
+                player={player}
+                to={cardUrl}
+              />
+            ))}
+          </CardGrid>
+        )}
 
         <Outlet />
       </div>

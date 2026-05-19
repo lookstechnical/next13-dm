@@ -27,7 +27,7 @@ type AttendanceOverviewProps = {
   playerGroups?: PlayerGroup[];
 };
 
-type GroupFilter = "all" | "with" | "without";
+type GroupFilter = "all" | "with" | "without" | string;
 type PositionScope = "primary" | "secondary" | "both";
 type SortKey =
   | "name"
@@ -406,10 +406,15 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
         if (ag !== ageGroupFilter) return false;
       }
       if (groupFilter !== "all") {
-        const hasGroup =
-          (playerIdToGroupIds.get(r.players?.id ?? "")?.length ?? 0) > 0;
-        if (groupFilter === "with" && !hasGroup) return false;
-        if (groupFilter === "without" && hasGroup) return false;
+        const assignedIds = playerIdToGroupIds.get(r.players?.id ?? "") ?? [];
+        const hasGroup = assignedIds.length > 0;
+        if (groupFilter === "with") {
+          if (!hasGroup) return false;
+        } else if (groupFilter === "without") {
+          if (hasGroup) return false;
+        } else if (!assignedIds.includes(groupFilter)) {
+          return false;
+        }
       }
       return true;
     });
@@ -584,7 +589,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             value={groupFilter}
             onValueChange={(v) => setGroupFilter(v as GroupFilter)}
           >
-            <SelectTrigger className="h-9 w-[160px] text-foreground border-input">
+            <SelectTrigger className="h-9 w-[180px] text-foreground border-input">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="text-foreground">
@@ -599,6 +604,20 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   Not in a group
                 </SelectItem>
               </SelectGroup>
+              {playerGroups && playerGroups.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel className="text-foreground">Groups</SelectLabel>
+                  {playerGroups.map((g) => (
+                    <SelectItem
+                      key={g.id}
+                      value={g.id}
+                      className="text-foreground"
+                    >
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -725,10 +744,20 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
         <div className="mb-4">
           <p className="text-xs text-muted mb-2">By group</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {playerGroupBreakdowns.map((pg) => (
-              <div
+            {playerGroupBreakdowns.map((pg) => {
+              const active = groupFilter === pg.id;
+              return (
+              <button
                 key={pg.id}
-                className="p-3 rounded-md border border-border bg-card/30"
+                type="button"
+                onClick={() => setGroupFilter(active ? "all" : pg.id)}
+                aria-pressed={active}
+                className={[
+                  "p-3 rounded-md border text-left transition-colors",
+                  active
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-card/30 hover:bg-card/50",
+                ].join(" ")}
               >
                 <div className="flex items-baseline justify-between mb-2">
                   <span className="text-sm font-medium text-white">
@@ -770,8 +799,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                     ))}
                   </ul>
                 )}
-              </div>
-            ))}
+              </button>
+              );
+            })}
           </div>
         </div>
       )}
