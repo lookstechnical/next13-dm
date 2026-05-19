@@ -454,8 +454,9 @@ export class PlayerService {
     if (updates.mobile !== undefined) updateData.mobile = updates.mobile;
     if (updates.shorts !== undefined) updateData.shorts = updates.shorts;
     if (updates.shirt !== undefined) updateData.shirt = updates.shirt;
-    if (updates.mentor !== undefined) updateData.mentor = updates.mentor;
-    if (updates.teamId !== undefined) updateData.team_id = updates.teamId;
+    if (updates.mentor !== undefined)
+      updateData.mentor = updates.mentor === "" ? null : updates.mentor;
+    if (updates.teamId) updateData.team_id = updates.teamId;
 
     let previousTeamId: string | undefined;
     if (updates.teamId !== undefined) {

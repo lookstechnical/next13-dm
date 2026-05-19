@@ -9,6 +9,39 @@ type ImageUploadProps = {
   errors?: any;
   accept?: string;
 };
+
+async function compressImage(file: File): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxDim = 1024;
+    let { width, height } = bitmap;
+    if (width > maxDim || height > maxDim) {
+      const ratio = Math.min(maxDim / width, maxDim / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85);
+    });
+    if (!blob) return file;
+
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
+    return new File([blob], `${baseName}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  } catch {
+    return file;
+  }
+}
+
 export const ImageUpload: React.FC<ImageUploadProps> = ({
   image,
   errors,
@@ -18,9 +51,17 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 }) => {
   const [previewUrl, setPreviewUrl] = useState(image);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file && accept === "image/*") {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (accept === "image/*" && file.type.startsWith("image/")) {
+      const compressed = await compressImage(file);
+      const dt = new DataTransfer();
+      dt.items.add(compressed);
+      e.target.files = dt.files;
+      setPreviewUrl(URL.createObjectURL(compressed));
+    } else {
       setPreviewUrl(URL.createObjectURL(file));
     }
   };

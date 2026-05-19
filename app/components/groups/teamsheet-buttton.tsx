@@ -260,22 +260,25 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
       });
     }
 
-    // Age group badge (red pill, white text)
+    // Age group badge (colored pill, white text)
     const ag = calculateAgeGroup(player.dateOfBirth);
     if (ag) {
       const badgeFontSize = 7;
       const badgeTextWidth = fontBold.widthOfTextAtSize(ag, badgeFontSize);
       const badgeWidth = badgeTextWidth + 8;
       const badgeHeight = 10;
+      const badgeColor =
+        ag === "U15" ? saintsRed : ag === "U14" ? rgb(0.13, 0.4, 0.8) : saintsRed;
+      const badgeX = cardX + cardWidth - 5 - badgeWidth;
       page.drawRectangle({
-        x: infoX,
+        x: badgeX,
         y: cardBottom + 4,
         width: badgeWidth,
         height: badgeHeight,
-        color: saintsRed,
+        color: badgeColor,
       });
       page.drawText(ag, {
-        x: infoX + 4,
+        x: badgeX + 4,
         y: cardBottom + 7,
         size: badgeFontSize,
         font: fontBold,
