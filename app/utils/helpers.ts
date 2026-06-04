@@ -29,6 +29,16 @@ export const formatDate = (dateString: string): string => {
 };
 
 /**
+ * Whether a programme's registration deadline has passed. A missing deadline
+ * means registration never auto-closes on a date.
+ */
+export const registrationDeadlinePassed = (
+  registrationDeadline?: string | null,
+): boolean => {
+  return !!registrationDeadline && new Date(registrationDeadline) < new Date();
+};
+
+/**
  * Calculate age from date of birth
  */
 export const calculateAge = (dateOfBirth: string): number => {

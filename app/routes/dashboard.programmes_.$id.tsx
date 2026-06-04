@@ -3,13 +3,14 @@ import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin } from "lucide-react";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { AttendanceOverview } from "~/components/programmes/attendance-overview";
+import { RegistrationAllowlist } from "~/components/programmes/registration-allowlist";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { GroupService } from "~/services/groupService";
 import { ProgrammeService } from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { formatDate } from "~/utils/helpers";
+import { formatDate, registrationDeadlinePassed } from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -40,8 +41,19 @@ export const loader: LoaderFunction = withAuth(
     const playerGroups = await groupService.getGroupsByTeam(
       user.current_team as string
     );
+    const allowedEmails = await programmeService.getAllowedEmails(
+      params.id as string
+    );
 
-    return { programme, programmeEvents, registrations, availability, playerGroups, user };
+    return {
+      programme,
+      programmeEvents,
+      registrations,
+      availability,
+      playerGroups,
+      allowedEmails,
+      user,
+    };
   }
 );
 
@@ -68,7 +80,22 @@ export const action: ActionFunction = withAuthAction(
     if (intent === "assignToGroup") {
       const groupId = formData.get("groupId") as string;
       const playerId = formData.get("playerId") as string;
-      await groupService.addPlayersToGroup(groupId, [playerId]);
+      await groupService.setPlayerGroup(groupId, playerId);
+      return { ok: true };
+    }
+
+    if (intent === "addAllowedEmail") {
+      const programmeId = formData.get("id") as string;
+      const email = formData.get("email") as string;
+      if (email?.trim()) {
+        await programmeService.addAllowedEmail(programmeId, email);
+      }
+      return { ok: true };
+    }
+
+    if (intent === "removeAllowedEmail") {
+      const allowedEmailId = formData.get("allowedEmailId") as string;
+      await programmeService.removeAllowedEmail(allowedEmailId);
       return { ok: true };
     }
 
@@ -77,8 +104,14 @@ export const action: ActionFunction = withAuthAction(
 );
 
 export default function ProgrammeDetail() {
-  const { programme, programmeEvents, registrations, availability, playerGroups, user } =
-    useLoaderData<typeof loader>();
+  const {
+    programme,
+    programmeEvents,
+    registrations,
+    availability,
+    playerGroups,
+    allowedEmails,
+  } = useLoaderData<typeof loader>();
 
   if (!programme) {
     return (
@@ -159,6 +192,26 @@ export default function ProgrammeDetail() {
           </Card>
         ))}
       </div>
+
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-xl font-semibold text-white">
+          Registration allow-list ({allowedEmails.length})
+        </h2>
+        {registrationDeadlinePassed(programme.registrationDeadline) && (
+          <Badge variant="outline" className="uppercase text-xs">
+            Closed
+          </Badge>
+        )}
+      </div>
+      <Card className="border-border p-4 mb-10">
+        <RegistrationAllowlist
+          programmeId={programme.id}
+          allowedEmails={allowedEmails}
+          deadlinePassed={registrationDeadlinePassed(
+            programme.registrationDeadline
+          )}
+        />
+      </Card>
 
       <h2 className="text-xl font-semibold text-white mb-4">
         Registrations ({registrations.length})

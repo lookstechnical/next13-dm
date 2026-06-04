@@ -248,11 +248,60 @@ export class GroupService {
     return this.getGroupById(groupId);
   }
 
+  async setPlayerGroup(
+    targetGroupId: string,
+    playerId: string
+  ): Promise<PlayerGroup | null> {
+    const {
+      data: { user },
+    } = await this.client.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const { data: targetGroup, error: targetError } = await this.client
+      .from("player_groups")
+      .select("team_id")
+      .eq("id", targetGroupId)
+      .single();
+
+    if (targetError) throw targetError;
+
+    const { data: teamGroups, error: groupsError } = await this.client
+      .from("player_groups")
+      .select("id")
+      .eq("team_id", targetGroup.team_id);
+
+    if (groupsError) throw groupsError;
+
+    const teamGroupIds = (teamGroups || []).map((g: any) => g.id);
+
+    if (teamGroupIds.length > 0) {
+      const { error: deleteError } = await this.client
+        .from("player_group_members")
+        .delete()
+        .eq("player_id", playerId)
+        .in("group_id", teamGroupIds);
+
+      if (deleteError) throw deleteError;
+    }
+
+    const { error: insertError } = await this.client
+      .from("player_group_members")
+      .insert({
+        group_id: targetGroupId,
+        player_id: playerId,
+        added_by: user.id,
+      });
+
+    if (insertError) throw insertError;
+
+    return this.getGroupById(targetGroupId);
+  }
+
   async removePlayersFromGroup(
     groupId: string,
     playerIds: string[]
   ): Promise<PlayerGroup | null> {
-    const { data, error } = await this.client
+    const { error } = await this.client
       .from("player_group_members")
       .delete()
       .eq("group_id", groupId)

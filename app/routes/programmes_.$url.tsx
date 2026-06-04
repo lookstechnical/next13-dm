@@ -7,7 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ProgrammeService } from "~/services/programmeService";
-import { formatDate } from "~/utils/helpers";
+import { formatDate, registrationDeadlinePassed } from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -37,9 +37,9 @@ export default function ProgrammeDetail() {
     );
   }
 
-  const deadlinePassed =
-    programme.registrationDeadline &&
-    new Date(programme.registrationDeadline) < new Date();
+  const deadlinePassed = registrationDeadlinePassed(
+    programme.registrationDeadline,
+  );
 
   return (
     <div className="min-h-screen min-w-screen bg-background text-foreground [&_h2]:uppercase [&_h3]:uppercase ">
@@ -121,10 +121,22 @@ export default function ProgrammeDetail() {
               </Link>
             </Button>
           )}
-          {deadlinePassed && (
-            <p className="text-sm text-destructive mt-4">
-              Registration has closed.
-            </p>
+          {programme.canRegister && deadlinePassed && (
+            <div className="mt-4">
+              <p className="text-sm text-destructive">
+                Registration has closed.
+              </p>
+              <p className="text-sm text-muted mt-1">
+                Been invited to register?{" "}
+                <Link
+                  to={`/programmes/${programme.url}/register`}
+                  className="text-primary hover:underline"
+                >
+                  Continue here
+                </Link>
+                .
+              </p>
+            </div>
           )}
         </div>
       </div>

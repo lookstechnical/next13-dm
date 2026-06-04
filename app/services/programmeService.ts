@@ -3,6 +3,7 @@ import {
   ProgrammeEvent,
   ProgrammeRegistration,
   ProgrammeEventAvailability,
+  ProgrammeAllowedEmail,
 } from "../types";
 import { convertKeysToCamelCase } from "../utils/helpers";
 
@@ -361,6 +362,57 @@ export class ProgrammeService {
       throw error;
     }
     return convertKeysToCamelCase(data);
+  }
+
+  async getAllowedEmails(
+    programmeId: string
+  ): Promise<ProgrammeAllowedEmail[]> {
+    const { data, error } = await this.client
+      .from("programme_allowed_emails")
+      .select("*")
+      .eq("programme_id", programmeId)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+    return convertKeysToCamelCase(data) || [];
+  }
+
+  async addAllowedEmail(
+    programmeId: string,
+    email: string
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("programme_allowed_emails")
+      .upsert(
+        { programme_id: programmeId, email: email.trim().toLowerCase() },
+        { onConflict: "programme_id,email", ignoreDuplicates: true }
+      );
+
+    if (error) throw error;
+  }
+
+  async removeAllowedEmail(id: string): Promise<void> {
+    const { error } = await this.client
+      .from("programme_allowed_emails")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+  }
+
+  async isEmailAllowed(
+    programmeId: string,
+    email: string
+  ): Promise<boolean> {
+    const { data, error } = await this.client
+      .from("programme_allowed_emails")
+      .select("id")
+      .eq("programme_id", programmeId)
+      .eq("email", email.trim().toLowerCase())
+      .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
   }
 
   async createValidationCode(

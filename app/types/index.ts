@@ -276,3 +276,10 @@ export interface ProgrammeEventAvailability {
   eventId: string;
   available: boolean;
 }
+
+export interface ProgrammeAllowedEmail {
+  id: string;
+  programmeId: string;
+  email: string;
+  createdAt: string;
+}

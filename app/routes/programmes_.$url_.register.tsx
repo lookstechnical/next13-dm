@@ -18,6 +18,7 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
 import { ProgrammeService } from "~/services/programmeService";
+import { registrationDeadlinePassed } from "~/utils/helpers";
 import { step1, step2 } from "~/validations/player-registration";
 import z from "zod";
 
@@ -55,6 +56,17 @@ export const action: ActionFunction = async ({ request }) => {
     const validations = step1.safeParse({ email });
     if (validations.error)
       return { errors: z.treeifyError(validations.error) };
+
+    // Once the deadline has passed, only allow-listed emails may continue.
+    // Check before any player lookup / verification email is sent.
+    const programme = await programmeService.getProgrammeById(programmeId);
+    if (
+      programme &&
+      registrationDeadlinePassed(programme.registrationDeadline) &&
+      !(await programmeService.isEmailAllowed(programmeId, email))
+    ) {
+      return { step: "closed", email };
+    }
 
     const player = await playerService.getPlayerByEmail(email);
 
@@ -198,6 +210,17 @@ export const action: ActionFunction = async ({ request }) => {
     const playerId = formData.get("playerId") as string;
     const playerEmail = formData.get("playerEmail") as string;
 
+    // Final allow-list guard, in case the closed gate was skipped by posting
+    // directly to this step.
+    const programme = await programmeService.getProgrammeById(programmeId);
+    if (
+      programme &&
+      registrationDeadlinePassed(programme.registrationDeadline) &&
+      !(await programmeService.isEmailAllowed(programmeId, playerEmail))
+    ) {
+      return { step: "closed", email: playerEmail };
+    }
+
     const programmeEvents = await programmeService.getProgrammeEvents(
       programmeId
     );
@@ -321,9 +344,10 @@ export default function ProgrammeRegister() {
 
       {/* Content */}
       <div className="container mx-auto max-w-2xl px-4 py-6">
-        {/* Step indicator - hide on confirmation/already registered */}
+        {/* Step indicator - hide on confirmation/already registered/closed */}
         {action?.step !== 4 &&
           action?.step !== 5 &&
+          action?.step !== "closed" &&
           action?.step !== "verify" && (
             <StepIndicator currentStep={currentStep} />
           )}
@@ -521,6 +545,26 @@ export default function ProgrammeRegister() {
             </h2>
             <p className="text-muted mb-6">
               You have been successfully registered for {programme.name}.
+            </p>
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link to={`/programmes/${programme.url}`}>
+                Back to Programme
+              </Link>
+            </Button>
+          </Card>
+        )}
+
+        {/* Closed: deadline passed and email not on the allow-list */}
+        {action?.step === "closed" && (
+          <Card className="border-border p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-muted mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">
+              Registration Closed
+            </h2>
+            <p className="text-muted mb-6">
+              Registration for {programme.name} has closed. If you've been
+              invited to register, please make sure you're using the same email
+              address the club has on file, or get in touch with us.
             </p>
             <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link to={`/programmes/${programme.url}`}>
