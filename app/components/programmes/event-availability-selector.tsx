@@ -4,11 +4,15 @@ import { Calendar, MapPin } from "lucide-react";
 
 type EventAvailabilitySelectorProps = {
   events: { eventId: string; events: Event }[];
+  // Optional map of eventId -> available, used to pre-fill the checkboxes when
+  // an existing registration is being updated. Events without an entry default
+  // to checked, matching the initial-registration behaviour.
+  availability?: Record<string, boolean>;
 };
 
 export const EventAvailabilitySelector: React.FC<
   EventAvailabilitySelectorProps
-> = ({ events }) => {
+> = ({ events, availability }) => {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted">
@@ -23,7 +27,7 @@ export const EventAvailabilitySelector: React.FC<
             type="checkbox"
             name={`event_${pe.eventId}`}
             value="true"
-            defaultChecked={true}
+            defaultChecked={availability ? availability[pe.eventId] ?? true : true}
             className="mt-1 w-4 h-4"
           />
           <div className="flex-grow">

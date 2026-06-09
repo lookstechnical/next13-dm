@@ -346,6 +346,99 @@ export class ProgrammeService {
     return true;
   }
 
+  async getRegistrationAvailability(
+    registrationId: string
+  ): Promise<ProgrammeEventAvailability[]> {
+    const { data, error } = await this.client
+      .from("programme_event_availability")
+      .select("*")
+      .eq("programme_registration_id", registrationId);
+
+    if (error) throw error;
+    return convertKeysToCamelCase(data) || [];
+  }
+
+  // Update an existing registration's availability. Replaces the availability
+  // rows and syncs event_registrations: the player is registered for events
+  // they newly marked available and removed from events they marked
+  // unavailable.
+  async updateProgrammeAvailability(data: {
+    registrationId: string;
+    playerId: string;
+    eventAvailability: { eventId: string; available: boolean }[];
+  }): Promise<void> {
+    // Replace availability rows
+    const { error: deleteError } = await this.client
+      .from("programme_event_availability")
+      .delete()
+      .eq("programme_registration_id", data.registrationId);
+
+    if (deleteError) throw deleteError;
+
+    if (data.eventAvailability.length > 0) {
+      const availabilityRows = data.eventAvailability.map((ea) => ({
+        programme_registration_id: data.registrationId,
+        event_id: ea.eventId,
+        available: ea.available,
+      }));
+
+      const { error: availError } = await this.client
+        .from("programme_event_availability")
+        .insert(availabilityRows);
+
+      if (availError) throw availError;
+    }
+
+    const availableEventIds = data.eventAvailability
+      .filter((ea) => ea.available)
+      .map((ea) => ea.eventId);
+    const unavailableEventIds = data.eventAvailability
+      .filter((ea) => !ea.available)
+      .map((ea) => ea.eventId);
+
+    // Remove event registrations the player is no longer available for
+    if (unavailableEventIds.length > 0) {
+      const { error: removeError } = await this.client
+        .from("event_registrations")
+        .delete()
+        .eq("player_id", data.playerId)
+        .in("event_id", unavailableEventIds);
+
+      if (removeError) throw removeError;
+    }
+
+    // Register the player for newly-available events, skipping any they're
+    // already registered for.
+    if (availableEventIds.length > 0) {
+      const { data: existing, error: existingError } = await this.client
+        .from("event_registrations")
+        .select("event_id")
+        .eq("player_id", data.playerId)
+        .in("event_id", availableEventIds);
+
+      if (existingError) throw existingError;
+
+      const existingIds = new Set(
+        (existing || []).map((r: { event_id: string }) => r.event_id)
+      );
+      const newEventRegistrations = availableEventIds
+        .filter((eventId) => !existingIds.has(eventId))
+        .map((eventId) => ({
+          event_id: eventId,
+          player_id: data.playerId,
+          status: "confirmed",
+        }));
+
+      if (newEventRegistrations.length > 0) {
+        const { error: eventRegError } = await this.client
+          .from("event_registrations")
+          .insert(newEventRegistrations);
+
+        if (eventRegError) throw eventRegError;
+      }
+    }
+  }
+
   async getPlayerProgrammeRegistration(
     playerId: string,
     programmeId: string

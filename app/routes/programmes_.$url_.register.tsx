@@ -11,7 +11,18 @@ import { Field } from "~/components/forms/field";
 import { PlayerForm } from "~/components/forms/player";
 import { EventAvailabilitySelector } from "~/components/programmes/event-availability-selector";
 import ActionButton from "~/components/ui/action-button";
-import { Button } from "~/components/ui/button";
+import { Button, buttonVariants } from "~/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { Card } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { getSupabaseServerClient } from "~/lib/supabase";
@@ -57,18 +68,30 @@ export const action: ActionFunction = async ({ request }) => {
     if (validations.error)
       return { errors: z.treeifyError(validations.error) };
 
-    // Once the deadline has passed, only allow-listed emails may continue.
-    // Check before any player lookup / verification email is sent.
     const programme = await programmeService.getProgrammeById(programmeId);
+    const player = await playerService.getPlayerByEmail(email);
+
+    // Players who are already registered may always continue (to update their
+    // availability or withdraw), even after the deadline / without being
+    // allow-listed.
+    const existingReg =
+      player && programme
+        ? await programmeService.getPlayerProgrammeRegistration(
+            player.id,
+            programmeId
+          )
+        : null;
+
+    // Once the deadline has passed, only allow-listed emails may start a new
+    // registration. Already-registered players are exempt.
     if (
       programme &&
+      !existingReg &&
       registrationDeadlinePassed(programme.registrationDeadline) &&
       !(await programmeService.isEmailAllowed(programmeId, email))
     ) {
       return { step: "closed", email };
     }
-
-    const player = await playerService.getPlayerByEmail(email);
 
     if (player) {
       const code = await programmeService.createValidationCode(
@@ -114,7 +137,23 @@ export const action: ActionFunction = async ({ request }) => {
     );
 
     if (existingReg) {
-      return { step: 5 };
+      const programmeEvents = await programmeService.getProgrammeEvents(
+        programmeId
+      );
+      const availabilityRows =
+        await programmeService.getRegistrationAvailability(existingReg.id);
+      const availability: Record<string, boolean> = {};
+      availabilityRows.forEach((a) => {
+        availability[a.eventId] = a.available;
+      });
+
+      return {
+        step: "manage",
+        player: { ...player, email },
+        registration: existingReg,
+        programmeEvents,
+        availability,
+      };
     }
 
     return { step: 2, player: { ...player, email } };
@@ -239,6 +278,34 @@ export const action: ActionFunction = async ({ request }) => {
 
     return { step: 4 };
   }
+
+  if (step === "manage-update") {
+    const registrationId = formData.get("registrationId") as string;
+    const playerId = formData.get("playerId") as string;
+
+    const programmeEvents = await programmeService.getProgrammeEvents(
+      programmeId
+    );
+
+    const eventAvailability = programmeEvents.map((pe) => ({
+      eventId: pe.eventId,
+      available: formData.get(`event_${pe.eventId}`) === "true",
+    }));
+
+    await programmeService.updateProgrammeAvailability({
+      registrationId,
+      playerId,
+      eventAvailability,
+    });
+
+    return { step: "updated" };
+  }
+
+  if (step === "withdraw") {
+    const registrationId = formData.get("registrationId") as string;
+    await programmeService.removeRegistration(registrationId);
+    return { step: "withdrawn" };
+  }
 };
 
 function verificationEmailHtml(code: string) {
@@ -318,9 +385,7 @@ export default function ProgrammeRegister() {
   const action = useActionData<typeof action>();
 
   const currentStep =
-    action?.step === 5 || action?.step === "verify"
-      ? 1
-      : (action?.step as number) || 1;
+    action?.step === "verify" ? 1 : (action?.step as number) || 1;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -346,9 +411,11 @@ export default function ProgrammeRegister() {
       <div className="container mx-auto max-w-2xl px-4 py-6">
         {/* Step indicator - hide on confirmation/already registered/closed */}
         {action?.step !== 4 &&
-          action?.step !== 5 &&
           action?.step !== "closed" &&
-          action?.step !== "verify" && (
+          action?.step !== "verify" &&
+          action?.step !== "manage" &&
+          action?.step !== "updated" &&
+          action?.step !== "withdrawn" && (
             <StepIndicator currentStep={currentStep} />
           )}
 
@@ -574,15 +641,138 @@ export default function ProgrammeRegister() {
           </Card>
         )}
 
-        {/* Step 5: Already registered */}
-        {action?.step === 5 && (
+        {/* Manage: existing registration — update availability or withdraw */}
+        {action?.step === "manage" && (
+          <div className="flex flex-col gap-6">
+            <Card className="border-border p-6">
+              <h2 className="text-lg font-semibold text-white mb-1">
+                Manage your registration
+              </h2>
+              <p className="text-sm text-muted mb-6">
+                You're registered for {programme.name}. Update which sessions
+                you can attend below.
+              </p>
+              <Form method="post">
+                <input type="hidden" name="step" value="manage-update" />
+                <input
+                  type="hidden"
+                  name="programmeId"
+                  value={programme.id}
+                />
+                <input
+                  type="hidden"
+                  name="registrationId"
+                  value={action.registration?.id}
+                />
+                <input
+                  type="hidden"
+                  name="playerId"
+                  value={action.player?.id}
+                />
+                <EventAvailabilitySelector
+                  events={action.programmeEvents}
+                  availability={action.availability}
+                />
+                <div className="pt-6">
+                  <ActionButton
+                    title="Update availability"
+                    className="w-full h-12"
+                  />
+                </div>
+              </Form>
+            </Card>
+
+            <Card className="border-destructive/30 p-6">
+              <h3 className="text-base font-semibold text-white mb-1">
+                Withdraw from programme
+              </h3>
+              <p className="text-sm text-muted mb-4">
+                This removes you from {programme.name} and all of its sessions.
+                You can register again later if you change your mind.
+              </p>
+              <Form method="post" id="withdraw-form">
+                <input type="hidden" name="step" value="withdraw" />
+                <input
+                  type="hidden"
+                  name="programmeId"
+                  value={programme.id}
+                />
+                <input
+                  type="hidden"
+                  name="registrationId"
+                  value={action.registration?.id}
+                />
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="w-full sm:w-auto"
+                    >
+                      Withdraw from programme
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="border-border bg-card">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-white">
+                        Withdraw from {programme.name}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="text-muted">
+                        This will remove you from the programme and all of its
+                        sessions. You can register again later if you change
+                        your mind.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        type="button"
+                        className="text-white"
+                      >
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        type="submit"
+                        form="withdraw-form"
+                        className={buttonVariants({ variant: "destructive" })}
+                      >
+                        Withdraw
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </Form>
+            </Card>
+          </div>
+        )}
+
+        {/* Updated: availability saved */}
+        {action?.step === "updated" && (
           <Card className="border-border p-8 text-center">
-            <AlertCircle className="w-12 h-12 text-muted mx-auto mb-4" />
+            <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-white mb-2">
-              Already Registered
+              Availability Updated
             </h2>
             <p className="text-muted mb-6">
-              You are already registered for this programme.
+              Your availability for {programme.name} has been updated.
+            </p>
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link to={`/programmes/${programme.url}`}>
+                Back to Programme
+              </Link>
+            </Button>
+          </Card>
+        )}
+
+        {/* Withdrawn: registration removed */}
+        {action?.step === "withdrawn" && (
+          <Card className="border-border p-8 text-center">
+            <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">
+              Withdrawn
+            </h2>
+            <p className="text-muted mb-6">
+              You have been withdrawn from {programme.name}. You can register
+              again any time before the deadline.
             </p>
             <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link to={`/programmes/${programme.url}`}>
