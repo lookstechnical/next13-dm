@@ -81,9 +81,20 @@ export const action: ActionFunction = withAuthAction(
     const resend = new Resend(process.env.VITE_RESEND_API);
     const registerUrl = `${process.env.VITE_URL}/programmes/${programme.url}/register`;
 
+    const programmeEvents = await programmeService.getProgrammeEvents(
+      params.id as string
+    );
+
     if (mode === "test") {
       const to = testEmail || user.email;
       if (!to) return { error: "No test email address provided." };
+
+      // Preview the layout with sample availability (alternating states).
+      const sampleAvailability = programmeEvents.map((pe, i) => ({
+        name: pe.events?.name || "Event",
+        date: pe.events?.date,
+        available: i % 2 === 0,
+      }));
 
       try {
         await resend.emails.send({
@@ -93,6 +104,7 @@ export const action: ActionFunction = withAuthAction(
           html: programmeEmailTemplate(description, footer, {
             name: "Sample Player",
             ctaUrl: registerUrl,
+            availability: sampleAvailability,
           }),
         });
       } catch (error) {
@@ -108,26 +120,48 @@ export const action: ActionFunction = withAuthAction(
         params.id as string
       );
 
-      const emails = recipientEmails(registrations);
-      // Map each recipient email to a player name for {{name}} interpolation.
-      const nameByEmail = new Map<string, string>();
-      for (const reg of registrations) {
-        const email = reg.players?.email || reg.email;
-        if (email && !nameByEmail.has(email.toLowerCase())) {
-          nameByEmail.set(email.toLowerCase(), reg.players?.name || "");
+      // Group recorded availability by registration: registrationId -> (eventId -> available)
+      const availabilityRows =
+        await programmeService.getProgrammeEventAvailability(
+          params.id as string
+        );
+      const availByReg = new Map<string, Map<string, boolean>>();
+      for (const row of availabilityRows) {
+        if (!availByReg.has(row.programmeRegistrationId)) {
+          availByReg.set(row.programmeRegistrationId, new Map());
         }
+        availByReg
+          .get(row.programmeRegistrationId)!
+          .set(row.eventId, row.available);
       }
 
+      const total = recipientEmails(registrations).length;
+      const seen = new Set<string>();
       let sent = 0;
-      for (const email of emails) {
+
+      for (const reg of registrations) {
+        const email = reg.players?.email || reg.email;
+        if (!email || seen.has(email.toLowerCase())) continue;
+        seen.add(email.toLowerCase());
+
+        const availMap = availByReg.get(reg.id);
+        const availability = programmeEvents.map((pe) => ({
+          name: pe.events?.name || "Event",
+          date: pe.events?.date,
+          available: availMap?.has(pe.eventId)
+            ? availMap.get(pe.eventId)
+            : undefined,
+        }));
+
         try {
           await resend.emails.send({
             from: FROM,
             to: [email],
             subject,
             html: programmeEmailTemplate(description, footer, {
-              name: nameByEmail.get(email.toLowerCase()) || "",
+              name: reg.players?.name || "",
               ctaUrl: registerUrl,
+              availability,
             }),
           });
           sent++;
@@ -137,7 +171,7 @@ export const action: ActionFunction = withAuthAction(
         }
       }
 
-      return { sent, mode: "all", total: emails.length };
+      return { sent, mode: "all", total };
     }
 
     return { error: "Unknown send mode." };

@@ -1,4 +1,5 @@
 import { Invitation, Player } from "~/types";
+import { formatDate } from "~/utils/helpers";
 
 export const emailTemplate = (
   message: string,
@@ -67,10 +68,41 @@ export const emailTemplate = (
 export const programmeEmailTemplate = (
   message: string,
   footer: string,
-  options?: { name?: string; ctaUrl?: string; ctaLabel?: string }
+  options?: {
+    name?: string;
+    ctaUrl?: string;
+    ctaLabel?: string;
+    availability?: { name: string; date?: string; available?: boolean }[];
+  }
 ) => {
   const name = options?.name || "";
   const ctaLabel = options?.ctaLabel || "Update your registration";
+
+  const availabilitySection =
+    options?.availability && options.availability.length > 0
+      ? `<div style="margin: 24px 0; background-color: #0f111a; border: 1px solid #2a2d3b; border-radius: 8px; padding: 16px;">
+        <p style="color: #ffffff; font-size: 15px; font-weight: bold; margin: 0 0 12px;">Your current availability</p>
+        <table width="100%" style="border-collapse: collapse;">
+          ${options.availability
+            .map((a) => {
+              const status =
+                a.available === true
+                  ? '<span style="color: #22c55e;">&#10004; Available</span>'
+                  : a.available === false
+                  ? '<span style="color: #ef4444;">&#10008; Not available</span>'
+                  : '<span style="color: #7c8190;">&#8212; Not specified</span>';
+              const date = a.date
+                ? ` <span style="color: #7c8190;">(${formatDate(a.date)})</span>`
+                : "";
+              return `<tr>
+                <td style="padding: 6px 0; border-bottom: 1px solid #2a2d3b; color: #c2c7d0; font-size: 14px;">${a.name}${date}</td>
+                <td style="padding: 6px 0; border-bottom: 1px solid #2a2d3b; text-align: right; font-size: 14px; white-space: nowrap;">${status}</td>
+              </tr>`;
+            })
+            .join("")}
+        </table>
+      </div>`
+      : "";
 
   return `<!DOCTYPE html>
 <html lang="en" style="margin: 0; padding: 0; background-color: #0f111a;">
@@ -92,6 +124,8 @@ export const programmeEmailTemplate = (
             "<p>",
             '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
           )}
+
+      ${availabilitySection}
 
       ${
         options?.ctaUrl
