@@ -12,7 +12,6 @@ import { Button } from "~/components/ui/button";
 import { programmeEmailTemplate } from "~/services/email";
 import { ProgrammeService } from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { delay } from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -135,9 +134,17 @@ export const action: ActionFunction = withAuthAction(
           .set(row.eventId, row.available);
       }
 
-      const total = recipientEmails(registrations).length;
+      // Build one email payload per unique recipient. Resend's batch API
+      // accepts up to 100 messages per call, so we send in chunks of 100 —
+      // this keeps us well inside Netlify's 10s function limit even at the
+      // ~200-recipient upper end (a single sequential loop would time out).
       const seen = new Set<string>();
-      let sent = 0;
+      const payloads: {
+        from: string;
+        to: string[];
+        subject: string;
+        html: string;
+      }[] = [];
 
       for (const reg of registrations) {
         const email = reg.players?.email || reg.email;
@@ -153,21 +160,32 @@ export const action: ActionFunction = withAuthAction(
             : undefined,
         }));
 
+        payloads.push({
+          from: FROM,
+          to: [email],
+          subject,
+          html: programmeEmailTemplate(description, footer, {
+            name: reg.players?.name || "",
+            ctaUrl: registerUrl,
+            availability,
+          }),
+        });
+      }
+
+      const total = payloads.length;
+      let sent = 0;
+
+      for (let i = 0; i < payloads.length; i += 100) {
+        const batch = payloads.slice(i, i + 100);
         try {
-          await resend.emails.send({
-            from: FROM,
-            to: [email],
-            subject,
-            html: programmeEmailTemplate(description, footer, {
-              name: reg.players?.name || "",
-              ctaUrl: registerUrl,
-              availability,
-            }),
-          });
-          sent++;
-          await delay(500);
+          const { error } = await resend.batch.send(batch);
+          if (error) {
+            console.error("Error sending email batch", error);
+          } else {
+            sent += batch.length;
+          }
         } catch (error) {
-          console.error("Error sending email to", email, error);
+          console.error("Error sending email batch", error);
         }
       }
 
