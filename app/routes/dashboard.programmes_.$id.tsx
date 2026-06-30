@@ -154,6 +154,11 @@ export default function ProgrammeDetail() {
             </Link>
           </Button>
           <Button asChild variant="outline">
+            <Link to={`/dashboard/programmes/${programme.id}/invite`}>
+              Invite Members
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link to={`/dashboard/programmes/${programme.id}/edit`}>Edit</Link>
           </Button>
           <DeleteConfirm
