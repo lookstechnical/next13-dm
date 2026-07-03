@@ -268,6 +268,7 @@ export interface ProgrammeRegistration {
   status: "registered" | "confirmed" | "attended" | "no_show";
   registeredAt: string;
   players?: Player;
+  programmes?: Programme;
 }
 
 export interface ProgrammeEventAvailability {

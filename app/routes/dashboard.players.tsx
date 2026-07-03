@@ -14,6 +14,7 @@ import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
+import { ProgrammeService } from "~/services/programmeService";
 import { ScoutService } from "~/services/scoutService";
 import { Player } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
@@ -29,6 +30,7 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
   const playerService = new PlayerService(supabaseClient);
   const groupService = new GroupService(supabaseClient);
   const scoutService = new ScoutService(supabaseClient);
+  const programmeService = new ProgrammeService(supabaseClient);
 
   const url = new URL(request.url);
   const order = url.searchParams.get("order");
@@ -38,6 +40,7 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
   const position = url.searchParams.get("position");
   const group = url.searchParams.get("group") || user.team?.defaultGroup;
   const groupBy = url.searchParams.get("groupBy") ?? "position_group";
+  const notInProgramme = url.searchParams.get("not-in-programme");
 
   const playersPromise = playerService.getPlayersByTeam(
     user.team?.id as string,
@@ -52,21 +55,41 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
 
   const mentorPromise = scoutService.getAllScouts();
 
-  const [players, groups, mentors] = await Promise.all([
+  const programmesPromise = programmeService.getProgrammesByTeam(
+    user.team?.id as string
+  );
+
+  const [players, groups, mentors, programmes] = await Promise.all([
     playersPromise,
     groupsPromise,
     mentorPromise,
+    programmesPromise,
   ]);
 
   const filteredByMentor = mentor
     ? players.filter((p) => p.mentor?.id === mentor)
     : players;
 
+  // Exclude players already registered on the selected programme.
+  let filteredPlayers = filteredByMentor;
+  if (notInProgramme) {
+    const registrations = await programmeService.getProgrammeRegistrations(
+      notInProgramme
+    );
+    const registeredPlayerIds = new Set(
+      registrations.map((r) => r.playerId)
+    );
+    filteredPlayers = filteredPlayers.filter(
+      (p) => !registeredPlayerIds.has(p.id)
+    );
+  }
+
   return {
-    players: filteredByMentor,
+    players: filteredPlayers,
     mentors,
     user,
     groups,
+    programmes,
     appliedFilters: {
       order,
       name: nameFilter,
@@ -75,6 +98,7 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
       position,
       mentor,
       groupBy,
+      notInProgramme,
     },
   };
 });
@@ -113,7 +137,7 @@ export function shouldRevalidate({
 }
 
 export default function Players() {
-  const { players, user, appliedFilters, groups, mentors } =
+  const { players, user, appliedFilters, groups, mentors, programmes } =
     useLoaderData<typeof loader>();
 
   const submit = useSubmit();
@@ -147,13 +171,14 @@ export default function Players() {
     <div className="flex flex-column space-y-10 container px-4 mx-auto py-10 text-foreground">
       <div className="w-full">
         <ListingHeader
-          title={`${user.team.name} Players`}
+          title={`${user.team.name} Players (${players.length})`}
           renderActions={() => (
             <div className="flex flex-row items-end justify-center gap-4 p-0 m-0">
               <PlayerFilters
                 appliedFilters={appliedFilters}
                 groups={groups}
                 mentors={mentors}
+                programmes={programmes}
               />
               <Form
                 onChange={(event) => {

@@ -79,6 +79,7 @@ export const action: ActionFunction = withAuthAction(
 
     const resend = new Resend(process.env.VITE_RESEND_API);
     const registerUrl = `${process.env.VITE_URL}/programmes/${programme.url}/register`;
+    const withdrawBaseUrl = `${process.env.VITE_URL}/programmes/${programme.url}/withdraw`;
 
     const programmeEvents = await programmeService.getProgrammeEvents(
       params.id as string
@@ -95,6 +96,19 @@ export const action: ActionFunction = withAuthAction(
         available: i % 2 === 0,
       }));
 
+      // Point the withdraw button at the test recipient's own registration (if
+      // they're registered for this programme) so the flow can be tested for
+      // real. Falls back to the base URL otherwise.
+      const testRegistrations =
+        await programmeService.getProgrammeRegistrations(params.id as string);
+      const ownRegistration = testRegistrations.find(
+        (r) =>
+          (r.players?.email || r.email)?.toLowerCase() === to.toLowerCase()
+      );
+      const testWithdrawUrl = ownRegistration
+        ? `${withdrawBaseUrl}?registration=${ownRegistration.id}`
+        : withdrawBaseUrl;
+
       try {
         await resend.emails.send({
           from: FROM,
@@ -103,6 +117,7 @@ export const action: ActionFunction = withAuthAction(
           html: programmeEmailTemplate(description, footer, {
             name: "Sample Player",
             ctaUrl: registerUrl,
+            withdrawUrl: testWithdrawUrl,
             availability: sampleAvailability,
           }),
         });
@@ -167,6 +182,7 @@ export const action: ActionFunction = withAuthAction(
           html: programmeEmailTemplate(description, footer, {
             name: reg.players?.name || "",
             ctaUrl: registerUrl,
+            withdrawUrl: `${withdrawBaseUrl}?registration=${reg.id}`,
             availability,
           }),
         });

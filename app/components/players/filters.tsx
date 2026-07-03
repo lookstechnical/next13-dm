@@ -6,7 +6,7 @@ import { Field } from "../forms/field";
 import { Input } from "../ui/input";
 import { useState } from "react";
 import { SelectField } from "../forms/select";
-import { PlayerGroup, User } from "~/types";
+import { PlayerGroup, Programme, User } from "~/types";
 import { POSITIONS } from "~/utils/helpers";
 import { Button } from "../ui/button";
 
@@ -14,11 +14,13 @@ type PlayerFilters = {
   appliedFilters: any;
   groups?: PlayerGroup[];
   mentors: User[];
+  programmes?: Programme[];
 };
 export const PlayerFilters: React.FC<PlayerFilters> = ({
   appliedFilters,
   groups,
   mentors,
+  programmes,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -75,6 +77,16 @@ export const PlayerFilters: React.FC<PlayerFilters> = ({
               label="Mentor"
               defaultValue={appliedFilters?.mentor}
               options={mentors?.map((p) => ({ id: p.id, name: p.name }))}
+            />
+          )}
+
+          {programmes && programmes.length > 0 && (
+            <SelectField
+              name="not-in-programme"
+              label="Not Registered On"
+              placeholder="Select Programme"
+              defaultValue={appliedFilters?.notInProgramme}
+              options={programmes.map((p) => ({ id: p.id, name: p.name }))}
             />
           )}
 

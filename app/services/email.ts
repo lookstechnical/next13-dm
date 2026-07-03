@@ -5,7 +5,7 @@ export const emailTemplate = (
   message: string,
   footer: string,
   invite?: Invitation,
-  player?: Player
+  player?: Player,
 ) => {
   return `<!DOCTYPE html>
 <html lang="en" style="margin: 0; padding: 0; background-color: #0f111a;">
@@ -25,7 +25,7 @@ export const emailTemplate = (
           .replaceAll("{{name}}", player?.name)
           .replaceAll(
             "<p>",
-            '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
+            '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
           )}
 
       <div style="text-align: center; margin: 30px 0; display:flex; flex-direction: row; gap: 10px; justify-content: center">
@@ -51,7 +51,7 @@ export const emailTemplate = (
               .replaceAll("{{name}}", player?.name)
               .replaceAll(
                 "<p>",
-                '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
+                '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
               )
           : ""
       }
@@ -72,11 +72,49 @@ export const programmeEmailTemplate = (
     name?: string;
     ctaUrl?: string;
     ctaLabel?: string;
+    withdrawUrl?: string;
+    withdrawLabel?: string;
     availability?: { name: string; date?: string; available?: boolean }[];
-  }
+  },
 ) => {
   const name = options?.name || "";
-  const ctaLabel = options?.ctaLabel || "Update your registration";
+  const ctaLabel = options?.ctaLabel || "Update your Availability";
+  const withdrawLabel = options?.withdrawLabel || "Withdraw from programme";
+
+  // Inline styles for the rich-text body/footer. Email clients strip <style>
+  // blocks and default headings to dark text, so paragraphs and headings need
+  // their colours applied inline. Headings render white and bold.
+  const styleRichText = (html: string) =>
+    html
+      .replaceAll("{{name}}", name)
+      .replaceAll(
+        "<p>",
+        '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
+      )
+      .replaceAll(
+        "<h1>",
+        '<h1 style="color: #ffffff; font-weight: bold; font-size: 24px; text-align: left; margin: 24px 0 12px;">',
+      )
+      .replaceAll(
+        "<h2>",
+        '<h2 style="color: #ffffff; font-weight: bold; font-size: 20px; text-align: left; margin: 20px 0 10px;">',
+      )
+      .replaceAll(
+        "<h3>",
+        '<h3 style="color: #ffffff; font-weight: bold; font-size: 17px; text-align: left; margin: 16px 0 8px;">',
+      )
+      .replaceAll(
+        "<h4>",
+        '<h4 style="color: #ffffff; font-weight: bold; font-size: 15px; text-align: left; margin: 16px 0 8px;">',
+      )
+      .replaceAll(
+        "<strong>",
+        '<strong style="color: #ffffff; font-weight: bold; font-size: 15px; text-align: left; margin: 16px 0 8px;">',
+      )
+      .replaceAll(
+        "<b>",
+        '<b style="color: #ffffff; font-weight: bold; font-size: 15px; text-align: left; margin: 16px 0 8px;">',
+      );
 
   const availabilitySection =
     options?.availability && options.availability.length > 0
@@ -92,7 +130,9 @@ export const programmeEmailTemplate = (
                   ? '<span style="color: #ef4444;">&#10008; Not available</span>'
                   : '<span style="color: #7c8190;">&#8212; Not specified</span>';
               const date = a.date
-                ? ` <span style="color: #7c8190;">(${formatDate(a.date)})</span>`
+                ? ` <span style="color: #7c8190;">(${formatDate(
+                    a.date,
+                  )})</span>`
                 : "";
               return `<tr>
                 <td style="padding: 6px 0; border-bottom: 1px solid #2a2d3b; color: #c2c7d0; font-size: 14px;">${a.name}${date}</td>
@@ -118,35 +158,32 @@ export const programmeEmailTemplate = (
         <img src="https://be-coachable.com/logo.png" alt="beCoachable" style="width:60px;" />
       </div>
 
-        ${message
-          .replaceAll("{{name}}", name)
-          .replaceAll(
-            "<p>",
-            '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
-          )}
+        ${styleRichText(message)}
 
       ${availabilitySection}
 
       ${
-        options?.ctaUrl
+        options?.ctaUrl || options?.withdrawUrl
           ? `<div style="text-align: center; margin: 30px 0;">
-        <a href="${options.ctaUrl}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+        ${
+          options?.ctaUrl
+            ? `<a href="${options.ctaUrl}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block; margin: 6px;">
           ${ctaLabel}
-        </a>
+        </a>`
+            : ""
+        }
+        ${
+          options?.withdrawUrl
+            ? `<a href="${options.withdrawUrl}" style="background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 13px 27px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block; margin: 6px;">
+          ${withdrawLabel}
+        </a>`
+            : ""
+        }
       </div>`
           : ""
       }
 
-      ${
-        footer
-          ? footer
-              .replaceAll("{{name}}", name)
-              .replaceAll(
-                "<p>",
-                '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">'
-              )
-          : ""
-      }
+      ${footer ? styleRichText(footer) : ""}
 
       <hr style="border: none; border-top: 1px solid #2a2d3b; margin: 40px 0;" />
     </div>

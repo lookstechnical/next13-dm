@@ -457,6 +457,27 @@ export class ProgrammeService {
     return convertKeysToCamelCase(data);
   }
 
+  // Load a single registration with its player and programme, used by the
+  // one-click withdraw link in programme emails (keyed by the registration's
+  // unguessable UUID).
+  async getRegistrationById(
+    registrationId: string
+  ): Promise<ProgrammeRegistration | null> {
+    const { data, error } = await this.client
+      .from("programme_registrations")
+      .select(
+        "*, players ( id, name, email ), programmes ( id, name, url )"
+      )
+      .eq("id", registrationId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      throw error;
+    }
+    return convertKeysToCamelCase(data);
+  }
+
   async getAllowedEmails(
     programmeId: string
   ): Promise<ProgrammeAllowedEmail[]> {
