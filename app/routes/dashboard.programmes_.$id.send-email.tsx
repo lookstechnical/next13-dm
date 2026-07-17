@@ -10,6 +10,7 @@ import { ProgrammeEmailForm } from "~/components/forms/form/programme-email-form
 import SheetPage from "~/components/sheet-page";
 import { Button } from "~/components/ui/button";
 import { programmeEmailTemplate } from "~/services/email";
+import { GroupService } from "~/services/groupService";
 import { ProgrammeService } from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
@@ -28,7 +29,7 @@ export const meta: MetaFunction = () => {
 // registrations, preferring the player's current email over the one captured
 // at registration time.
 function recipientEmails(
-  registrations: { email?: string; players?: { email?: string } }[]
+  registrations: { email?: string; players?: { email?: string } }[],
 ) {
   const seen = new Map<string, string>();
   for (const reg of registrations) {
@@ -40,15 +41,40 @@ function recipientEmails(
   return [...seen.values()];
 }
 
+// Build a playerId -> team name lookup from the team's player groups, used to
+// resolve the {{team}} email variable. A player can belong to several groups,
+// so we prefer a "squad" type group (the closest thing to an assigned team),
+// falling back to any other group they're in.
+function playerTeamMap(
+  groups: { name: string; type?: string; playerIds?: string[] }[],
+) {
+  const map = new Map<string, string>();
+  // Non-squad groups first as a fallback...
+  for (const group of groups) {
+    if (group.type === "squad") continue;
+    for (const playerId of group.playerIds ?? []) {
+      if (!map.has(playerId)) map.set(playerId, group.name);
+    }
+  }
+  // ...then squad groups override, so an assigned squad always wins.
+  for (const group of groups) {
+    if (group.type !== "squad") continue;
+    for (const playerId of group.playerIds ?? []) {
+      map.set(playerId, group.name);
+    }
+  }
+  return map;
+}
+
 export const loader: LoaderFunction = withAuth(
   async ({ params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
 
     const programme = await programmeService.getProgrammeById(
-      params.id as string
+      params.id as string,
     );
     const registrations = await programmeService.getProgrammeRegistrations(
-      params.id as string
+      params.id as string,
     );
 
     return {
@@ -56,17 +82,24 @@ export const loader: LoaderFunction = withAuth(
       recipientCount: recipientEmails(registrations).length,
       defaultTestEmail: user.email || "",
     };
-  }
+  },
 );
 
 export const action: ActionFunction = withAuthAction(
   async ({ request, params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
+    const groupService = new GroupService(supabaseClient);
 
     const programme = await programmeService.getProgrammeById(
-      params.id as string
+      params.id as string,
     );
     if (!programme) return { error: "Programme not found." };
+
+    // Map each player to their assigned team (group) for the {{team}} variable.
+    const groups = programme.teamId
+      ? await groupService.getGroupsByTeam(programme.teamId)
+      : [];
+    const teamByPlayer = playerTeamMap(groups);
 
     const formData = await request.formData();
     const subject = formData.get("subject") as string;
@@ -82,7 +115,7 @@ export const action: ActionFunction = withAuthAction(
     const withdrawBaseUrl = `${process.env.VITE_URL}/programmes/${programme.url}/withdraw`;
 
     const programmeEvents = await programmeService.getProgrammeEvents(
-      params.id as string
+      params.id as string,
     );
 
     if (mode === "test") {
@@ -103,11 +136,18 @@ export const action: ActionFunction = withAuthAction(
         await programmeService.getProgrammeRegistrations(params.id as string);
       const ownRegistration = testRegistrations.find(
         (r) =>
-          (r.players?.email || r.email)?.toLowerCase() === to.toLowerCase()
+          (r.players?.email || r.email)?.toLowerCase() === to.toLowerCase(),
       );
       const testWithdrawUrl = ownRegistration
         ? `${withdrawBaseUrl}?registration=${ownRegistration.id}`
         : withdrawBaseUrl;
+
+      // Use the test recipient's real assigned team if they're a registered
+      // player, otherwise a sample value so the variable is visible.
+      const testTeam =
+        (ownRegistration?.playerId &&
+          teamByPlayer.get(ownRegistration.playerId)) ||
+        "Sample Team";
 
       try {
         await resend.emails.send({
@@ -116,6 +156,7 @@ export const action: ActionFunction = withAuthAction(
           subject: `[TEST] ${subject}`,
           html: programmeEmailTemplate(description, footer, {
             name: "Sample Player",
+            team: testTeam,
             ctaUrl: registerUrl,
             withdrawUrl: testWithdrawUrl,
             availability: sampleAvailability,
@@ -131,13 +172,13 @@ export const action: ActionFunction = withAuthAction(
 
     if (mode === "all") {
       const registrations = await programmeService.getProgrammeRegistrations(
-        params.id as string
+        params.id as string,
       );
 
       // Group recorded availability by registration: registrationId -> (eventId -> available)
       const availabilityRows =
         await programmeService.getProgrammeEventAvailability(
-          params.id as string
+          params.id as string,
         );
       const availByReg = new Map<string, Map<string, boolean>>();
       for (const row of availabilityRows) {
@@ -181,6 +222,7 @@ export const action: ActionFunction = withAuthAction(
           subject,
           html: programmeEmailTemplate(description, footer, {
             name: reg.players?.name || "",
+            team: teamByPlayer.get(reg.playerId) || "",
             ctaUrl: registerUrl,
             withdrawUrl: `${withdrawBaseUrl}?registration=${reg.id}`,
             availability,
@@ -209,7 +251,7 @@ export const action: ActionFunction = withAuthAction(
     }
 
     return { error: "Unknown send mode." };
-  }
+  },
 );
 
 export default function SendProgrammeEmail() {
@@ -231,7 +273,7 @@ export default function SendProgrammeEmail() {
             type="submit"
             name="mode"
             value="test"
-            variant="outline"
+            variant="secondary"
             disabled={submitting}
           >
             Send test email
@@ -246,7 +288,7 @@ export default function SendProgrammeEmail() {
                 !confirm(
                   `Send this email to all ${recipientCount} registered member${
                     recipientCount === 1 ? "" : "s"
-                  }?`
+                  }?`,
                 )
               ) {
                 e.preventDefault();

@@ -70,6 +70,7 @@ export const programmeEmailTemplate = (
   footer: string,
   options?: {
     name?: string;
+    team?: string;
     ctaUrl?: string;
     ctaLabel?: string;
     withdrawUrl?: string;
@@ -78,6 +79,7 @@ export const programmeEmailTemplate = (
   },
 ) => {
   const name = options?.name || "";
+  const team = options?.team || "";
   const ctaLabel = options?.ctaLabel || "Update your Availability";
   const withdrawLabel = options?.withdrawLabel || "Withdraw from programme";
 
@@ -87,6 +89,7 @@ export const programmeEmailTemplate = (
   const styleRichText = (html: string) =>
     html
       .replaceAll("{{name}}", name)
+      .replaceAll("{{team}}", team)
       .replaceAll(
         "<p>",
         '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',

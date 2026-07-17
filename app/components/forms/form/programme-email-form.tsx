@@ -41,7 +41,7 @@ export const ProgrammeEmailForm: React.FC<ProgrammeEmailFormProps> = ({
             name="description"
             label="Email Body"
             defaultValue={DEFAULT_BODY}
-            variables={{ name: "", email: "" }}
+            variables={{ name: "", team: "" }}
           />
         </div>
 
@@ -49,15 +49,16 @@ export const ProgrammeEmailForm: React.FC<ProgrammeEmailFormProps> = ({
           <RichTextField
             name="footer"
             label="Email Footer"
-            variables={{ name: "", email: "" }}
+            variables={{ name: "", team: "" }}
           />
         </div>
 
         <p className="text-xs text-muted">
           Every email includes a button linking the member to their registration
           page, where they can update their availability or withdraw. Use{" "}
-          <code>{"{{name}}"}</code> in the body or footer to insert each
-          member's name.
+          <code>{"{{name}}"}</code> to insert each member's name and{" "}
+          <code>{"{{team}}"}</code> to insert their assigned team, in the body
+          or footer.
         </p>
 
         <Field name="testEmail" label="Test email address">

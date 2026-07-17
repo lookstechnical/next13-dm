@@ -6,10 +6,11 @@ import type {
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin, MoreVertical, Users2Icon } from "lucide-react";
+import { useState } from "react";
+import { SelectField } from "~/components/forms/select";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { Avatar } from "~/components/players/avatar";
-import { PlayerFilters } from "~/components/players/filters";
 import { PlayerCard } from "~/components/players/player-card";
 import ActionButton from "~/components/ui/action-button";
 import { Badge } from "~/components/ui/badge";
@@ -117,6 +118,19 @@ export const action: ActionFunction = withAuthAction(
 
 export default function PlayerPage() {
   const { group, events } = useLoaderData<typeof loader>();
+
+  // Client-side filter: narrow the players list to those registered for a
+  // chosen upcoming event. The loader already resolves each event's
+  // `availablePlayers`, so no reload is needed.
+  const [eventFilter, setEventFilter] = useState<string>("");
+
+  const selectedEvent = events?.find((e: any) => e.id === eventFilter);
+  const availableIds = selectedEvent
+    ? new Set(selectedEvent.availablePlayers.map((p: any) => p.id))
+    : null;
+  const visibleMembers = availableIds
+    ? group.playerGroupMembers.filter((p: any) => availableIds.has(p.id))
+    : group.playerGroupMembers;
 
   return (
     <>
@@ -257,15 +271,35 @@ export default function PlayerPage() {
             <TabsContent value="players">
               <ListingHeader
                 title={`${group.name} Players`}
-                renderFilters={() => (
-                  <div className="flex flex-row items-center justify-center gap-4">
-                    <PlayerFilters />
-                  </div>
-                )}
+                renderFilters={() =>
+                  events && events.length > 0 ? (
+                    <div className="flex flex-row items-center justify-center gap-4 min-w-[220px]">
+                      <SelectField
+                        name="event"
+                        label=""
+                        placeholder="Filter by event"
+                        defaultValue={eventFilter}
+                        onValueChange={(val) => setEventFilter(val ?? "")}
+                        options={events.map((e: any) => ({
+                          id: e.id,
+                          name: `${e.name} (${formatDate(e.date)})`,
+                        }))}
+                      />
+                    </div>
+                  ) : null
+                }
               />
 
+              {selectedEvent && (
+                <p className="text-muted mb-6">
+                  Showing {visibleMembers.length} of{" "}
+                  {group.playerGroupMembers.length} members registered for{" "}
+                  <span className="text-white">{selectedEvent.name}</span>.
+                </p>
+              )}
+
               {POSITION_GROUPS.map((pg) => {
-            const players = group.playerGroupMembers.filter((p: any) =>
+            const players = visibleMembers.filter((p: any) =>
               pg.positions.includes(p.position),
             );
             if (players.length === 0) return null;
@@ -305,7 +339,7 @@ export default function PlayerPage() {
           })}
           {(() => {
             const known = new Set(POSITION_GROUPS.flatMap((g) => g.positions));
-            const others = group.playerGroupMembers.filter(
+            const others = visibleMembers.filter(
               (p: any) => !known.has(p.position),
             );
             if (others.length === 0) return null;
@@ -343,8 +377,15 @@ export default function PlayerPage() {
               </section>
             );
           })()}
-              {group.playerGroupMembers.length === 0 && (
-                <CardGrid items={[]} name="Players" />
+              {visibleMembers.length === 0 && (
+                <CardGrid
+                  items={[]}
+                  name={
+                    selectedEvent
+                      ? `No members registered for ${selectedEvent.name}`
+                      : "Players"
+                  }
+                />
               )}
             </TabsContent>
           </Tabs>

@@ -1,6 +1,10 @@
-import type { ActionFunction, LoaderFunction, MetaFunction } from "@remix-run/node";
+import type {
+  ActionFunction,
+  LoaderFunction,
+  MetaFunction,
+} from "@remix-run/node";
 import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import { Calendar, MapPin } from "lucide-react";
+import { Calendar, MapPin, MoreVertical } from "lucide-react";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { AttendanceOverview } from "~/components/programmes/attendance-overview";
 import { RegistrationAllowlist } from "~/components/programmes/registration-allowlist";
@@ -11,6 +15,15 @@ import { GroupService } from "~/services/groupService";
 import { ProgrammeService } from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { formatDate, registrationDeadlinePassed } from "~/utils/helpers";
+import {
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -27,22 +40,22 @@ export const loader: LoaderFunction = withAuth(
     const groupService = new GroupService(supabaseClient);
 
     const programme = await programmeService.getProgrammeById(
-      params.id as string
+      params.id as string,
     );
     const programmeEvents = await programmeService.getProgrammeEvents(
-      params.id as string
+      params.id as string,
     );
     const registrations = await programmeService.getProgrammeRegistrations(
-      params.id as string
+      params.id as string,
     );
     const availability = await programmeService.getProgrammeEventAvailability(
-      params.id as string
+      params.id as string,
     );
     const playerGroups = await groupService.getGroupsByTeam(
-      user.current_team as string
+      user.current_team as string,
     );
     const allowedEmails = await programmeService.getAllowedEmails(
-      params.id as string
+      params.id as string,
     );
 
     return {
@@ -54,7 +67,7 @@ export const loader: LoaderFunction = withAuth(
       allowedEmails,
       user,
     };
-  }
+  },
 );
 
 export const action: ActionFunction = withAuthAction(
@@ -100,7 +113,7 @@ export const action: ActionFunction = withAuthAction(
     }
 
     return null;
-  }
+  },
 );
 
 export default function ProgrammeDetail() {
@@ -123,7 +136,7 @@ export default function ProgrammeDetail() {
 
   return (
     <div className="container px-4 mx-auto py-10 text-foreground">
-      <div className="flex flex-row justify-between items-start mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start mb-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-bold text-white">{programme.name}</h1>
@@ -145,26 +158,41 @@ export default function ProgrammeDetail() {
           )}
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link to="/dashboard/programmes">Back</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to={`/dashboard/programmes/${programme.id}/send-email`}>
-              Email Members
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to={`/dashboard/programmes/${programme.id}/invite`}>
-              Invite Members
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to={`/dashboard/programmes/${programme.id}/edit`}>Edit</Link>
-          </Button>
-          <DeleteConfirm
-            name={programme.name}
-            id={programme.id}
-          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-full border-none hover:bg-transparent text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 flex flex-col">
+              <Button asChild variant="outline">
+                <Link to="/dashboard/programmes">Back</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/dashboard/programmes/${programme.id}/send-email`}>
+                  Email Members
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/dashboard/programmes/${programme.id}/invite`}>
+                  Invite Members
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/dashboard/programmes/${programme.id}/edit`}>
+                  Edit
+                </Link>
+              </Button>
+              <DeleteConfirm name={programme.name} id={programme.id}>
+                <Button className="" variant="destructive">
+                  Delete
+                </Button>
+              </DeleteConfirm>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -218,7 +246,7 @@ export default function ProgrammeDetail() {
           programmeId={programme.id}
           allowedEmails={allowedEmails}
           deadlinePassed={registrationDeadlinePassed(
-            programme.registrationDeadline
+            programme.registrationDeadline,
           )}
         />
       </Card>
