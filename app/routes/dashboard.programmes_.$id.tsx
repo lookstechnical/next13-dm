@@ -172,6 +172,11 @@ export default function ProgrammeDetail() {
                 <Link to="/dashboard/programmes">Back</Link>
               </Button>
               <Button asChild variant="outline">
+                <Link to={`/dashboard/programmes/${programme.id}/register`}>
+                  Print Register
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
                 <Link to={`/dashboard/programmes/${programme.id}/send-email`}>
                   Email Members
                 </Link>
