@@ -3,6 +3,7 @@ import {
   ProgrammeEvent,
   ProgrammeRegistration,
   ProgrammeEventAvailability,
+  ProgrammeEventAttendance,
   ProgrammeAllowedEmail,
 } from "../types";
 import { convertKeysToCamelCase } from "../utils/helpers";
@@ -303,6 +304,53 @@ export class ProgrammeService {
 
     if (error) throw error;
     return convertKeysToCamelCase(data) || [];
+  }
+
+  // Actual attendance ("did they turn up") for every registration in a
+  // programme, across all of its events.
+  async getProgrammeEventAttendance(
+    programmeId: string
+  ): Promise<ProgrammeEventAttendance[]> {
+    const { data, error } = await this.client
+      .from("programme_event_attendance")
+      .select("*, programme_registrations!inner ( programme_id )")
+      .eq("programme_registrations.programme_id", programmeId);
+
+    if (error) throw error;
+    return convertKeysToCamelCase(data) || [];
+  }
+
+  // Record (or clear) attendance for one registration at one event.
+  // attended === null clears the record (back to "not recorded"); true/false
+  // marks present/absent.
+  async setEventAttendance(data: {
+    registrationId: string;
+    eventId: string;
+    attended: boolean | null;
+  }): Promise<void> {
+    if (data.attended === null) {
+      const { error } = await this.client
+        .from("programme_event_attendance")
+        .delete()
+        .eq("programme_registration_id", data.registrationId)
+        .eq("event_id", data.eventId);
+
+      if (error) throw error;
+      return;
+    }
+
+    const { error } = await this.client
+      .from("programme_event_attendance")
+      .upsert(
+        {
+          programme_registration_id: data.registrationId,
+          event_id: data.eventId,
+          attended: data.attended,
+        },
+        { onConflict: "programme_registration_id,event_id" }
+      );
+
+    if (error) throw error;
   }
 
   async removeRegistration(registrationId: string): Promise<boolean> {

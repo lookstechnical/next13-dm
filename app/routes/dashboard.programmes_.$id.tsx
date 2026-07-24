@@ -51,6 +51,9 @@ export const loader: LoaderFunction = withAuth(
     const availability = await programmeService.getProgrammeEventAvailability(
       params.id as string,
     );
+    const attendance = await programmeService.getProgrammeEventAttendance(
+      params.id as string,
+    );
     const playerGroups = await groupService.getGroupsByTeam(
       user.current_team as string,
     );
@@ -63,6 +66,7 @@ export const loader: LoaderFunction = withAuth(
       programmeEvents,
       registrations,
       availability,
+      attendance,
       playerGroups,
       allowedEmails,
       user,
@@ -87,6 +91,20 @@ export const action: ActionFunction = withAuthAction(
     if (intent === "removeRegistration") {
       const registrationId = formData.get("registrationId") as string;
       await programmeService.removeRegistration(registrationId);
+      return { ok: true };
+    }
+
+    if (intent === "setAttendance") {
+      const registrationId = formData.get("registrationId") as string;
+      const eventId = formData.get("eventId") as string;
+      const value = formData.get("attended") as string; // present | absent | unset
+      const attended =
+        value === "present" ? true : value === "absent" ? false : null;
+      await programmeService.setEventAttendance({
+        registrationId,
+        eventId,
+        attended,
+      });
       return { ok: true };
     }
 
@@ -122,6 +140,7 @@ export default function ProgrammeDetail() {
     programmeEvents,
     registrations,
     availability,
+    attendance,
     playerGroups,
     allowedEmails,
   } = useLoaderData<typeof loader>();
@@ -184,6 +203,11 @@ export default function ProgrammeDetail() {
               <Button asChild variant="outline">
                 <Link to={`/dashboard/programmes/${programme.id}/invite`}>
                   Invite Members
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to={`/dashboard/programmes/${programme.id}/reminder`}>
+                  Send reminder
                 </Link>
               </Button>
               <Button asChild variant="outline">
@@ -264,6 +288,7 @@ export default function ProgrammeDetail() {
           registrations={registrations}
           programmeEvents={programmeEvents}
           availability={availability}
+          attendance={attendance}
           playerGroups={playerGroups}
         />
       </Card>

@@ -4,11 +4,12 @@ import {
   PlayerGroup,
   ProgrammeRegistration,
   ProgrammeEventAvailability,
+  ProgrammeEventAttendance,
   ProgrammeEvent,
 } from "~/types";
 import { calculateAgeGroup, formatDate } from "~/utils/helpers";
 import { POSITION_GROUPS } from "~/utils/position-groups";
-import { Check, X, Trash2 } from "lucide-react";
+import { Check, X, Trash2, Minus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
   Select,
@@ -24,9 +25,11 @@ type AttendanceOverviewProps = {
   registrations: ProgrammeRegistration[];
   programmeEvents: ProgrammeEvent[];
   availability: ProgrammeEventAvailability[];
+  attendance: ProgrammeEventAttendance[];
   playerGroups?: PlayerGroup[];
 };
 
+type ViewMode = "availability" | "attendance";
 type GroupFilter = "all" | "with" | "without" | string;
 type PositionScope = "primary" | "secondary" | "both";
 type SortKey =
@@ -38,21 +41,88 @@ type SortKey =
 
 const ALL_VALUE = "__all__";
 
+// A single clickable attendance cell. Clicking cycles through:
+// not recorded (–) → present (✓) → absent (✗) → not recorded. Each change is
+// saved immediately via a fetcher, with the pending value shown optimistically.
+const AttendanceCell: React.FC<{
+  registrationId: string;
+  eventId: string;
+  attended: boolean | undefined;
+}> = ({ registrationId, eventId, attended }) => {
+  const fetcher = useFetcher();
+
+  // While a change is in flight, reflect the value we just submitted.
+  const pending = fetcher.formData?.get("attended") as string | undefined;
+  const current: boolean | undefined =
+    pending === "present"
+      ? true
+      : pending === "absent"
+      ? false
+      : pending === "unset"
+      ? undefined
+      : attended;
+
+  const next =
+    current === undefined ? "present" : current === true ? "absent" : "unset";
+
+  const label =
+    current === true
+      ? "Present — click to mark absent"
+      : current === false
+      ? "Absent — click to clear"
+      : "Not recorded — click to mark present";
+
+  return (
+    <td className="text-center py-2 px-2">
+      <button
+        type="button"
+        title={label}
+        aria-label={label}
+        onClick={() =>
+          fetcher.submit(
+            { intent: "setAttendance", registrationId, eventId, attended: next },
+            { method: "post" },
+          )
+        }
+        className={[
+          "w-8 h-8 rounded-md border inline-flex items-center justify-center mx-auto transition-colors",
+          current === true
+            ? "border-green-500/40 bg-green-500/10 hover:bg-green-500/20"
+            : current === false
+            ? "border-red-500/40 bg-red-500/10 hover:bg-red-500/20"
+            : "border-border hover:bg-card/60",
+        ].join(" ")}
+      >
+        {current === true && <Check className="w-4 h-4 text-green-500" />}
+        {current === false && <X className="w-4 h-4 text-red-500" />}
+        {current === undefined && <Minus className="w-4 h-4 text-muted" />}
+      </button>
+    </td>
+  );
+};
+
 const PlayerRow: React.FC<{
   reg: ProgrammeRegistration;
   programmeEvents: ProgrammeEvent[];
+  viewMode: ViewMode;
   getAvailability: (
     registrationId: string,
     eventId: string,
   ) => boolean | undefined;
+  getAttendance: (
+    registrationId: string,
+    eventId: string,
+  ) => boolean | undefined;
   playerGroups?: PlayerGroup[];
-  totalAvailable: number;
+  total: number;
 }> = ({
   reg,
   programmeEvents,
+  viewMode,
   getAvailability,
+  getAttendance,
   playerGroups,
-  totalAvailable,
+  total,
 }) => {
   const fetcher = useFetcher();
   const ageGroup = reg.players?.dateOfBirth
@@ -152,6 +222,16 @@ const PlayerRow: React.FC<{
         </td>
       )}
       {programmeEvents.map((pe) => {
+        if (viewMode === "attendance") {
+          return (
+            <AttendanceCell
+              key={pe.id}
+              registrationId={reg.id}
+              eventId={pe.eventId}
+              attended={getAttendance(reg.id, pe.eventId)}
+            />
+          );
+        }
         const isAvailable = getAvailability(reg.id, pe.eventId);
         return (
           <td key={pe.id} className="text-center py-3 px-2">
@@ -166,7 +246,7 @@ const PlayerRow: React.FC<{
         );
       })}
       <td className="text-center py-3 px-2">
-        <span className="text-white font-medium">{totalAvailable}</span>
+        <span className="text-white font-medium">{total}</span>
         <span className="text-muted">/{programmeEvents.length}</span>
       </td>
       <td className="text-center py-3 px-2">
@@ -198,8 +278,10 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   registrations,
   programmeEvents,
   availability,
+  attendance,
   playerGroups,
 }) => {
+  const [viewMode, setViewMode] = useState<ViewMode>("availability");
   const [positionFilter, setPositionFilter] = useState<string>(ALL_VALUE);
   const [positionScope, setPositionScope] = useState<PositionScope>("primary");
   const [ageGroupFilter, setAgeGroupFilter] = useState<string>(ALL_VALUE);
@@ -216,6 +298,34 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     );
     return record?.available;
   };
+
+  const attendanceByKey = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const a of attendance) {
+      map.set(`${a.programmeRegistrationId}:${a.eventId}`, a.attended);
+    }
+    return map;
+  }, [attendance]);
+
+  const getAttendance = (
+    registrationId: string,
+    eventId: string,
+  ): boolean | undefined => {
+    return attendanceByKey.get(`${registrationId}:${eventId}`);
+  };
+
+  const attendedCountByRegistration = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of attendance) {
+      if (a.attended) {
+        map.set(
+          a.programmeRegistrationId,
+          (map.get(a.programmeRegistrationId) ?? 0) + 1,
+        );
+      }
+    }
+    return map;
+  }, [attendance]);
 
   const availableCountByRegistration = useMemo(() => {
     const map = new Map<string, number>();
@@ -479,6 +589,15 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     ).length;
   };
 
+  const getEventPresentCount = (eventId: string): number => {
+    return attendance.filter(
+      (a) =>
+        a.eventId === eventId &&
+        a.attended &&
+        visibleRegistrationIds.has(a.programmeRegistrationId),
+    ).length;
+  };
+
   if (registrations.length === 0) {
     return (
       <div className="text-center py-10 text-muted">
@@ -495,8 +614,69 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     groupFilter !== "all" ||
     sortBy !== "name";
 
+  // Overall expected (available) vs attended (present) across every event, for
+  // the players currently visible under the active filters.
+  const totalExpected = programmeEvents.reduce(
+    (sum, pe) => sum + getEventAttendanceCount(pe.eventId),
+    0,
+  );
+  const totalAttended = programmeEvents.reduce(
+    (sum, pe) => sum + getEventPresentCount(pe.eventId),
+    0,
+  );
+  const overallRate =
+    totalExpected > 0 ? Math.round((totalAttended / totalExpected) * 100) : null;
+
+  const rateColor = (rate: number | null) =>
+    rate === null
+      ? "text-muted"
+      : rate >= 75
+      ? "text-green-500"
+      : rate >= 50
+      ? "text-yellow-500"
+      : "text-red-500";
+
   return (
     <div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div
+          className="inline-flex h-9 rounded-md border border-input overflow-hidden"
+          role="group"
+          aria-label="View mode"
+        >
+          {(
+            [
+              { value: "availability", label: "Availability" },
+              { value: "attendance", label: "Attendance" },
+            ] as { value: ViewMode; label: string }[]
+          ).map((opt, i) => {
+            const active = viewMode === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setViewMode(opt.value)}
+                className={[
+                  "px-4 text-sm",
+                  i > 0 ? "border-l border-input" : "",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-transparent text-foreground hover:bg-card/50",
+                ].join(" ")}
+                aria-pressed={active}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {viewMode === "attendance" && (
+          <p className="text-xs text-muted">
+            Click a cell to cycle: not recorded → present → absent
+          </p>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-3 mb-4 items-end">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted">Position</label>
@@ -864,15 +1044,23 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   key={reg.id}
                   reg={reg}
                   programmeEvents={programmeEvents}
+                  viewMode={viewMode}
                   getAvailability={getAvailability}
+                  getAttendance={getAttendance}
                   playerGroups={playerGroups}
-                  totalAvailable={availableCountByRegistration.get(reg.id) ?? 0}
+                  total={
+                    viewMode === "attendance"
+                      ? attendedCountByRegistration.get(reg.id) ?? 0
+                      : availableCountByRegistration.get(reg.id) ?? 0
+                  }
                 />
               ))
             )}
             <tr className="border-t border-border">
               <td className="py-3 px-2 font-medium text-white">
-                Expected Attendance
+                {viewMode === "attendance"
+                  ? "Attended"
+                  : "Expected Attendance"}
               </td>
               <td />
               <td />
@@ -883,7 +1071,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   key={pe.id}
                   className="text-center py-3 px-2 font-medium text-white"
                 >
-                  {getEventAttendanceCount(pe.eventId)}
+                  {viewMode === "attendance"
+                    ? getEventPresentCount(pe.eventId)
+                    : getEventAttendanceCount(pe.eventId)}
                 </td>
               ))}
               <td />
@@ -892,6 +1082,86 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           </tbody>
         </table>
       </div>
+
+      {programmeEvents.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-baseline justify-between gap-3 mb-1">
+            <h3 className="text-sm font-semibold text-white">
+              Expected vs attended
+            </h3>
+            <div className="text-sm">
+              <span className="text-white font-semibold">{totalAttended}</span>
+              <span className="text-muted"> / {totalExpected} attended</span>
+              {overallRate !== null && (
+                <span className={`ml-2 font-semibold ${rateColor(overallRate)}`}>
+                  {overallRate}%
+                </span>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-muted mb-3">
+            Expected = players who said they were available
+            {filtersActive ? " (within the current filters)" : ""}; attended =
+            marked present.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {programmeEvents.map((pe) => {
+              const expected = getEventAttendanceCount(pe.eventId);
+              const attended = getEventPresentCount(pe.eventId);
+              const rate =
+                expected > 0 ? Math.round((attended / expected) * 100) : null;
+              return (
+                <div
+                  key={pe.id}
+                  className="p-3 rounded-md border border-border bg-card/30"
+                >
+                  <div className="flex items-baseline justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {pe.events?.name}
+                      </p>
+                      {pe.events?.date && (
+                        <p className="text-xs text-muted">
+                          {formatDate(pe.events.date)}
+                        </p>
+                      )}
+                    </div>
+                    {rate !== null && (
+                      <span
+                        className={`text-sm font-semibold shrink-0 ${rateColor(
+                          rate,
+                        )}`}
+                      >
+                        {rate}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-end gap-6 mb-2">
+                    <div>
+                      <p className="text-xs text-muted">Expected</p>
+                      <p className="text-lg font-semibold text-white">
+                        {expected}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Attended</p>
+                      <p className="text-lg font-semibold text-green-500">
+                        {attended}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                    <div
+                      className="h-full bg-green-500"
+                      style={{ width: `${Math.min(rate ?? 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

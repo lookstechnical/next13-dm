@@ -278,6 +278,14 @@ export interface ProgrammeEventAvailability {
   available: boolean;
 }
 
+export interface ProgrammeEventAttendance {
+  id: string;
+  programmeRegistrationId: string;
+  eventId: string;
+  attended: boolean;
+  recordedAt?: string;
+}
+
 export interface ProgrammeAllowedEmail {
   id: string;
   programmeId: string;
