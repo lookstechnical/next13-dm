@@ -279,6 +279,99 @@ export const action: ActionFunction = async ({ request }) => {
     return { step: 4 };
   }
 
+  if (step === "manage-profile") {
+    const programme = await programmeService.getProgrammeById(programmeId);
+    const avatar = formData.get("avatar");
+    const playerId = formData.get("playerId") as string;
+    const registrationId = formData.get("registrationId") as string;
+    const dateOfBirth = formData.get("dateOfBirth") as string;
+
+    // Only the fields the profile form actually exposes — updating anything
+    // else (nationality, school, mentor, kit) would wipe existing values, and
+    // we deliberately don't change the player's team here.
+    const submitted = {
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      mobile: formData.get("mobile") as string,
+      position: formData.get("position") as string,
+      secondaryPosition: formData.get("secondaryPosition") as string,
+      dateOfBirth,
+      club: formData.get("club") as string,
+      photoUrl: formData.get("photoUrl") as string,
+    };
+
+    // Re-load the availability context so the availability card still renders
+    // on this same "manage" screen after a profile save (or a validation error).
+    const buildManage = async (player: any, extra: Record<string, unknown>) => {
+      const programmeEvents = await programmeService.getProgrammeEvents(
+        programmeId
+      );
+      const availabilityRows = registrationId
+        ? await programmeService.getRegistrationAvailability(registrationId)
+        : [];
+      const availability: Record<string, boolean> = {};
+      availabilityRows.forEach((a) => {
+        availability[a.eventId] = a.available;
+      });
+      return {
+        step: "manage",
+        player,
+        registration: { id: registrationId },
+        programmeEvents,
+        availability,
+        ...extra,
+      };
+    };
+
+    const validation = step2.safeParse({
+      name: submitted.name,
+      email: submitted.email,
+      position: submitted.position,
+      club: submitted.club,
+    });
+
+    if (!validation.success) {
+      return buildManage(
+        { id: playerId, ...submitted },
+        { errors: z.treeifyError(validation.error) }
+      );
+    }
+
+    // Validate DOB against programme eligibility range
+    if (dateOfBirth && programme) {
+      if (
+        programme.eligibleDobFrom &&
+        dateOfBirth < programme.eligibleDobFrom
+      ) {
+        return buildManage(
+          { id: playerId, ...submitted },
+          {
+            dobError: `Date of birth must be on or after ${new Date(programme.eligibleDobFrom).toLocaleDateString()}.`,
+          }
+        );
+      }
+      if (programme.eligibleDobTo && dateOfBirth > programme.eligibleDobTo) {
+        return buildManage(
+          { id: playerId, ...submitted },
+          {
+            dobError: `Date of birth must be on or before ${new Date(programme.eligibleDobTo).toLocaleDateString()}.`,
+          }
+        );
+      }
+    }
+
+    const player = await playerService.updatePlayer(playerId, submitted);
+
+    if (player && avatar) {
+      await playerService.uploadPlayerProfilePhoto(player.id, avatar);
+    }
+
+    return buildManage(
+      { ...player, email: submitted.email },
+      { profileUpdated: true }
+    );
+  }
+
   if (step === "manage-update") {
     const registrationId = formData.get("registrationId") as string;
     const playerId = formData.get("playerId") as string;
@@ -644,6 +737,54 @@ export default function ProgrammeRegister() {
         {/* Manage: existing registration — update availability or withdraw */}
         {action?.step === "manage" && (
           <div className="flex flex-col gap-6">
+            <Card className="border-border p-6">
+              <h2 className="text-lg font-semibold text-white mb-1">
+                Your details
+              </h2>
+              <p className="text-sm text-muted mb-6">
+                Keep your profile up to date so our coaches have the right
+                information.
+              </p>
+              {action.profileUpdated && (
+                <div className="bg-success/10 border border-success/30 rounded-md p-3 mb-4">
+                  <p className="text-sm text-success flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                    Your details have been updated.
+                  </p>
+                </div>
+              )}
+              {action.dobError && (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mb-4">
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {action.dobError}
+                  </p>
+                </div>
+              )}
+              <Form method="post" encType="multipart/form-data">
+                <input type="hidden" name="step" value="manage-profile" />
+                <input
+                  type="hidden"
+                  name="programmeId"
+                  value={programme.id}
+                />
+                <input
+                  type="hidden"
+                  name="registrationId"
+                  value={action.registration?.id}
+                />
+                <PlayerForm
+                  clubs={clubs}
+                  player={action.player}
+                  errors={action.errors}
+                  hideKit
+                />
+                <div className="pt-6">
+                  <ActionButton title="Update details" className="w-full h-12" />
+                </div>
+              </Form>
+            </Card>
+
             <Card className="border-border p-6">
               <h2 className="text-lg font-semibold text-white mb-1">
                 Manage your registration

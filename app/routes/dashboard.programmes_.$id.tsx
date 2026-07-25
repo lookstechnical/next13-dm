@@ -6,12 +6,14 @@ import type {
 import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import { Calendar, MapPin, MoreVertical } from "lucide-react";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
+import { AddPlayerDialog } from "~/components/programmes/add-player-dialog";
 import { AttendanceOverview } from "~/components/programmes/attendance-overview";
 import { RegistrationAllowlist } from "~/components/programmes/registration-allowlist";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { GroupService } from "~/services/groupService";
+import { PlayerService } from "~/services/playerService";
 import { ProgrammeService } from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { formatDate, registrationDeadlinePassed } from "~/utils/helpers";
@@ -38,6 +40,7 @@ export const loader: LoaderFunction = withAuth(
   async ({ params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
     const groupService = new GroupService(supabaseClient);
+    const playerService = new PlayerService(supabaseClient);
 
     const programme = await programmeService.getProgrammeById(
       params.id as string,
@@ -61,8 +64,23 @@ export const loader: LoaderFunction = withAuth(
       params.id as string,
     );
 
+    // Players in the programme's team who aren't already registered — offered
+    // in the "Add player" dialog so staff can register an existing player.
+    const registeredPlayerIds = new Set(
+      registrations
+        .map((r: any) => r.playerId || r.players?.id)
+        .filter(Boolean),
+    );
+    const teamPlayers = programme?.teamId
+      ? await playerService.getPlayersByTeam(programme.teamId)
+      : [];
+    const availablePlayers = teamPlayers.filter(
+      (p) => !registeredPlayerIds.has(p.id),
+    );
+
     return {
       programme,
+      availablePlayers,
       programmeEvents,
       registrations,
       availability,
@@ -91,6 +109,41 @@ export const action: ActionFunction = withAuthAction(
     if (intent === "removeRegistration") {
       const registrationId = formData.get("registrationId") as string;
       await programmeService.removeRegistration(registrationId);
+      return { ok: true };
+    }
+
+    if (intent === "registerExistingPlayer") {
+      const programmeId = formData.get("programmeId") as string;
+      const playerId = formData.get("playerId") as string;
+      if (!programmeId || !playerId) {
+        return { error: "Missing player or programme." };
+      }
+
+      // Don't double-register: a player can only appear on a programme once.
+      const existing = await programmeService.getPlayerProgrammeRegistration(
+        playerId,
+        programmeId,
+      );
+      if (existing) return { ok: true };
+
+      const playerService = new PlayerService(supabaseClient);
+      const player = await playerService.getPlayerById(playerId);
+
+      // Default availability to "available" for every event, matching the
+      // self-registration default; staff can adjust it afterwards.
+      const programmeEvents =
+        await programmeService.getProgrammeEvents(programmeId);
+      const eventAvailability = programmeEvents.map((pe) => ({
+        eventId: pe.eventId,
+        available: true,
+      }));
+
+      await programmeService.registerForProgramme({
+        programmeId,
+        playerId,
+        email: player?.email,
+        eventAvailability,
+      });
       return { ok: true };
     }
 
@@ -143,6 +196,7 @@ export default function ProgrammeDetail() {
     attendance,
     playerGroups,
     allowedEmails,
+    availablePlayers,
   } = useLoaderData<typeof loader>();
 
   if (!programme) {
@@ -280,9 +334,15 @@ export default function ProgrammeDetail() {
         />
       </Card>
 
-      <h2 className="text-xl font-semibold text-white mb-4">
-        Registrations ({registrations.length})
-      </h2>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h2 className="text-xl font-semibold text-white">
+          Registrations ({registrations.length})
+        </h2>
+        <AddPlayerDialog
+          programmeId={programme.id}
+          availablePlayers={availablePlayers}
+        />
+      </div>
       <Card className="border-border p-4">
         <AttendanceOverview
           registrations={registrations}
