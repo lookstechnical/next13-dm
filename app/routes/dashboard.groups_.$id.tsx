@@ -132,6 +132,14 @@ export default function PlayerPage() {
     ? group.playerGroupMembers.filter((p: any) => availableIds.has(p.id))
     : group.playerGroupMembers;
 
+  // When an event is selected, the PDF still lists every member but greys out
+  // those who aren't registered/available for that event.
+  const dimmedPlayerIds = availableIds
+    ? group.playerGroupMembers
+        .filter((p: any) => !availableIds.has(p.id))
+        .map((p: any) => p.id)
+    : undefined;
+
   return (
     <>
       <div className="w-full flex flex-col gap-12 space-y-10 container px-4 mx-auto py-10 text-foreground">
@@ -165,6 +173,8 @@ export default function PlayerPage() {
                   <DownloadButton
                     players={group.playerGroupMembers}
                     teamName={group.name}
+                    dimmedPlayerIds={dimmedPlayerIds}
+                    eventName={selectedEvent?.name}
                   />
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">

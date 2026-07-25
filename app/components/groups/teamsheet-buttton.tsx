@@ -10,6 +10,7 @@ async function fetchPlayerImage(
   pdfDoc: PDFDocument,
   url: string | undefined,
   renderSize: number,
+  grayscale = false,
 ) {
   if (!url) return null;
   try {
@@ -29,6 +30,9 @@ async function fetchPlayerImage(
     ctx.arc(renderSize / 2, renderSize / 2, renderSize / 2, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
+
+    // Desaturate unavailable players' photos so they read as black & white.
+    if (grayscale) ctx.filter = "grayscale(100%)";
 
     // Center-crop source image to a square so it isn't stretched
     const minDim = Math.min(bitmap.width, bitmap.height);
@@ -50,7 +54,12 @@ async function fetchPlayerImage(
   }
 }
 
-export async function generateTeamPDF(players: Player[], teamName: string) {
+export async function generateTeamPDF(
+  players: Player[],
+  teamName: string,
+  options?: { dimmedIds?: Set<string>; eventName?: string },
+) {
+  const dimmedIds = options?.dimmedIds;
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -133,7 +142,15 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
   const photoEntries = await Promise.all(
     players.map(
       async (p) =>
-        [p.id, await fetchPlayerImage(pdfDoc, p.photoUrl, photoRenderPx)] as const,
+        [
+          p.id,
+          await fetchPlayerImage(
+            pdfDoc,
+            p.photoUrl,
+            photoRenderPx,
+            dimmedIds?.has(p.id),
+          ),
+        ] as const,
     ),
   );
   const photoById = new Map(photoEntries);
@@ -144,6 +161,33 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
 
   const marginX = 40;
   const gridWidth = 520;
+
+  // When filtered by an event, note it under the header and explain the
+  // greyed-out cards.
+  if (options?.eventName) {
+    page.drawText(`Availability for: ${options.eventName}`, {
+      x: marginX,
+      y,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.2, 0.2, 0.2),
+    });
+    y -= 11;
+    if (dimmedIds && dimmedIds.size > 0) {
+      page.drawText(
+        "Greyed out = not registered / unavailable for this event",
+        {
+          x: marginX,
+          y,
+          size: 8,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+        },
+      );
+      y -= 11;
+    }
+    y -= 8;
+  }
 
   // Card grid layout — 3 cards per row per position group section
   const cardCols = 3;
@@ -179,6 +223,13 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
 
   const drawPlayerCard = (player: Player, cardX: number, cardTop: number) => {
     const cardBottom = cardTop - cardHeight;
+    // Players not available for the selected event are rendered in black &
+    // white — greyscale photo (handled at fetch time) plus monochrome text and
+    // badge — so they clearly stand out as unavailable.
+    const dimmed = !!dimmedIds?.has(player.id);
+    const photoOpacity = 1;
+    const nameColor = dimmed ? rgb(0.45, 0.45, 0.45) : rgb(0, 0, 0);
+    const subColor = dimmed ? rgb(0.55, 0.55, 0.55) : rgb(0.35, 0.35, 0.35);
 
     // Card surface
     page.drawRectangle({
@@ -186,7 +237,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
       y: cardBottom,
       width: cardWidth,
       height: cardHeight,
-      color: rgb(0.97, 0.97, 0.97),
+      color: dimmed ? rgb(0.95, 0.95, 0.95) : rgb(0.97, 0.97, 0.97),
       borderColor: rgb(0.82, 0.82, 0.82),
       borderWidth: 0.5,
     });
@@ -201,6 +252,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
         y: photoY,
         width: cardPhotoSize,
         height: cardPhotoSize,
+        opacity: photoOpacity,
       });
     }
 
@@ -234,7 +286,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
       y: cardTop - 13,
       size: 10,
       font: fontBold,
-      color: rgb(0, 0, 0),
+      color: nameColor,
     });
 
     // Position (muted)
@@ -245,7 +297,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
         y: cardTop - 24,
         size: 8,
         font,
-        color: rgb(0.35, 0.35, 0.35),
+        color: subColor,
       },
     );
 
@@ -256,7 +308,7 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
         y: cardTop - 34,
         size: 8,
         font,
-        color: rgb(0.35, 0.35, 0.35),
+        color: subColor,
       });
     }
 
@@ -267,8 +319,13 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
       const badgeTextWidth = fontBold.widthOfTextAtSize(ag, badgeFontSize);
       const badgeWidth = badgeTextWidth + 8;
       const badgeHeight = 10;
-      const badgeColor =
-        ag === "U15" ? saintsRed : ag === "U14" ? rgb(0.13, 0.4, 0.8) : saintsRed;
+      const badgeColor = dimmed
+        ? rgb(0.5, 0.5, 0.5)
+        : ag === "U15"
+        ? saintsRed
+        : ag === "U14"
+        ? rgb(0.13, 0.4, 0.8)
+        : saintsRed;
       const badgeX = cardX + cardWidth - 5 - badgeWidth;
       page.drawRectangle({
         x: badgeX,
@@ -331,17 +388,28 @@ export async function generateTeamPDF(players: Player[], teamName: string) {
 type DownloadButton = {
   players: Player[];
   teamName: string;
+  /** Player ids to grey out (e.g. not available for the filtered event). */
+  dimmedPlayerIds?: string[];
+  /** Name of the event the sheet is filtered by, shown under the header. */
+  eventName?: string;
 };
 
 export const DownloadButton: React.FC<DownloadButton> = ({
   players,
   teamName,
+  dimmedPlayerIds,
+  eventName,
 }) => {
   return (
     <Button
       variant="outline"
       className="w-full"
-      onClick={() => generateTeamPDF(players, teamName)}
+      onClick={() =>
+        generateTeamPDF(players, teamName, {
+          dimmedIds: dimmedPlayerIds ? new Set(dimmedPlayerIds) : undefined,
+          eventName,
+        })
+      }
     >
       <DownloadIcon />
       <span>Download PDF</span>
