@@ -126,6 +126,57 @@ function buildDisplayRecipients(
   });
 }
 
+// The programme's events, each carrying the (lower-cased) emails of the
+// members who have marked themselves available for it. Lets the sender narrow
+// the reminder to "everyone available for this session".
+export type ReminderEvent = {
+  id: string;
+  name: string;
+  date?: string;
+  availableEmails: string[];
+};
+
+function buildEventOptions(
+  programmeEvents: {
+    eventId: string;
+    events?: { name?: string; date?: string };
+  }[],
+  registrations: {
+    id: string;
+    email?: string;
+    players?: { email?: string };
+  }[],
+  availability: {
+    programmeRegistrationId: string;
+    eventId: string;
+    available: boolean;
+  }[],
+): ReminderEvent[] {
+  const emailByRegistration = new Map<string, string>();
+  for (const reg of registrations) {
+    const email = reg.players?.email || reg.email;
+    if (email) emailByRegistration.set(reg.id, email.toLowerCase());
+  }
+
+  const emailsByEvent = new Map<string, Set<string>>();
+  for (const row of availability) {
+    if (!row.available) continue;
+    const email = emailByRegistration.get(row.programmeRegistrationId);
+    if (!email) continue;
+    if (!emailsByEvent.has(row.eventId)) {
+      emailsByEvent.set(row.eventId, new Set());
+    }
+    emailsByEvent.get(row.eventId)!.add(email);
+  }
+
+  return programmeEvents.map((pe) => ({
+    id: pe.eventId,
+    name: pe.events?.name || "Event",
+    date: pe.events?.date,
+    availableEmails: [...(emailsByEvent.get(pe.eventId) ?? [])],
+  }));
+}
+
 // Build a playerId -> team name lookup from the team's player groups, used to
 // resolve the {{team}} email variable. A player can belong to several groups,
 // so we prefer a "squad" type group (the closest thing to an assigned team),
@@ -163,10 +214,17 @@ export const loader: LoaderFunction = withAuth(
     const allowedEmails = await programmeService.getAllowedEmails(
       params.id as string,
     );
+    const programmeEvents = await programmeService.getProgrammeEvents(
+      params.id as string,
+    );
+    const availability = await programmeService.getProgrammeEventAvailability(
+      params.id as string,
+    );
 
     return {
       programme,
       recipients: buildDisplayRecipients(registrations, allowedEmails),
+      events: buildEventOptions(programmeEvents, registrations, availability),
       defaultTestEmail: user.email || "",
     };
   },
@@ -367,16 +425,39 @@ export const action: ActionFunction = withAuthAction(
 );
 
 export default function SendProgrammeReminder() {
-  const { programme, recipients, defaultTestEmail } =
+  const { programme, recipients, events, defaultTestEmail } =
     useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
 
+  // Optional event filter: narrows the recipient list to the members who
+  // marked themselves available for that event.
+  const [eventFilter, setEventFilter] = useState<string>("");
+  const selectedEvent = events?.find((e: ReminderEvent) => e.id === eventFilter);
+
+  const recipientsForEvent = (event?: ReminderEvent) => {
+    if (!event) return recipients as ReminderRecipient[];
+    const available = new Set(event.availableEmails);
+    return (recipients as ReminderRecipient[]).filter((r) =>
+      available.has(r.email.toLowerCase()),
+    );
+  };
+
+  const visibleRecipients = recipientsForEvent(selectedEvent);
+
   // Everyone is selected by default; the sender can narrow it down.
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(recipients.map((r: ReminderRecipient) => r.email)),
   );
+
+  // Switching event re-selects exactly who is available for it.
+  const handleEventChange = (value: string) => {
+    const next = value ?? "";
+    setEventFilter(next);
+    const event = events?.find((e: ReminderEvent) => e.id === next);
+    setSelected(new Set(recipientsForEvent(event).map((r) => r.email)));
+  };
 
   return (
     <SheetPage
@@ -439,7 +520,11 @@ export default function SendProgrammeReminder() {
       )}
       <ProgrammeReminderForm
         defaultTestEmail={defaultTestEmail}
-        recipients={recipients}
+        recipients={visibleRecipients}
+        totalRecipientCount={recipients.length}
+        events={events ?? []}
+        eventFilter={eventFilter}
+        onEventFilterChange={handleEventChange}
         selected={selected}
         onSelectedChange={setSelected}
       />

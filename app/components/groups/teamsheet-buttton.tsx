@@ -239,6 +239,29 @@ export async function generateTeamPDF(
     return t + ellipsis;
   };
 
+  // Cards are narrow at 4-per-row, so shorten a long name by initialising the
+  // forename(s) before falling back to a truncated string.
+  const fitName = (
+    name: string,
+    maxWidth: number,
+    fnt: typeof font,
+    size: number,
+  ) => {
+    if (!name) return "";
+    if (fnt.widthOfTextAtSize(name, size) <= maxWidth) return name;
+    const parts = name.trim().split(/\s+/);
+    if (parts.length > 1) {
+      const abbreviated = `${parts
+        .slice(0, -1)
+        .map((p) => `${p[0]}.`)
+        .join("")} ${parts[parts.length - 1]}`;
+      if (fnt.widthOfTextAtSize(abbreviated, size) <= maxWidth)
+        return abbreviated;
+      return truncate(abbreviated, maxWidth, fnt, size);
+    }
+    return truncate(name, maxWidth, fnt, size);
+  };
+
   const drawSectionHeader = (label: string, count: number) => {
     // Never leave a heading stranded at the foot of a page.
     if (y - sectionHeaderHeight - cardHeight < contentBottom) newPage();
@@ -312,7 +335,7 @@ export async function generateTeamPDF(
     const infoMaxWidth = shirtX - infoX - 3;
 
     // Name (bold)
-    page.drawText(truncate(player.name, infoMaxWidth, fontBold, 8), {
+    page.drawText(fitName(player.name, infoMaxWidth, fontBold, 8), {
       x: infoX,
       y: cardTop - 11,
       size: 8,
@@ -438,7 +461,7 @@ export async function generateTeamPDF(
         const ag = calculateAgeGroup(player.dateOfBirth);
         const meta = [player.position, ag].filter(Boolean).join(" · ");
         // Name takes ~60% of the column so the position/age still shows.
-        const nameText = truncate(
+        const nameText = fitName(
           player.name ?? "",
           meta ? listColWidth * 0.6 : listColWidth,
           fontBold,

@@ -1,14 +1,29 @@
 import { Field } from "~/components/forms/field";
+import { SelectField } from "~/components/forms/select";
 import {
   ReminderRecipient,
   ReminderRecipientSelector,
 } from "~/components/programmes/reminder-recipient-selector";
 import { Input } from "~/components/ui/input";
+import { formatDate } from "~/utils/helpers";
 import { RichTextField } from "../rich-text";
+
+type ReminderEventOption = {
+  id: string;
+  name: string;
+  date?: string;
+  availableEmails: string[];
+};
 
 type ProgrammeReminderFormProps = {
   defaultTestEmail?: string;
+  /** Recipients shown for the current event filter (all of them when unset). */
   recipients: ReminderRecipient[];
+  /** Total recipients on the programme, ignoring the event filter. */
+  totalRecipientCount: number;
+  events: ReminderEventOption[];
+  eventFilter: string;
+  onEventFilterChange: (value: string) => void;
   selected: Set<string>;
   onSelectedChange: (next: Set<string>) => void;
 };
@@ -26,12 +41,39 @@ const DEFAULT_BODY = `<p>Dear Parent/Guardian,</p>
 export const ProgrammeReminderForm: React.FC<ProgrammeReminderFormProps> = ({
   defaultTestEmail,
   recipients,
+  totalRecipientCount,
+  events,
+  eventFilter,
+  onEventFilterChange,
   selected,
   onSelectedChange,
 }) => {
+  const selectedEvent = events.find((e) => e.id === eventFilter);
+
   return (
     <div className="flex gap-4 flex-col p-4">
       <div className="flex flex-col w-full gap-5">
+        {events.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <SelectField
+              name="eventFilter"
+              label="Only send to members available for"
+              placeholder="All members (no event filter)"
+              defaultValue={eventFilter}
+              onValueChange={(val) => onEventFilterChange(val ?? "")}
+              options={events.map((e) => ({
+                id: e.id,
+                name: e.date ? `${e.name} (${formatDate(e.date)})` : e.name,
+              }))}
+            />
+            <p className="text-xs text-muted">
+              {selectedEvent
+                ? `${recipients.length} of ${totalRecipientCount} recipients marked themselves available for ${selectedEvent.name}. Invited members who haven't registered aren't included while an event is selected.`
+                : "Pick an event to narrow the reminder to the members who said they're available for it."}
+            </p>
+          </div>
+        )}
+
         <ReminderRecipientSelector
           recipients={recipients}
           selected={selected}
