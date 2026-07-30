@@ -1,6 +1,6 @@
 import type { LoaderFunction, MetaFunction } from "@remix-run/node";
 import { Link, useLoaderData, useSearchParams } from "@remix-run/react";
-import { Printer } from "lucide-react";
+import { Printer, Download } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -75,6 +75,19 @@ const IMPLIED_GROUP_NAMES = ["excel", "excel squad"];
 
 const isImpliedGroup = (name: string) =>
   IMPLIED_GROUP_NAMES.includes(name.trim().toLowerCase());
+
+/** Escape a value for a CSV cell (quote when it contains a comma/quote/newline). */
+const csvCell = (value: string) => {
+  const s = value ?? "";
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/** Turn a string into a safe filename fragment. */
+const slugify = (value: string) =>
+  value
+    .trim()
+    .replace(/[^\w.-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "register";
 
 /**
  * The event a coach most likely wants a register for: the next one still to
@@ -192,6 +205,52 @@ export default function ProgrammeRegister() {
   const notAvailable = rows.filter((r) => r.available === false).length;
   const noResponse = rows.filter((r) => r.available === undefined).length;
 
+  // Export the register exactly as shown (current date + group filter, same
+  // columns) to a CSV that opens directly in Excel. Attended is left blank so
+  // it can be marked in the spreadsheet, mirroring the printed sheet.
+  const exportCsv = () => {
+    if (rows.length === 0) return;
+
+    const headers = [
+      "Player",
+      "Age Group",
+      "Club",
+      "Group",
+      "Available",
+      "Attended",
+    ];
+    const dataRows = rows.map((r) => [
+      r.name,
+      r.ageGroup,
+      r.club,
+      r.groups.length > 0 ? r.groups.join(", ") : "",
+      r.available === true
+        ? "Yes"
+        : r.available === false
+        ? "No"
+        : "No response",
+      "",
+    ]);
+
+    const csv = [headers, ...dataRows]
+      .map((cols) => cols.map(csvCell).join(","))
+      .join("\r\n");
+
+    // Prepend a BOM so Excel reads it as UTF-8.
+    const blob = new Blob(["﻿" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const eventLabel = selectedEvent?.events?.date
+      ? formatDate(selectedEvent.events.date)
+      : "register";
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${slugify(programme.name)}-register-${slugify(eventLabel)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (!programme) {
     return (
       <div className="container px-4 mx-auto py-10 text-foreground">
@@ -266,6 +325,16 @@ export default function ProgrammeRegister() {
         <div className="flex gap-2">
           <Button asChild variant="outline" className="h-9">
             <Link to={`/dashboard/programmes/${programme.id}`}>Back</Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9"
+            onClick={exportCsv}
+            disabled={rows.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Excel
           </Button>
           <Button
             type="button"

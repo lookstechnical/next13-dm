@@ -10,7 +10,6 @@ async function fetchPlayerImage(
   pdfDoc: PDFDocument,
   url: string | undefined,
   renderSize: number,
-  grayscale = false,
 ) {
   if (!url) return null;
   try {
@@ -30,9 +29,6 @@ async function fetchPlayerImage(
     ctx.arc(renderSize / 2, renderSize / 2, renderSize / 2, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-
-    // Desaturate unavailable players' photos so they read as black & white.
-    if (grayscale) ctx.filter = "grayscale(100%)";
 
     // Center-crop source image to a square so it isn't stretched
     const minDim = Math.min(bitmap.width, bitmap.height);
@@ -57,14 +53,16 @@ async function fetchPlayerImage(
 export async function generateTeamPDF(
   players: Player[],
   teamName: string,
-  options?: { dimmedIds?: Set<string>; eventName?: string },
+  options?: {
+    /** Players unavailable for the event — listed for info, no card drawn. */
+    unavailableIds?: Set<string>;
+    eventName?: string;
+  },
 ) {
-  const dimmedIds = options?.dimmedIds;
+  const unavailableIds = options?.unavailableIds;
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const { width, height } = page.getSize();
 
   const logoBytes = await fetch("/logo.png")
     .then((res) => res.arrayBuffer())
@@ -76,51 +74,30 @@ export async function generateTeamPDF(
   const saintsRed = rgb(0.78, 0.1, 0.15);
   const white = rgb(1, 1, 1);
 
-  // Header band (red, with title + logo)
-  const headerHeight = 56;
-  page.drawRectangle({
-    x: 0,
-    y: height - headerHeight,
-    width,
-    height: headerHeight,
-    color: saintsRed,
-  });
+  const pageWidth = 595.28;
+  const pageHeight = 841.89; // A4 size in points
+  const headerHeight = 48;
+  const footerHeight = 18;
+  const marginX = 34;
+  const gridWidth = pageWidth - marginX * 2;
+  // Lowest y content may occupy before a new page is needed.
+  const contentBottom = footerHeight + 14;
 
-  // Logo inside header (right-aligned, sized to fit header)
-  const logoTargetHeight = headerHeight - 16;
-  const logoScale = logoTargetHeight / logoImage.height;
-  const logoW = logoImage.width * logoScale;
-  const logoH = logoImage.height * logoScale;
-  page.drawImage(logoImage, {
-    x: width - logoW - 24,
-    y: height - headerHeight + (headerHeight - logoH) / 2,
-    width: logoW,
-    height: logoH,
-  });
+  // Unavailable players get a compact name list at the end instead of a card,
+  // so the cards on the sheet are only the players actually available.
+  const unavailablePlayers = unavailableIds
+    ? players
+        .filter((p) => unavailableIds.has(p.id))
+        .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
+    : [];
+  const availablePlayers = unavailableIds
+    ? players.filter((p) => !unavailableIds.has(p.id))
+    : players;
 
-  // Title inside header
-  page.drawText(`TEAM SHEET - ${teamName}`.toUpperCase(), {
-    x: 24,
-    y: height - headerHeight / 2 - 5,
-    size: 16,
-    font: fontBold,
-    color: white,
-  });
-
-  // Footer band (red)
-  const footerHeight = 22;
-  page.drawRectangle({
-    x: 0,
-    y: 0,
-    width,
-    height: footerHeight,
-    color: saintsRed,
-  });
-
-  // Group players by POSITION_GROUPS
+  // Group available players by POSITION_GROUPS
   const groupedSections: { label: string; players: Player[] }[] = [];
   for (const pg of POSITION_GROUPS) {
-    const inGroup = players.filter(
+    const inGroup = availablePlayers.filter(
       (p) => p?.position && pg.positions.includes(p.position),
     );
     if (inGroup.length > 0) {
@@ -128,7 +105,7 @@ export async function generateTeamPDF(
     }
   }
   const known = new Set(POSITION_GROUPS.flatMap((g) => g.positions));
-  const others = players.filter(
+  const others = availablePlayers.filter(
     (p) => !p?.position || !known.has(p.position),
   );
   if (others.length > 0) {
@@ -136,71 +113,112 @@ export async function generateTeamPDF(
   }
 
   // Fetch, center-crop and circular-mask all player photos in parallel.
-  // Render at ~5x card-photo display size (40pt ~ 167px @ 300dpi) so print
-  // quality stays sharp on the larger card avatars.
-  const photoRenderPx = 192;
+  // Render at ~5x card-photo display size (30pt ~ 125px @ 300dpi) so print
+  // quality stays sharp on the card avatars.
+  const photoRenderPx = 160;
   const photoEntries = await Promise.all(
-    players.map(
+    availablePlayers.map(
       async (p) =>
-        [
-          p.id,
-          await fetchPlayerImage(
-            pdfDoc,
-            p.photoUrl,
-            photoRenderPx,
-            dimmedIds?.has(p.id),
-          ),
-        ] as const,
+        [p.id, await fetchPlayerImage(pdfDoc, p.photoUrl, photoRenderPx)] as const,
     ),
   );
   const photoById = new Map(photoEntries);
 
+  const drawPageChrome = (p: ReturnType<typeof pdfDoc.addPage>) => {
+    // Header band (red, with title + logo)
+    p.drawRectangle({
+      x: 0,
+      y: pageHeight - headerHeight,
+      width: pageWidth,
+      height: headerHeight,
+      color: saintsRed,
+    });
+
+    // Logo inside header (right-aligned, sized to fit header)
+    const logoTargetHeight = headerHeight - 14;
+    const logoScale = logoTargetHeight / logoImage.height;
+    const logoW = logoImage.width * logoScale;
+    const logoH = logoImage.height * logoScale;
+    p.drawImage(logoImage, {
+      x: pageWidth - logoW - 24,
+      y: pageHeight - headerHeight + (headerHeight - logoH) / 2,
+      width: logoW,
+      height: logoH,
+    });
+
+    // Title inside header
+    p.drawText(`TEAM SHEET - ${teamName}`.toUpperCase(), {
+      x: marginX,
+      y: pageHeight - headerHeight / 2 - 4,
+      size: 14,
+      font: fontBold,
+      color: white,
+    });
+
+    // Footer band (red)
+    p.drawRectangle({
+      x: 0,
+      y: 0,
+      width: pageWidth,
+      height: footerHeight,
+      color: saintsRed,
+    });
+  };
+
   // Content starts below the red header band — generous top gap so the first
   // section heading isn't pressed against the red band
-  let y = height - headerHeight - 22;
+  const contentTop = pageHeight - headerHeight - 18;
 
-  const marginX = 40;
-  const gridWidth = 520;
+  let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  drawPageChrome(page);
+  let y = contentTop;
 
-  // When filtered by an event, note it under the header and explain the
-  // greyed-out cards.
+  // Overflow onto a new page so no player ever falls off the bottom.
+  const newPage = () => {
+    page = pdfDoc.addPage([pageWidth, pageHeight]);
+    drawPageChrome(page);
+    y = contentTop;
+  };
+
+  // When filtered by an event, note it under the header and point at the
+  // unavailable list.
   if (options?.eventName) {
     page.drawText(`Availability for: ${options.eventName}`, {
       x: marginX,
       y,
-      size: 9,
+      size: 8,
       font: fontBold,
       color: rgb(0.2, 0.2, 0.2),
     });
-    y -= 11;
-    if (dimmedIds && dimmedIds.size > 0) {
+    y -= 10;
+    if (unavailablePlayers.length > 0) {
       page.drawText(
-        "Greyed out = not registered / unavailable for this event",
+        `${unavailablePlayers.length} not registered / unavailable — listed at the end`,
         {
           x: marginX,
           y,
-          size: 8,
+          size: 7,
           font,
           color: rgb(0.5, 0.5, 0.5),
         },
       );
-      y -= 11;
+      y -= 10;
     }
-    y -= 8;
+    y -= 6;
   }
 
-  // Card grid layout — 3 cards per row per position group section
-  const cardCols = 3;
-  const cardHGap = 8;
+  // Card grid layout — 4 cards per row per position group section
+  const cardCols = 4;
+  const cardHGap = 6;
   const cardWidth = (gridWidth - cardHGap * (cardCols - 1)) / cardCols;
-  const cardHeight = 50;
-  const cardVGap = 6;
-  const cardPhotoSize = 40;
+  const cardHeight = 42;
+  const cardVGap = 5;
+  const cardPhotoSize = 30;
   // Header text baseline -> first-card top distance (covers underline + clearance)
-  const sectionHeaderHeight = 16;
+  const sectionHeaderHeight = 14;
   // Space below the last card of a group before the next group's header text.
-  // Heading cap height is ~8pt, so 20pt leaves ~12pt of visible clear space.
-  const sectionGap = 20;
+  // Heading cap height is ~7pt, so 17pt leaves ~10pt of visible clear space.
+  const sectionGap = 17;
 
   const truncate = (
     text: string,
@@ -221,15 +239,29 @@ export async function generateTeamPDF(
     return t + ellipsis;
   };
 
+  const drawSectionHeader = (label: string, count: number) => {
+    // Never leave a heading stranded at the foot of a page.
+    if (y - sectionHeaderHeight - cardHeight < contentBottom) newPage();
+    page.drawText(`${label} (${count})`, {
+      x: marginX,
+      y,
+      size: 10,
+      font: fontBold,
+      color: saintsRed,
+    });
+    page.drawLine({
+      start: { x: marginX, y: y - 4 },
+      end: { x: marginX + gridWidth, y: y - 4 },
+      thickness: 0.8,
+      color: saintsRed,
+    });
+    y -= sectionHeaderHeight;
+  };
+
   const drawPlayerCard = (player: Player, cardX: number, cardTop: number) => {
     const cardBottom = cardTop - cardHeight;
-    // Players not available for the selected event are rendered in black &
-    // white — greyscale photo (handled at fetch time) plus monochrome text and
-    // badge — so they clearly stand out as unavailable.
-    const dimmed = !!dimmedIds?.has(player.id);
-    const photoOpacity = 1;
-    const nameColor = dimmed ? rgb(0.45, 0.45, 0.45) : rgb(0, 0, 0);
-    const subColor = dimmed ? rgb(0.55, 0.55, 0.55) : rgb(0.35, 0.35, 0.35);
+    const nameColor = rgb(0, 0, 0);
+    const subColor = rgb(0.35, 0.35, 0.35);
 
     // Card surface
     page.drawRectangle({
@@ -237,14 +269,14 @@ export async function generateTeamPDF(
       y: cardBottom,
       width: cardWidth,
       height: cardHeight,
-      color: dimmed ? rgb(0.95, 0.95, 0.95) : rgb(0.97, 0.97, 0.97),
+      color: rgb(0.97, 0.97, 0.97),
       borderColor: rgb(0.82, 0.82, 0.82),
       borderWidth: 0.5,
     });
 
     // Photo (circular, left, vertically centered within card)
     const photo = photoById.get(player.id);
-    const photoX = cardX + 5;
+    const photoX = cardX + 4;
     const photoY = cardBottom + (cardHeight - cardPhotoSize) / 2;
     if (photo) {
       page.drawImage(photo, {
@@ -252,14 +284,13 @@ export async function generateTeamPDF(
         y: photoY,
         width: cardPhotoSize,
         height: cardPhotoSize,
-        opacity: photoOpacity,
       });
     }
 
     // Shirt # write-in box (top-right of card)
-    const shirtSize = 16;
-    const shirtX = cardX + cardWidth - 5 - shirtSize;
-    const shirtY = cardTop - 5 - shirtSize;
+    const shirtSize = 13;
+    const shirtX = cardX + cardWidth - 4 - shirtSize;
+    const shirtY = cardTop - 4 - shirtSize;
     page.drawRectangle({
       x: shirtX,
       y: shirtY,
@@ -269,44 +300,41 @@ export async function generateTeamPDF(
       borderWidth: 0.5,
     });
     page.drawText("#", {
-      x: shirtX + 2,
-      y: shirtY + 2,
-      size: 5,
+      x: shirtX + 1.5,
+      y: shirtY + 1.5,
+      size: 4.5,
       font,
       color: rgb(0.55, 0.55, 0.55),
     });
 
     // Info column (right of photo, left of shirt box)
-    const infoX = cardX + 5 + cardPhotoSize + 6;
-    const infoMaxWidth = shirtX - infoX - 4;
+    const infoX = cardX + 4 + cardPhotoSize + 4;
+    const infoMaxWidth = shirtX - infoX - 3;
 
     // Name (bold)
-    page.drawText(truncate(player.name, infoMaxWidth, fontBold, 10), {
+    page.drawText(truncate(player.name, infoMaxWidth, fontBold, 8), {
       x: infoX,
-      y: cardTop - 13,
-      size: 10,
+      y: cardTop - 11,
+      size: 8,
       font: fontBold,
       color: nameColor,
     });
 
     // Position (muted)
-    page.drawText(
-      truncate(player.position ?? "", infoMaxWidth, font, 8),
-      {
-        x: infoX,
-        y: cardTop - 24,
-        size: 8,
-        font,
-        color: subColor,
-      },
-    );
+    page.drawText(truncate(player.position ?? "", infoMaxWidth, font, 6.5), {
+      x: infoX,
+      y: cardTop - 20,
+      size: 6.5,
+      font,
+      color: subColor,
+    });
 
     // Club (muted)
     if (player.club) {
-      page.drawText(truncate(player.club, infoMaxWidth, font, 8), {
+      page.drawText(truncate(player.club, infoMaxWidth, font, 6.5), {
         x: infoX,
-        y: cardTop - 34,
-        size: 8,
+        y: cardTop - 28,
+        size: 6.5,
         font,
         color: subColor,
       });
@@ -315,28 +343,22 @@ export async function generateTeamPDF(
     // Age group badge (colored pill, white text)
     const ag = calculateAgeGroup(player.dateOfBirth);
     if (ag) {
-      const badgeFontSize = 7;
+      const badgeFontSize = 6;
       const badgeTextWidth = fontBold.widthOfTextAtSize(ag, badgeFontSize);
-      const badgeWidth = badgeTextWidth + 8;
-      const badgeHeight = 10;
-      const badgeColor = dimmed
-        ? rgb(0.5, 0.5, 0.5)
-        : ag === "U15"
-        ? saintsRed
-        : ag === "U14"
-        ? rgb(0.13, 0.4, 0.8)
-        : saintsRed;
-      const badgeX = cardX + cardWidth - 5 - badgeWidth;
+      const badgeWidth = badgeTextWidth + 6;
+      const badgeHeight = 8.5;
+      const badgeColor = ag === "U14" ? rgb(0.13, 0.4, 0.8) : saintsRed;
+      const badgeX = cardX + cardWidth - 4 - badgeWidth;
       page.drawRectangle({
         x: badgeX,
-        y: cardBottom + 4,
+        y: cardBottom + 3.5,
         width: badgeWidth,
         height: badgeHeight,
         color: badgeColor,
       });
       page.drawText(ag, {
-        x: badgeX + 4,
-        y: cardBottom + 7,
+        x: badgeX + 3,
+        y: cardBottom + 6,
         size: badgeFontSize,
         font: fontBold,
         color: white,
@@ -344,36 +366,105 @@ export async function generateTeamPDF(
     }
   };
 
-  // Draw each position group section
+  // Draw each position group section, row by row so a long group can continue
+  // onto the next page rather than running off the bottom.
   for (const section of groupedSections) {
-    // Section header (red)
-    page.drawText(`${section.label} (${section.players.length})`, {
+    drawSectionHeader(section.label, section.players.length);
+
+    const numRows = Math.ceil(section.players.length / cardCols);
+    for (let row = 0; row < numRows; row++) {
+      if (y - cardHeight < contentBottom) newPage();
+      for (let col = 0; col < cardCols; col++) {
+        const i = row * cardCols + col;
+        if (i >= section.players.length) break;
+        drawPlayerCard(
+          section.players[i],
+          marginX + col * (cardWidth + cardHGap),
+          y,
+        );
+      }
+      y -= cardHeight;
+      if (row < numRows - 1) y -= cardVGap;
+    }
+
+    y -= sectionGap;
+  }
+
+  // Unavailable players — compact info list at the end of the sheet, no cards.
+  if (unavailablePlayers.length > 0) {
+    const listCols = 4;
+    const listColGap = 10;
+    const listColWidth = (gridWidth - listColGap * (listCols - 1)) / listCols;
+    const listLineHeight = 10;
+    const listFontSize = 7;
+
+    if (y - sectionHeaderHeight - listLineHeight < contentBottom) newPage();
+    page.drawText(`Not Available (${unavailablePlayers.length})`, {
       x: marginX,
       y,
-      size: 11,
+      size: 10,
       font: fontBold,
-      color: saintsRed,
+      color: rgb(0.45, 0.45, 0.45),
     });
     page.drawLine({
       start: { x: marginX, y: y - 4 },
       end: { x: marginX + gridWidth, y: y - 4 },
-      thickness: 1,
-      color: saintsRed,
+      thickness: 0.8,
+      color: rgb(0.65, 0.65, 0.65),
     });
-    y -= sectionHeaderHeight;
+    y -= 11;
+    page.drawText(
+      options?.eventName
+        ? `Not registered / unavailable for ${options.eventName}`
+        : "Not registered / unavailable",
+      {
+        x: marginX,
+        y,
+        size: 7,
+        font,
+        color: rgb(0.55, 0.55, 0.55),
+      },
+    );
+    y -= 12;
 
-    // Grid of cards for this section
-    const numRows = Math.ceil(section.players.length / cardCols);
-    for (let i = 0; i < section.players.length; i++) {
-      const col = i % cardCols;
-      const row = Math.floor(i / cardCols);
-      const cardX = marginX + col * (cardWidth + cardHGap);
-      const cardTop = y - row * (cardHeight + cardVGap);
-      drawPlayerCard(section.players[i], cardX, cardTop);
+    // Fill column-major so names read down each column, then across.
+    const rowsPerCol = Math.ceil(unavailablePlayers.length / listCols);
+    for (let row = 0; row < rowsPerCol; row++) {
+      if (y - listLineHeight < contentBottom) newPage();
+      for (let col = 0; col < listCols; col++) {
+        const player = unavailablePlayers[col * rowsPerCol + row];
+        if (!player) continue;
+        const x = marginX + col * (listColWidth + listColGap);
+        const ag = calculateAgeGroup(player.dateOfBirth);
+        const meta = [player.position, ag].filter(Boolean).join(" · ");
+        // Name takes ~60% of the column so the position/age still shows.
+        const nameText = truncate(
+          player.name ?? "",
+          meta ? listColWidth * 0.6 : listColWidth,
+          fontBold,
+          listFontSize,
+        );
+        page.drawText(nameText, {
+          x,
+          y,
+          size: listFontSize,
+          font: fontBold,
+          color: rgb(0.4, 0.4, 0.4),
+        });
+        if (meta) {
+          const nameWidth = fontBold.widthOfTextAtSize(nameText, listFontSize);
+          const metaX = x + nameWidth + 3;
+          page.drawText(truncate(meta, x + listColWidth - metaX, font, 6), {
+            x: metaX,
+            y,
+            size: 6,
+            font,
+            color: rgb(0.6, 0.6, 0.6),
+          });
+        }
+      }
+      y -= listLineHeight;
     }
-
-    y -= numRows * cardHeight + (numRows - 1) * cardVGap;
-    y -= sectionGap;
   }
 
   const pdfBytes = await pdfDoc.save();
@@ -388,8 +479,11 @@ export async function generateTeamPDF(
 type DownloadButton = {
   players: Player[];
   teamName: string;
-  /** Player ids to grey out (e.g. not available for the filtered event). */
-  dimmedPlayerIds?: string[];
+  /**
+   * Player ids not available for the filtered event. These get no card — they
+   * are listed by name at the end of the sheet for information.
+   */
+  unavailablePlayerIds?: string[];
   /** Name of the event the sheet is filtered by, shown under the header. */
   eventName?: string;
 };
@@ -397,7 +491,7 @@ type DownloadButton = {
 export const DownloadButton: React.FC<DownloadButton> = ({
   players,
   teamName,
-  dimmedPlayerIds,
+  unavailablePlayerIds,
   eventName,
 }) => {
   return (
@@ -406,7 +500,9 @@ export const DownloadButton: React.FC<DownloadButton> = ({
       className="w-full"
       onClick={() =>
         generateTeamPDF(players, teamName, {
-          dimmedIds: dimmedPlayerIds ? new Set(dimmedPlayerIds) : undefined,
+          unavailableIds: unavailablePlayerIds
+            ? new Set(unavailablePlayerIds)
+            : undefined,
           eventName,
         })
       }
