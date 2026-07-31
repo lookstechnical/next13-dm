@@ -54,13 +54,17 @@ export const loader: LoaderFunction = withAuth(
     const playerGroupMembers = players;
 
     const groupPlayerIds = players.map((p: any) => p.id);
-    const now = new Date().toISOString();
+
+    // Events stay listed for the whole of the day they happen on, so anchor the
+    // cutoff to midnight rather than the current time.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
     const { data: rawEvents } = await supabaseClient
       .from("events")
       .select("id, name, date, location, status")
       .eq("team_id", (group as any).teamId)
-      .gte("date", now)
+      .gte("date", todayStart.toISOString())
       .order("date", { ascending: true });
 
     let events: any[] = [];
