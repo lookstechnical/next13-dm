@@ -32,6 +32,9 @@ type AttendanceOverviewProps = {
 type ViewMode = "availability" | "attendance";
 type GroupFilter = "all" | "with" | "without" | string;
 type PositionScope = "primary" | "secondary" | "both";
+// Narrows the list by what a player actually turned up to, relative to the
+// sessions they said they were available for.
+type AttendanceFilter = "all" | "never" | "missed" | "attended";
 type SortKey =
   | "name"
   | "position"
@@ -286,6 +289,8 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   const [positionScope, setPositionScope] = useState<PositionScope>("primary");
   const [ageGroupFilter, setAgeGroupFilter] = useState<string>(ALL_VALUE);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
+  const [attendanceFilter, setAttendanceFilter] =
+    useState<AttendanceFilter>("all");
   const [sortBy, setSortBy] = useState<SortKey>("name");
 
   const getAvailability = (
@@ -339,6 +344,64 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     }
     return map;
   }, [availability]);
+
+  // Only sessions that have already been and gone can tell us anything about
+  // no-shows. A session counts as past once its day is over, so a session
+  // happening today never marks anyone down before the register is taken.
+  const pastEventIds = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const set = new Set<string>();
+    for (const pe of programmeEvents) {
+      const date = pe.events?.date;
+      if (date && new Date(date).getTime() < todayStart.getTime()) {
+        set.add(pe.eventId);
+      }
+    }
+    return set;
+  }, [programmeEvents]);
+
+  // Past sessions each player put themselves down as available for — the
+  // baseline we judge "didn't turn up" against.
+  const pastAvailableEventsByRegistration = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const a of availability) {
+      if (!a.available || !pastEventIds.has(a.eventId)) continue;
+      const list = map.get(a.programmeRegistrationId) ?? [];
+      list.push(a.eventId);
+      map.set(a.programmeRegistrationId, list);
+    }
+    return map;
+  }, [availability, pastEventIds]);
+
+  // Players who said they were available for a past session and were never
+  // marked present for any session at all.
+  const neverAttendedIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [registrationId] of pastAvailableEventsByRegistration) {
+      if ((attendedCountByRegistration.get(registrationId) ?? 0) === 0) {
+        set.add(registrationId);
+      }
+    }
+    return set;
+  }, [pastAvailableEventsByRegistration, attendedCountByRegistration]);
+
+  // Players who missed at least one past session they were available for,
+  // whether or not they showed up to others.
+  const missedSessionIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [
+      registrationId,
+      eventIds,
+    ] of pastAvailableEventsByRegistration) {
+      const missed = eventIds.some(
+        (eventId) =>
+          attendanceByKey.get(`${registrationId}:${eventId}`) !== true,
+      );
+      if (missed) set.add(registrationId);
+    }
+    return set;
+  }, [pastAvailableEventsByRegistration, attendanceByKey]);
 
   const playerIdToGroupIds = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -526,6 +589,13 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           return false;
         }
       }
+      if (attendanceFilter === "never") {
+        if (!neverAttendedIds.has(r.id)) return false;
+      } else if (attendanceFilter === "missed") {
+        if (!missedSessionIds.has(r.id)) return false;
+      } else if (attendanceFilter === "attended") {
+        if ((attendedCountByRegistration.get(r.id) ?? 0) === 0) return false;
+      }
       return true;
     });
 
@@ -570,8 +640,12 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     positionScope,
     ageGroupFilter,
     groupFilter,
+    attendanceFilter,
     sortBy,
     availableCountByRegistration,
+    attendedCountByRegistration,
+    neverAttendedIds,
+    missedSessionIds,
     playerIdToGroupIds,
   ]);
 
@@ -612,6 +686,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     positionScope !== "primary" ||
     ageGroupFilter !== ALL_VALUE ||
     groupFilter !== "all" ||
+    attendanceFilter !== "all" ||
     sortBy !== "name";
 
   // Overall expected (available) vs attended (present) across every event, for
@@ -803,6 +878,34 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
         </div>
 
         <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted">Attendance</label>
+          <Select
+            value={attendanceFilter}
+            onValueChange={(v) => setAttendanceFilter(v as AttendanceFilter)}
+          >
+            <SelectTrigger className="h-9 w-[230px] text-foreground border-input">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="text-foreground">
+              <SelectGroup>
+                <SelectItem value="all" className="text-foreground">
+                  All players
+                </SelectItem>
+                <SelectItem value="never" className="text-foreground">
+                  Never attended ({neverAttendedIds.size})
+                </SelectItem>
+                <SelectItem value="missed" className="text-foreground">
+                  Missed a session ({missedSessionIds.size})
+                </SelectItem>
+                <SelectItem value="attended" className="text-foreground">
+                  Attended at least once
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1">
           <label className="text-xs text-muted">Sort by</label>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
             <SelectTrigger className="h-9 w-[200px] text-foreground border-input">
@@ -847,6 +950,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               setPositionScope("primary");
               setAgeGroupFilter(ALL_VALUE);
               setGroupFilter("all");
+              setAttendanceFilter("all");
               setSortBy("name");
             }}
           >
@@ -858,6 +962,16 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           Showing {visibleRegistrations.length} of {registrations.length}
         </div>
       </div>
+
+      {(attendanceFilter === "never" || attendanceFilter === "missed") && (
+        <p className="text-xs text-muted mb-4">
+          {pastEventIds.size === 0
+            ? "No sessions have taken place yet, so there is nothing to compare availability against."
+            : attendanceFilter === "never"
+            ? "Players who marked themselves available for a session that has already taken place, but have never been marked present."
+            : "Players who marked themselves available for a session that has already taken place, but were not marked present for it."}
+        </p>
+      )}
 
       {positionGroupCounts.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
