@@ -292,3 +292,27 @@ export interface ProgrammeAllowedEmail {
   email: string;
   createdAt: string;
 }
+
+export interface DepthChartSlot {
+  id: string;
+  depthChartColumnId: string;
+  playerId: string;
+  sortOrder: number;
+}
+
+export interface DepthChartColumn {
+  id: string;
+  depthChartId: string;
+  name: string;
+  sortOrder: number;
+  slots?: DepthChartSlot[];
+}
+
+export interface DepthChart {
+  id: string;
+  teamId: string;
+  name: string;
+  sortOrder: number;
+  createdAt: string;
+  columns?: DepthChartColumn[];
+}

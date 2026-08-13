@@ -62,6 +62,11 @@ const MenuItems = ({ close, user }: { close?: boolean; user: User }) => {
           Groups
         </MenuLink>
       </ActionProtection>
+      <ActionProtection allowedRoles={AllowedRoles.coach} user={user}>
+        <MenuLink close={close} to="/dashboard/depth-charts" data-discover="true">
+          Depth Charts
+        </MenuLink>
+      </ActionProtection>
       <MenuLink
         close={close}
         to="/dashboard/drills-library"
