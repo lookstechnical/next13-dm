@@ -11,6 +11,7 @@ import { calculateAgeGroup, formatDate } from "~/utils/helpers";
 import { POSITION_GROUPS } from "~/utils/position-groups";
 import { Check, X, Trash2, Minus } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { Switch } from "~/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -43,6 +44,11 @@ type SortKey =
   | "group";
 
 const ALL_VALUE = "__all__";
+// Players without a club recorded still need to be selectable as a set.
+const NO_CLUB_VALUE = "__no_club__";
+
+const clubOf = (reg: ProgrammeRegistration): string | null =>
+  reg.players?.club?.trim() || null;
 
 // A single clickable attendance cell. Clicking cycles through:
 // not recorded (–) → present (✓) → absent (✗) → not recorded. Each change is
@@ -104,6 +110,94 @@ const AttendanceCell: React.FC<{
   );
 };
 
+// The availability equivalent of AttendanceCell, so staff can correct what a
+// player said they could do. Clicking cycles: not set (–) → available (✓) →
+// unavailable (✗) → not set. Saving a change also adds or removes the player's
+// registration for that event.
+const AvailabilityCell: React.FC<{
+  registrationId: string;
+  playerId: string;
+  eventId: string;
+  available: boolean | undefined;
+  editable: boolean;
+}> = ({ registrationId, playerId, eventId, available, editable }) => {
+  const fetcher = useFetcher();
+
+  const pending = fetcher.formData?.get("available") as string | undefined;
+  const current: boolean | undefined =
+    pending === "available"
+      ? true
+      : pending === "unavailable"
+      ? false
+      : pending === "unset"
+      ? undefined
+      : available;
+
+  const next =
+    current === undefined
+      ? "available"
+      : current === true
+      ? "unavailable"
+      : "unset";
+
+  // Read-only unless editing is explicitly switched on, so a stray click can't
+  // overwrite what the player told us.
+  if (!editable) {
+    return (
+      <td className="text-center py-3 px-2">
+        {current === true && (
+          <Check className="w-4 h-4 text-green-500 mx-auto" />
+        )}
+        {current === false && <X className="w-4 h-4 text-red-500 mx-auto" />}
+        {current === undefined && <span className="text-muted">-</span>}
+      </td>
+    );
+  }
+
+  const label =
+    current === true
+      ? "Available — click to mark unavailable"
+      : current === false
+      ? "Unavailable — click to clear"
+      : "Not set — click to mark available";
+
+  return (
+    <td className="text-center py-2 px-2">
+      <button
+        type="button"
+        title={label}
+        aria-label={label}
+        disabled={!playerId}
+        onClick={() =>
+          fetcher.submit(
+            {
+              intent: "setAvailability",
+              registrationId,
+              playerId,
+              eventId,
+              available: next,
+            },
+            { method: "post" },
+          )
+        }
+        className={[
+          "w-8 h-8 rounded-md border inline-flex items-center justify-center mx-auto transition-colors",
+          current === true
+            ? "border-green-500/40 bg-green-500/10 hover:bg-green-500/20"
+            : current === false
+            ? "border-red-500/40 bg-red-500/10 hover:bg-red-500/20"
+            : "border-border hover:bg-card/60",
+          !playerId ? "opacity-50 cursor-not-allowed" : "",
+        ].join(" ")}
+      >
+        {current === true && <Check className="w-4 h-4 text-green-500" />}
+        {current === false && <X className="w-4 h-4 text-red-500" />}
+        {current === undefined && <Minus className="w-4 h-4 text-muted" />}
+      </button>
+    </td>
+  );
+};
+
 const PlayerRow: React.FC<{
   reg: ProgrammeRegistration;
   programmeEvents: ProgrammeEvent[];
@@ -118,6 +212,7 @@ const PlayerRow: React.FC<{
   ) => boolean | undefined;
   playerGroups?: PlayerGroup[];
   total: number;
+  editAvailability: boolean;
 }> = ({
   reg,
   programmeEvents,
@@ -126,6 +221,7 @@ const PlayerRow: React.FC<{
   getAttendance,
   playerGroups,
   total,
+  editAvailability,
 }) => {
   const fetcher = useFetcher();
   const ageGroup = reg.players?.dateOfBirth
@@ -192,6 +288,9 @@ const PlayerRow: React.FC<{
           {reg.players?.secondaryPosition || "-"}
         </span>
       </td>
+      <td className="py-3 px-2">
+        <span className="text-xs text-muted">{clubOf(reg) || "-"}</span>
+      </td>
       {playerGroups && playerGroups.length > 0 && (
         <td className="py-3 px-2">
           <Select value={currentGroupId} onValueChange={handleGroupAssign}>
@@ -235,17 +334,15 @@ const PlayerRow: React.FC<{
             />
           );
         }
-        const isAvailable = getAvailability(reg.id, pe.eventId);
         return (
-          <td key={pe.id} className="text-center py-3 px-2">
-            {isAvailable === true && (
-              <Check className="w-4 h-4 text-green-500 mx-auto" />
-            )}
-            {isAvailable === false && (
-              <X className="w-4 h-4 text-red-500 mx-auto" />
-            )}
-            {isAvailable === undefined && <span className="text-muted">-</span>}
-          </td>
+          <AvailabilityCell
+            key={pe.id}
+            registrationId={reg.id}
+            playerId={playerId}
+            eventId={pe.eventId}
+            available={getAvailability(reg.id, pe.eventId)}
+            editable={editAvailability}
+          />
         );
       })}
       <td className="text-center py-3 px-2">
@@ -285,9 +382,13 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   playerGroups,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("availability");
+  // Availability is the player's own answer, so editing is off by default and
+  // has to be switched on deliberately.
+  const [editAvailability, setEditAvailability] = useState(false);
   const [positionFilter, setPositionFilter] = useState<string>(ALL_VALUE);
   const [positionScope, setPositionScope] = useState<PositionScope>("primary");
   const [ageGroupFilter, setAgeGroupFilter] = useState<string>(ALL_VALUE);
+  const [clubFilter, setClubFilter] = useState<string>(ALL_VALUE);
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [attendanceFilter, setAttendanceFilter] =
     useState<AttendanceFilter>("all");
@@ -453,6 +554,29 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
       });
   }, [registrations]);
 
+  // Clubs present in this programme, alphabetical, with "No club" last so the
+  // unrecorded players are still reachable.
+  const clubOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    let noClub = 0;
+    for (const r of registrations) {
+      const club = clubOf(r);
+      if (club) counts.set(club, (counts.get(club) ?? 0) + 1);
+      else noClub += 1;
+    }
+    const options = Array.from(counts.entries())
+      .map(([label, count]) => ({ value: label, label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (noClub > 0) {
+      options.push({
+        value: NO_CLUB_VALUE,
+        label: "No club recorded",
+        count: noClub,
+      });
+    }
+    return options;
+  }, [registrations]);
+
   const positionOptions = useMemo(() => {
     const present = new Set<string>();
     for (const r of registrations) {
@@ -578,6 +702,14 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           : "Unknown";
         if (ag !== ageGroupFilter) return false;
       }
+      if (clubFilter !== ALL_VALUE) {
+        const club = clubOf(r);
+        if (clubFilter === NO_CLUB_VALUE) {
+          if (club) return false;
+        } else if (club !== clubFilter) {
+          return false;
+        }
+      }
       if (groupFilter !== "all") {
         const assignedIds = playerIdToGroupIds.get(r.players?.id ?? "") ?? [];
         const hasGroup = assignedIds.length > 0;
@@ -639,6 +771,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     positionFilter,
     positionScope,
     ageGroupFilter,
+    clubFilter,
     groupFilter,
     attendanceFilter,
     sortBy,
@@ -685,6 +818,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     positionFilter !== ALL_VALUE ||
     positionScope !== "primary" ||
     ageGroupFilter !== ALL_VALUE ||
+    clubFilter !== ALL_VALUE ||
     groupFilter !== "all" ||
     attendanceFilter !== "all" ||
     sortBy !== "name";
@@ -730,7 +864,11 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setViewMode(opt.value)}
+                onClick={() => {
+                  setViewMode(opt.value);
+                  // Never leave editing armed when coming back to this view.
+                  setEditAvailability(false);
+                }}
                 className={[
                   "px-4 text-sm",
                   i > 0 ? "border-l border-input" : "",
@@ -745,10 +883,27 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             );
           })}
         </div>
-        {viewMode === "attendance" && (
+        {viewMode === "attendance" ? (
           <p className="text-xs text-muted">
             Click a cell to cycle: not recorded → present → absent
           </p>
+        ) : (
+          <div className="flex items-center gap-3">
+            {editAvailability && (
+              <p className="text-xs text-yellow-500">
+                Editing on — clicking a cell overwrites what the player set.
+                Cycles: not set → available → unavailable
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">
+              <Switch
+                checked={editAvailability}
+                onCheckedChange={setEditAvailability}
+                aria-label="Edit availability"
+              />
+              Edit availability
+            </label>
+          </div>
         )}
       </div>
 
@@ -837,6 +992,33 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             </SelectContent>
           </Select>
         </div>
+
+        {clubOptions.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted">Club</label>
+            <Select value={clubFilter} onValueChange={setClubFilter}>
+              <SelectTrigger className="h-9 w-[200px] text-foreground border-input">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="text-foreground max-h-72">
+                <SelectGroup>
+                  <SelectItem value={ALL_VALUE} className="text-foreground">
+                    All clubs
+                  </SelectItem>
+                  {clubOptions.map((c) => (
+                    <SelectItem
+                      key={c.value}
+                      value={c.value}
+                      className="text-foreground"
+                    >
+                      {c.label} ({c.count})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted">Group</label>
@@ -949,6 +1131,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               setPositionFilter(ALL_VALUE);
               setPositionScope("primary");
               setAgeGroupFilter(ALL_VALUE);
+              setClubFilter(ALL_VALUE);
               setGroupFilter("all");
               setAttendanceFilter("all");
               setSortBy("name");
@@ -1116,6 +1299,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               <th className="text-left py-3 px-2 text-muted font-medium">
                 Secondary
               </th>
+              <th className="text-left py-3 px-2 text-muted font-medium">
+                Club
+              </th>
               {hasGroupColumn && (
                 <th className="text-left py-3 px-2 text-muted font-medium min-w-[160px]">
                   Assign to Group
@@ -1145,7 +1331,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               <tr>
                 <td
                   colSpan={
-                    4 + (hasGroupColumn ? 1 : 0) + programmeEvents.length + 2
+                    5 + (hasGroupColumn ? 1 : 0) + programmeEvents.length + 2
                   }
                   className="text-center py-6 text-muted"
                 >
@@ -1167,6 +1353,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                       ? attendedCountByRegistration.get(reg.id) ?? 0
                       : availableCountByRegistration.get(reg.id) ?? 0
                   }
+                  editAvailability={editAvailability}
                 />
               ))
             )}
@@ -1176,6 +1363,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   ? "Attended"
                   : "Expected Attendance"}
               </td>
+              <td />
               <td />
               <td />
               <td />

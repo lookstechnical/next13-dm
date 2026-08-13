@@ -161,6 +161,22 @@ export const action: ActionFunction = withAuthAction(
       return { ok: true };
     }
 
+    if (intent === "setAvailability") {
+      const registrationId = formData.get("registrationId") as string;
+      const playerId = formData.get("playerId") as string;
+      const eventId = formData.get("eventId") as string;
+      const value = formData.get("available") as string; // available | unavailable | unset
+      const available =
+        value === "available" ? true : value === "unavailable" ? false : null;
+      await programmeService.setEventAvailability({
+        registrationId,
+        playerId,
+        eventId,
+        available,
+      });
+      return { ok: true };
+    }
+
     if (intent === "assignToGroup") {
       const groupId = formData.get("groupId") as string;
       const playerId = formData.get("playerId") as string;

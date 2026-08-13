@@ -353,6 +353,71 @@ export class ProgrammeService {
     if (error) throw error;
   }
 
+  // Set (or clear) one registration's availability for one event, so staff can
+  // correct what a player told them. event_registrations is kept in step, the
+  // same way updateProgrammeAvailability does it for the self-service flow:
+  // available means registered for that event, anything else means not.
+  // available === null clears the record back to "not set".
+  async setEventAvailability(data: {
+    registrationId: string;
+    playerId: string;
+    eventId: string;
+    available: boolean | null;
+  }): Promise<void> {
+    if (data.available === null) {
+      const { error } = await this.client
+        .from("programme_event_availability")
+        .delete()
+        .eq("programme_registration_id", data.registrationId)
+        .eq("event_id", data.eventId);
+
+      if (error) throw error;
+    } else {
+      const { error } = await this.client
+        .from("programme_event_availability")
+        .upsert(
+          {
+            programme_registration_id: data.registrationId,
+            event_id: data.eventId,
+            available: data.available,
+          },
+          { onConflict: "programme_registration_id,event_id" }
+        );
+
+      if (error) throw error;
+    }
+
+    if (data.available === true) {
+      const { data: existing, error: existingError } = await this.client
+        .from("event_registrations")
+        .select("event_id")
+        .eq("player_id", data.playerId)
+        .eq("event_id", data.eventId);
+
+      if (existingError) throw existingError;
+
+      if (!existing || existing.length === 0) {
+        const { error: insertError } = await this.client
+          .from("event_registrations")
+          .insert({
+            event_id: data.eventId,
+            player_id: data.playerId,
+            status: "confirmed",
+          });
+
+        if (insertError) throw insertError;
+      }
+    } else {
+      const { error: removeError } = await this.client
+        .from("event_registrations")
+        .delete()
+        .eq("player_id", data.playerId)
+        .eq("event_id", data.eventId);
+
+      if (removeError) throw removeError;
+    }
+  }
+
   async removeRegistration(registrationId: string): Promise<boolean> {
     const { data: registration, error: regError } = await this.client
       .from("programme_registrations")

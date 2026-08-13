@@ -3,7 +3,10 @@ import { DownloadIcon } from "lucide-react";
 import { Player } from "~/types";
 import React from "react";
 import { Button } from "../ui/button";
-import { calculateAgeGroup } from "~/utils/helpers";
+import {
+  calculateAgeGroup,
+  calculateRelativeAgeQuartile,
+} from "~/utils/helpers";
 import { POSITION_GROUPS } from "~/utils/position-groups";
 
 async function fetchPlayerImage(
@@ -207,6 +210,19 @@ export async function generateTeamPDF(
     y -= 6;
   }
 
+  // Legend for the quartile badge, so the sheet is readable without context.
+  page.drawText(
+    "Age quartile (Sept-Aug year): Q1 Sep-Nov (oldest) · Q2 Dec-Feb · Q3 Mar-May · Q4 Jun-Aug (youngest)",
+    {
+      x: marginX,
+      y,
+      size: 6,
+      font,
+      color: rgb(0.55, 0.55, 0.55),
+    },
+  );
+  y -= 12;
+
   // Card grid layout — 4 cards per row per position group section
   const cardCols = 4;
   const cardHGap = 6;
@@ -363,28 +379,65 @@ export async function generateTeamPDF(
       });
     }
 
+    // Badges along the bottom-right, laid out right-to-left: age group first,
+    // then the relative age quartile beside it.
+    const badgeFontSize = 6;
+    const badgeHeight = 8.5;
+    const badgeY = cardBottom + 3.5;
+    const badgeTextY = cardBottom + 6;
+    let badgeRight = cardX + cardWidth - 4;
+
     // Age group badge (colored pill, white text)
     const ag = calculateAgeGroup(player.dateOfBirth);
     if (ag) {
-      const badgeFontSize = 6;
       const badgeTextWidth = fontBold.widthOfTextAtSize(ag, badgeFontSize);
       const badgeWidth = badgeTextWidth + 6;
-      const badgeHeight = 8.5;
       const badgeColor = ag === "U14" ? rgb(0.13, 0.4, 0.8) : saintsRed;
-      const badgeX = cardX + cardWidth - 4 - badgeWidth;
+      const badgeX = badgeRight - badgeWidth;
       page.drawRectangle({
         x: badgeX,
-        y: cardBottom + 3.5,
+        y: badgeY,
         width: badgeWidth,
         height: badgeHeight,
         color: badgeColor,
       });
       page.drawText(ag, {
         x: badgeX + 3,
-        y: cardBottom + 6,
+        y: badgeTextY,
         size: badgeFontSize,
         font: fontBold,
         color: white,
+      });
+      badgeRight = badgeX - 3;
+    }
+
+    // Relative age quartile — outlined rather than filled so it reads as
+    // secondary to the age group and stays legible in mono print.
+    const quartile = player.dateOfBirth
+      ? calculateRelativeAgeQuartile(player.dateOfBirth)
+      : null;
+    if (quartile && quartile.label !== "Q?") {
+      const qTextWidth = fontBold.widthOfTextAtSize(
+        quartile.label,
+        badgeFontSize,
+      );
+      const qWidth = qTextWidth + 6;
+      const qX = badgeRight - qWidth;
+      page.drawRectangle({
+        x: qX,
+        y: badgeY,
+        width: qWidth,
+        height: badgeHeight,
+        color: rgb(0.93, 0.93, 0.93),
+        borderColor: rgb(0.6, 0.6, 0.6),
+        borderWidth: 0.5,
+      });
+      page.drawText(quartile.label, {
+        x: qX + 3,
+        y: badgeTextY,
+        size: badgeFontSize,
+        font: fontBold,
+        color: rgb(0.25, 0.25, 0.25),
       });
     }
   };
@@ -459,7 +512,11 @@ export async function generateTeamPDF(
         if (!player) continue;
         const x = marginX + col * (listColWidth + listColGap);
         const ag = calculateAgeGroup(player.dateOfBirth);
-        const meta = [player.position, ag].filter(Boolean).join(" · ");
+        const q = player.dateOfBirth
+          ? calculateRelativeAgeQuartile(player.dateOfBirth)
+          : null;
+        const qLabel = q && q.label !== "Q?" ? q.label : null;
+        const meta = [player.position, ag, qLabel].filter(Boolean).join(" · ");
         // Name takes ~60% of the column so the position/age still shows.
         const nameText = fitName(
           player.name ?? "",
