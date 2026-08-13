@@ -44,7 +44,10 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { DepthChart, Player, PlayerGroup } from "~/types";
-import { calculateAgeGroup } from "~/utils/helpers";
+import {
+  calculateAgeGroup,
+  calculateRelativeAgeQuartile,
+} from "~/utils/helpers";
 
 export type BoardState = Record<string, string[]>;
 
@@ -82,6 +85,30 @@ export const boardFromChart = (chart: DepthChart): BoardState => {
   return board;
 };
 
+// Age group and relative age quartile sit under the name so the spread of a
+// column is readable at a glance — a column stacked with Q1s reads very
+// differently from one stacked with Q4s.
+//
+// The profile position is only worth showing in the squad list, where it helps
+// you decide where to drop someone. Once a player is in a column, the column
+// is their position for this chart's purposes.
+const playerMeta = (
+  player: Player | undefined,
+  includePosition = false,
+): string => {
+  if (!player) return "";
+  const quartile = player.dateOfBirth
+    ? calculateRelativeAgeQuartile(player.dateOfBirth)
+    : null;
+  return [
+    includePosition ? player.position : null,
+    player.dateOfBirth ? calculateAgeGroup(player.dateOfBirth) : null,
+    quartile && quartile.label !== "Q?" ? quartile.label : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+};
+
 // Cards are dense, so this is a tighter avatar than the shared one (which
 // carries its own margin sized for the player grid).
 const MiniAvatar: React.FC<{ photoUrl?: string; name?: string }> = ({
@@ -106,7 +133,7 @@ const PlayerCardBody: React.FC<{
   onRemove?: () => void;
   dragHandleProps?: Record<string, any>;
 }> = ({ player, rank, onRemove, dragHandleProps }) => (
-  <div className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+  <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5">
     <button
       type="button"
       className="cursor-grab active:cursor-grabbing text-muted hover:text-foreground shrink-0"
@@ -116,17 +143,17 @@ const PlayerCardBody: React.FC<{
       <GripVertical className="w-4 h-4" />
     </button>
     {rank !== undefined && (
-      <span className="text-xs font-semibold text-muted w-4 shrink-0">
-        {rank}
-      </span>
+      <span className="text-xs font-semibold text-muted shrink-0">{rank}</span>
     )}
     <MiniAvatar photoUrl={player?.photoUrl} name={player?.name} />
+    {/* Age line sits under the name, indented past the avatar. Dropping the
+        profile position keeps it short enough to fit the narrow column. */}
     <div className="min-w-0 flex-1">
       <p className="text-xs text-white truncate">
         {player?.name ?? "Unknown player"}
       </p>
-      {player?.position && (
-        <p className="text-[10px] text-muted truncate">{player.position}</p>
+      {playerMeta(player) && (
+        <p className="text-[10px] text-muted truncate">{playerMeta(player)}</p>
       )}
     </div>
     {onRemove && (
@@ -195,7 +222,7 @@ const PoolCard: React.FC<{ player: Player; placedCount: number }> = ({
       }}
       {...attributes}
     >
-      <div className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+      <div className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5">
         <button
           type="button"
           className="cursor-grab active:cursor-grabbing text-muted hover:text-foreground shrink-0"
@@ -208,7 +235,7 @@ const PoolCard: React.FC<{ player: Player; placedCount: number }> = ({
         <div className="min-w-0 flex-1">
           <p className="text-xs text-white truncate">{player.name}</p>
           <p className="text-[10px] text-muted truncate">
-            {player.position || "No position"}
+            {playerMeta(player, true) || "No position"}
           </p>
         </div>
         {placedCount > 0 && (
@@ -578,6 +605,9 @@ export const DepthChartBoard: React.FC<DepthChartBoardProps> = ({
             Use the × on a card to remove a player while the list is hidden.
           </span>
         )}
+        <span className="text-[11px] text-muted ml-3">
+          Age quartile: Q1 Sep–Nov (oldest) → Q4 Jun–Aug (youngest)
+        </span>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
@@ -600,15 +630,16 @@ export const DepthChartBoard: React.FC<DepthChartBoardProps> = ({
           />
         </div>
 
-        {/* Columns */}
-        <div className="flex-1 min-w-0 overflow-x-auto">
-          <div className="flex gap-3 items-start pb-2">
+        {/* Columns wrap onto as many rows as needed rather than scrolling
+            sideways, so the whole chart is visible at once. */}
+        <div className="flex-1 min-w-0">
+          <div className="grid gap-3 items-start pb-2 [grid-template-columns:repeat(auto-fill,minmax(13rem,1fr))]">
             {columns.map((column, index) => {
               const playerIds = board[column.id] ?? [];
               return (
                 <div
                   key={column.id}
-                  className="w-56 shrink-0 rounded-lg border border-border bg-card/40 p-2"
+                  className="rounded-lg border border-border bg-card/40 p-2"
                 >
                   <ColumnHeader
                     name={column.name}
@@ -666,7 +697,7 @@ export const DepthChartBoard: React.FC<DepthChartBoardProps> = ({
               );
             })}
 
-            <div className="w-56 shrink-0 rounded-lg border border-dashed border-border p-3">
+            <div className="rounded-lg border border-dashed border-border p-3">
               <p className="text-xs text-muted mb-2">Add a column</p>
               <div className="flex gap-1">
                 <Input
