@@ -1,5 +1,6 @@
 import { ActionFunction, LoaderFunction, redirect } from "@remix-run/node";
 import { Form, useActionData, useLoaderData } from "@remix-run/react";
+import InviteMessage from "~/components/invite-message";
 import { Resend } from "resend";
 import z from "zod";
 import { PlayerForm } from "~/components/forms/player";
@@ -15,11 +16,13 @@ export const loader: LoaderFunction = async ({ request }) => {
   const clubService = new ClubService(supabaseClient);
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
-  if (!token) return redirect("/");
+  // An unknown or missing token used to redirect to "/", which drops the
+  // parent on the dashboard/login and reads as a broken link. Explain instead.
+  if (!token) return { invalid: true };
   const inviteService = new InvitationService(supabaseClient);
 
   const invite = await inviteService.getInvitationByToken(token);
-  if (!invite) return redirect("/");
+  if (!invite) return { invalid: true };
 
   const playerService = new PlayerService(supabaseClient);
 
@@ -95,8 +98,17 @@ export function ErrorBoundary() {
 }
 
 const PlayerInvite = () => {
-  const { clubs, player, invite } = useLoaderData<typeof loader>();
+  const { clubs, player, invite, invalid } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+
+  if (invalid) {
+    return (
+      <InviteMessage>
+        This invitation link is no longer valid. If it came from a test email
+        the buttons are inactive; otherwise please ask your coach to resend it.
+      </InviteMessage>
+    );
+  }
 
   if (actionData?.status === "complete") {
     return (

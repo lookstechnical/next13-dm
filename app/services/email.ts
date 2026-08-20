@@ -1,6 +1,47 @@
 import { Invitation, Player } from "~/types";
 import { formatDate } from "~/utils/helpers";
 
+// Inline styles for the rich-text body/footer produced by the editor. Email
+// clients strip <style> blocks and default text to dark colours, so every
+// paragraph and heading needs its colour applied inline or it renders black on
+// our dark background. Also substitutes the {{variables}} the editor offers.
+export const styleRichTextBase = (
+  html: string,
+  variables: Record<string, string | undefined> = {},
+) => {
+  let out = html || "";
+  for (const [key, value] of Object.entries(variables)) {
+    out = out.replaceAll(`{{${key}}}`, value ?? "");
+  }
+  return out
+    .replaceAll(
+      "<p>",
+      '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
+    )
+    .replaceAll(
+      "<h1>",
+      '<h1 style="color: #ffffff; font-weight: bold; font-size: 24px; text-align: left; margin: 24px 0 12px;">',
+    )
+    .replaceAll(
+      "<h2>",
+      '<h2 style="color: #ffffff; font-weight: bold; font-size: 20px; text-align: left; margin: 20px 0 10px;">',
+    )
+    .replaceAll(
+      "<h3>",
+      '<h3 style="color: #ffffff; font-weight: bold; font-size: 17px; text-align: left; margin: 16px 0 8px;">',
+    )
+    .replaceAll(
+      "<h4>",
+      '<h4 style="color: #ffffff; font-weight: bold; font-size: 15px; text-align: left; margin: 16px 0 8px;">',
+    )
+    .replaceAll(
+      "<strong>",
+      '<strong style="color: #ffffff; font-weight: bold;">',
+    )
+    .replaceAll("<b>", '<b style="color: #ffffff; font-weight: bold;">')
+    .replaceAll("<li>", '<li style="color: #c2c7d0; font-size: 16px;">');
+};
+
 export const emailTemplate = (
   message: string,
   footer: string,
@@ -21,12 +62,7 @@ export const emailTemplate = (
         <img src="https://be-coachable.com/logo.png" alt="beCoachble" style="width:60px;" />
       </div>
 
-        ${message
-          .replaceAll("{{name}}", player?.name)
-          .replaceAll(
-            "<p>",
-            '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
-          )}
+        ${styleRichTextBase(message, { name: player?.name, email: player?.email })}
 
       <div style="text-align: center; margin: 30px 0; display:flex; flex-direction: row; gap: 10px; justify-content: center">
         ${
@@ -47,12 +83,7 @@ export const emailTemplate = (
 
       ${
         footer
-          ? footer
-              .replaceAll("{{name}}", player?.name)
-              .replaceAll(
-                "<p>",
-                '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
-              )
+          ? styleRichTextBase(footer, { name: player?.name, email: player?.email })
           : ""
       }
 
@@ -83,41 +114,8 @@ export const programmeEmailTemplate = (
   const ctaLabel = options?.ctaLabel || "Update your Availability";
   const withdrawLabel = options?.withdrawLabel || "Withdraw from programme";
 
-  // Inline styles for the rich-text body/footer. Email clients strip <style>
-  // blocks and default headings to dark text, so paragraphs and headings need
-  // their colours applied inline. Headings render white and bold.
   const styleRichText = (html: string) =>
-    html
-      .replaceAll("{{name}}", name)
-      .replaceAll("{{team}}", team)
-      .replaceAll(
-        "<p>",
-        '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
-      )
-      .replaceAll(
-        "<h1>",
-        '<h1 style="color: #ffffff; font-weight: bold; font-size: 24px; text-align: left; margin: 24px 0 12px;">',
-      )
-      .replaceAll(
-        "<h2>",
-        '<h2 style="color: #ffffff; font-weight: bold; font-size: 20px; text-align: left; margin: 20px 0 10px;">',
-      )
-      .replaceAll(
-        "<h3>",
-        '<h3 style="color: #ffffff; font-weight: bold; font-size: 17px; text-align: left; margin: 16px 0 8px;">',
-      )
-      .replaceAll(
-        "<h4>",
-        '<h4 style="color: #ffffff; font-weight: bold; font-size: 15px; text-align: left; margin: 16px 0 8px;">',
-      )
-      .replaceAll(
-        "<strong>",
-        '<strong style="color: #ffffff; font-weight: bold; font-size: 15px; text-align: left; margin: 16px 0 8px;">',
-      )
-      .replaceAll(
-        "<b>",
-        '<b style="color: #ffffff; font-weight: bold; font-size: 15px; text-align: left; margin: 16px 0 8px;">',
-      );
+    styleRichTextBase(html, { name, team });
 
   const availabilitySection =
     options?.availability && options.availability.length > 0

@@ -1,6 +1,7 @@
 import { ActionFunction, LoaderFunction, redirect } from "@remix-run/node";
 import { Form, useActionData, useLoaderData } from "@remix-run/react";
 import { useState } from "react";
+import InviteMessage from "~/components/invite-message";
 import { Resend } from "resend";
 import z from "zod";
 import { Field } from "~/components/forms/field";
@@ -20,13 +21,11 @@ export const loader: LoaderFunction = async ({ request }) => {
   const clubService = new ClubService(supabaseClient);
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
-  if (!token) return redirect("/");
+  if (!token) return { invalid: true };
   const inviteService = new InvitationService(supabaseClient);
 
   const invite = await inviteService.getInvitationByToken(token);
-  if (!invite) return redirect("/");
-
-  await inviteService.rejectInvitation(invite);
+  if (!invite) return { invalid: true };
 
   return { invite };
 };
@@ -83,9 +82,18 @@ export function ErrorBoundary() {
 }
 
 const PlayerInvite = () => {
-  const { clubs, player, invite } = useLoaderData<typeof loader>();
+  const { invite, invalid } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const [showOtherField, setShowOtherField] = useState<boolean>(false);
+
+  if (invalid) {
+    return (
+      <InviteMessage>
+        This invitation link is no longer valid. If it came from a test email
+        the buttons are inactive; otherwise please ask your coach to resend it.
+      </InviteMessage>
+    );
+  }
 
   if (actionData?.status === "complete") {
     return (
