@@ -87,6 +87,7 @@ export const ProgrammeForm: React.FC<ProgrammeFormProps> = ({
           </p>
           <div className="flex flex-row w-full gap-5">
             <DateField
+              range="past"
               name="eligibleDobFrom"
               label="Born From"
               defaultValue={
@@ -96,6 +97,7 @@ export const ProgrammeForm: React.FC<ProgrammeFormProps> = ({
               }
             />
             <DateField
+              range="past"
               name="eligibleDobTo"
               label="Born To"
               defaultValue={

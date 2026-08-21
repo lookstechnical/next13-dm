@@ -39,6 +39,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
             />
           </Field>
           <DateField
+            range="past"
             name="dateOfBirth"
             label="Date of Birth"
             defaultValue={

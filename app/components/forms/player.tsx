@@ -65,6 +65,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({
             </Field>
             <DateField
               errors={errors}
+              range="past"
               name="dateOfBirth"
               label="Date of Birth"
               defaultValue={

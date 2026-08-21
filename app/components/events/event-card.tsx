@@ -6,11 +6,28 @@ import { Badge } from "../ui/badge";
 import { Calendar, Locate, MapPin } from "lucide-react";
 
 type EventCard = {
-  event: Event;
+  /**
+   * May be absent — the dashboard renders this for "next event" and a team with
+   * nothing scheduled has none.
+   */
+  event?: Event | null;
   to?: (playerId: string) => string;
+  emptyMessage?: string;
 };
 
-export const EventCard: React.FC<EventCard> = ({ to, event }) => {
+export const EventCard: React.FC<EventCard> = ({
+  to,
+  event,
+  emptyMessage = "No upcoming events",
+}) => {
+  if (!event) {
+    return (
+      <Card className="border-border">
+        <div className="p-6 text-sm text-muted">{emptyMessage}</div>
+      </Card>
+    );
+  }
+
   const link = to ? to(event.id) : undefined;
 
   const renderContent = () => {
@@ -18,7 +35,7 @@ export const EventCard: React.FC<EventCard> = ({ to, event }) => {
       <div className="p-6">
         <div className="flex">
           <div className="flex-grow">
-            <h3 className="text-lg font-semibold text-white">{event?.name}</h3>
+            <h3 className="text-lg font-semibold text-white">{event.name}</h3>
             <p className="text-sm flex flex-row gap-2 items-center">
               <Calendar className="w-4" />
               {formatDate(event.date)}

@@ -32,7 +32,11 @@ import { cn } from "~/lib/utils";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { formatDate } from "~/utils/helpers";
+import {
+  calculateAgeGroup,
+  calculateRelativeAgeQuartile,
+  formatDate,
+} from "~/utils/helpers";
 import { POSITION_GROUPS } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -120,26 +124,98 @@ export const action: ActionFunction = withAuthAction(
   },
 );
 
+// A player with no date of birth can't be placed in an age group or a birth
+// quartile. calculateRelativeAgeQuartile reports those as label "Q?" (its
+// numeric `quartile` defaults to 1, which would silently bucket them with the
+// oldest players), so both filters key off the label and group them here.
+const UNKNOWN = "Unknown";
+
+const ageGroupOf = (player: any) => {
+  const group = player?.dateOfBirth ? calculateAgeGroup(player.dateOfBirth) : "";
+  return !group || group === "Unknown" ? UNKNOWN : group;
+};
+
+const quartileOf = (player: any) => {
+  if (!player?.dateOfBirth) return UNKNOWN;
+  const { label } = calculateRelativeAgeQuartile(player.dateOfBirth);
+  return !label || label === "Q?" ? UNKNOWN : label;
+};
+
+/**
+ * Options for a filter, drawn from the members actually present so a group only
+ * ever offers values it contains. Counts are shown so it's obvious what a
+ * choice will narrow to before making it.
+ */
+const filterOptions = (
+  members: any[],
+  valueOf: (player: any) => string,
+  rank: (value: string) => number,
+) => {
+  const counts = new Map<string, number>();
+  for (const member of members) {
+    const value = valueOf(member);
+    counts.set(value, (counts.get(value) || 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+    .map(([value, count]) => ({ id: value, name: `${value} (${count})` }));
+};
+
+// U12…U18 in order, then Senior, with Unknown last.
+const ageGroupRank = (value: string) => {
+  if (value === UNKNOWN) return 999;
+  if (value === "Senior") return 99;
+  const match = value.match(/^U(\d{1,2})$/);
+  return match ? Number(match[1]) : 500;
+};
+
+// Q1…Q4 in order, Unknown last.
+const quartileRank = (value: string) =>
+  value === UNKNOWN ? 999 : Number(value.replace("Q", "")) || 500;
+
 export default function PlayerPage() {
   const { group, events } = useLoaderData<typeof loader>();
 
-  // Client-side filter: narrow the players list to those registered for a
-  // chosen upcoming event. The loader already resolves each event's
-  // `availablePlayers`, so no reload is needed.
+  // Client-side filters: everything needed is already loaded, so narrowing the
+  // list never costs a reload.
   const [eventFilter, setEventFilter] = useState<string>("");
+  const [ageGroupFilter, setAgeGroupFilter] = useState<string>("");
+  const [quartileFilter, setQuartileFilter] = useState<string>("");
+
+  const allMembers = group.playerGroupMembers;
+
+  const ageGroupChoices = filterOptions(allMembers, ageGroupOf, ageGroupRank);
+  const quartileChoices = filterOptions(allMembers, quartileOf, quartileRank);
+
+  // Age group and quartile narrow *which squad* we're looking at; the event
+  // filter then marks who within it is available. Keeping them in that order
+  // lets the teamsheet below stay consistent with what's on screen.
+  const scopedMembers = allMembers.filter(
+    (p: any) =>
+      (!ageGroupFilter || ageGroupOf(p) === ageGroupFilter) &&
+      (!quartileFilter || quartileOf(p) === quartileFilter),
+  );
 
   const selectedEvent = events?.find((e: any) => e.id === eventFilter);
   const availableIds = selectedEvent
     ? new Set(selectedEvent.availablePlayers.map((p: any) => p.id))
     : null;
   const visibleMembers = availableIds
-    ? group.playerGroupMembers.filter((p: any) => availableIds.has(p.id))
-    : group.playerGroupMembers;
+    ? scopedMembers.filter((p: any) => availableIds.has(p.id))
+    : scopedMembers;
+
+  const filtered = visibleMembers.length !== allMembers.length;
+  const clearFilters = () => {
+    setEventFilter("");
+    setAgeGroupFilter("");
+    setQuartileFilter("");
+  };
 
   // When an event is selected, the PDF cards only the available members and
   // lists the rest by name at the end of the sheet for information.
   const unavailablePlayerIds = availableIds
-    ? group.playerGroupMembers
+    ? scopedMembers
         .filter((p: any) => !availableIds.has(p.id))
         .map((p: any) => p.id)
     : undefined;
@@ -175,7 +251,7 @@ export default function PlayerPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">
                   <DownloadButton
-                    players={group.playerGroupMembers}
+                    players={scopedMembers}
                     teamName={group.name}
                     unavailablePlayerIds={unavailablePlayerIds}
                     eventName={selectedEvent?.name}
@@ -285,31 +361,88 @@ export default function PlayerPage() {
             <TabsContent value="players">
               <ListingHeader
                 title={`${group.name} Players`}
-                renderFilters={() =>
-                  events && events.length > 0 ? (
-                    <div className="flex flex-row items-center justify-center gap-4 min-w-[220px]">
-                      <SelectField
-                        name="event"
-                        label=""
-                        placeholder="Filter by event"
-                        defaultValue={eventFilter}
-                        onValueChange={(val) => setEventFilter(val ?? "")}
-                        options={events.map((e: any) => ({
-                          id: e.id,
-                          name: `${e.name} (${formatDate(e.date)})`,
-                        }))}
-                      />
-                    </div>
-                  ) : null
-                }
+                renderFilters={() => (
+                  <div className="flex flex-row flex-wrap items-center gap-3">
+                    {events && events.length > 0 && (
+                      <div className="min-w-[200px]">
+                        <SelectField
+                          name="event"
+                          label=""
+                          placeholder="Filter by event"
+                          defaultValue={eventFilter}
+                          onValueChange={(val) => setEventFilter(val ?? "")}
+                          options={events.map((e: any) => ({
+                            id: e.id,
+                            name: `${e.name} (${formatDate(e.date)})`,
+                          }))}
+                        />
+                      </div>
+                    )}
+                    {ageGroupChoices.length > 1 && (
+                      <div className="min-w-[140px]">
+                        <SelectField
+                          name="ageGroup"
+                          label=""
+                          placeholder="Age group"
+                          defaultValue={ageGroupFilter}
+                          onValueChange={(val) => setAgeGroupFilter(val ?? "")}
+                          options={ageGroupChoices}
+                        />
+                      </div>
+                    )}
+                    {quartileChoices.length > 1 && (
+                      <div className="min-w-[140px]">
+                        <SelectField
+                          name="quartile"
+                          label=""
+                          placeholder="Quartile"
+                          defaultValue={quartileFilter}
+                          onValueChange={(val) => setQuartileFilter(val ?? "")}
+                          options={quartileChoices}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               />
 
-              {selectedEvent && (
-                <p className="text-muted mb-6">
-                  Showing {visibleMembers.length} of{" "}
-                  {group.playerGroupMembers.length} members registered for{" "}
-                  <span className="text-white">{selectedEvent.name}</span>.
-                </p>
+              {filtered && (
+                <div className="text-muted mb-6 flex flex-row flex-wrap gap-2 items-center">
+                  <span>
+                    Showing {visibleMembers.length} of {allMembers.length}{" "}
+                    members
+                    {ageGroupFilter && (
+                      <>
+                        {" "}
+                        in <span className="text-white">{ageGroupFilter}</span>
+                      </>
+                    )}
+                    {quartileFilter && (
+                      <>
+                        {" "}
+                        born in{" "}
+                        <span className="text-white">{quartileFilter}</span>
+                      </>
+                    )}
+                    {selectedEvent && (
+                      <>
+                        {" "}
+                        registered for{" "}
+                        <span className="text-white">
+                          {selectedEvent.name}
+                        </span>
+                      </>
+                    )}
+                    .
+                  </span>
+                  <Button
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={clearFilters}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
               )}
 
               {POSITION_GROUPS.map((pg) => {
@@ -394,11 +527,7 @@ export default function PlayerPage() {
               {visibleMembers.length === 0 && (
                 <CardGrid
                   items={[]}
-                  name={
-                    selectedEvent
-                      ? `No members registered for ${selectedEvent.name}`
-                      : "Players"
-                  }
+                  name={filtered ? "No members match these filters" : "Players"}
                 />
               )}
             </TabsContent>
