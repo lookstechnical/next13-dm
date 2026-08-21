@@ -50,6 +50,28 @@ function IconUndo() {
 function IconRedo() {
   return <span>↷</span>;
 }
+function IconSectionBreak() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path
+        d="M3 12h18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M6 6h12M6 18h12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.4"
+      />
+    </svg>
+  );
+}
+
 function IconLink() {
   return <span>🔗</span>;
 }
@@ -266,6 +288,25 @@ export function RichTextEditor({
           >
             <IconCode />
           </Toggle>
+
+          <Separator orientation="vertical" className="mx-1 h-6" />
+
+          {/*
+            Inserts an <hr>. In the email templates this is what splits the body
+            into coloured section bands, so it is labelled for that job rather
+            than as a generic horizontal rule.
+          */}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            title="Start a new section — the email renders each section as its own coloured band"
+            aria-label="Insert section break"
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          >
+            <IconSectionBreak /> Section
+          </Button>
 
           <Separator orientation="vertical" className="mx-1 h-6" />
 

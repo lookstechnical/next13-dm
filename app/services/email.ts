@@ -14,6 +14,9 @@ export const styleRichTextBase = (
     out = out.replaceAll(`{{${key}}}`, value ?? "");
   }
   return out
+    // Pasted content often carries the invalid closing form; Outlook renders it
+    // as a second line break, so normalise before anything else.
+    .replaceAll("</br>", "<br />")
     .replaceAll(
       "<p>",
       '<p style="color: #c2c7d0; font-size: 16px; text-align: left;">',
@@ -42,53 +45,110 @@ export const styleRichTextBase = (
     .replaceAll("<li>", '<li style="color: #c2c7d0; font-size: 16px;">');
 };
 
+// Sections. A divider in the editor (the toolbar's Section break, which TipTap
+// emits as <hr>) splits the body into panels that are rendered as full-width
+// bands of alternating background, so a long email reads as distinct blocks
+// rather than one wall of text. A body with no dividers yields a single panel
+// and looks exactly as it did before.
+// The base card tone, and a lift above it. The alternate band used to be the
+// page background (#0f111a), which read as a hole punched in the card rather
+// than a step up — lighter separates the blocks without darkening the email.
+const SECTION_TONES = ["#1b1d2a", "#262b3e"];
+// Light enough to stay visible against both tones. The card border is a step
+// darker on purpose, so the outer edge stays quieter than the inner rules.
+const SECTION_RULE = "#3a3f57";
+
+export const splitSections = (html: string) =>
+  (html || "")
+    .split(/<hr[^>]*>/i)
+    .map((section) => section.trim())
+    .filter((section) => section !== "" && section !== "<p></p>");
+
+/**
+ * Render panels as table rows. Tables rather than divs because Outlook ignores
+ * background-color on a div, which would leave the bands invisible in exactly
+ * the client most parents read this on.
+ *
+ * `offset` shifts where the alternation starts, so the panel directly under the
+ * logo header can continue the header's tone instead of banding against it.
+ */
+export const renderSectionRows = (panels: string[], offset = 0) =>
+  panels
+    .map((panel, i) => {
+      const tone = SECTION_TONES[(i + offset) % SECTION_TONES.length];
+      const rule =
+        i === 0
+          ? ""
+          : `<tr><td height="1" style="height: 1px; line-height: 1px; font-size: 1px; background-color: ${SECTION_RULE};">&nbsp;</td></tr>`;
+
+      return `${rule}
+      <tr>
+        <td style="background-color: ${tone}; padding: 24px 30px;">
+          ${panel}
+        </td>
+      </tr>`;
+    })
+    .join("\n");
+
 export const emailTemplate = (
   message: string,
   footer: string,
   invite?: Invitation,
   player?: Player,
 ) => {
+  const variables = { name: player?.name, email: player?.email };
+
+  const cta = invite
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 24px auto 8px;">
+            <tr>
+              <td style="padding: 0 6px;">
+                <a href="${process.env.VITE_URL}/player-invite-reject?token=${invite.token}" style="background-color: #b30202; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+                  Reject Invite
+                </a>
+              </td>
+              <td style="padding: 0 6px;">
+                <a href="${process.env.VITE_URL}/player-invite?token=${invite.token}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+                  Accept Invite
+                </a>
+              </td>
+            </tr>
+          </table>`
+    : "";
+
+  const panels = splitSections(message).map((section) =>
+    styleRichTextBase(section, variables),
+  );
+  if (panels.length === 0) panels.push("");
+
+  // The buttons belong to the closing section, so its heading and its call to
+  // action share a background rather than being split across a band edge.
+  panels[panels.length - 1] += cta;
+
+  if (footer?.trim()) panels.push(styleRichTextBase(footer, variables));
+
   return `<!DOCTYPE html>
 <html lang="en" style="margin: 0; padding: 0; background-color: #0f111a;">
   <head>
     <meta charset="UTF-8" />
     <meta name="color-scheme" content="dark" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>You have been invited to Next13 (saints RLFC)</title>
+    <title>St Helens RLFC - beCoachable</title>
   </head>
-  <body style="margin: 0; font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff;">
-    <div style="max-width: 600px; margin: 40px auto; background-color: #1b1d2a; padding: 30px; border-radius: 12px; border: 1px solid #2a2d3b;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://be-coachable.com/logo.png" alt="beCoachble" style="width:60px;" />
-      </div>
-
-        ${styleRichTextBase(message, { name: player?.name, email: player?.email })}
-
-      <div style="text-align: center; margin: 30px 0; display:flex; flex-direction: row; gap: 10px; justify-content: center">
-        ${
-          invite
-            ? `<a href="${process.env.VITE_URL}/player-invite-reject?token=${invite.token}" style="background-color: #b30202ff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
-          Reject Invite
-        </a>`
-            : ""
-        }
-         ${
-           invite
-             ? `<a href="${process.env.VITE_URL}/player-invite?token=${invite.token}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
-          Accept Invite
-        </a>`
-             : ""
-         }
-      </div>
-
-      ${
-        footer
-          ? styleRichTextBase(footer, { name: player?.name, email: player?.email })
-          : ""
-      }
-
-      <hr style="border: none; border-top: 1px solid #2a2d3b; margin: 40px 0;" />
-    </div>
+  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f111a;">
+      <tr>
+        <td align="center" style="padding: 40px 12px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; border-radius: 12px; border: 1px solid #2a2d3b; border-collapse: separate; overflow: hidden;">
+            <tr>
+              <td style="background-color: ${SECTION_TONES[0]}; padding: 30px 30px 10px; text-align: center;">
+                <img src="https://be-coachable.com/logo.png" alt="beCoachable" style="width: 60px;" />
+              </td>
+            </tr>
+            ${renderSectionRows(panels)}
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>`;
 };

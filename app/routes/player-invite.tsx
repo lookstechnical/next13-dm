@@ -8,6 +8,10 @@ import ActionButton from "~/components/ui/action-button";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { InvitationService } from "~/services/invitationService";
+import {
+  applyInviteVariables,
+  resolveInviteContent,
+} from "~/services/inviteContent";
 import { PlayerService } from "~/services/playerService";
 import { inviteRegistration } from "~/validations/player-registration";
 
@@ -30,7 +34,22 @@ export const loader: LoaderFunction = async ({ request }) => {
 
   const clubs = await clubService.getAllClubs();
 
-  return { clubs, player, invite };
+  // Copy is snapshotted onto the invitation when it is sent; anything blank
+  // (including every invitation sent before it became editable) falls back to
+  // the defaults in inviteContent.
+  const content = resolveInviteContent(invite);
+
+  return {
+    clubs,
+    player,
+    invite,
+    content: {
+      ...content,
+      acceptPageContent: applyInviteVariables(content.acceptPageContent, {
+        name: player?.name,
+      }),
+    },
+  };
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -98,7 +117,8 @@ export function ErrorBoundary() {
 }
 
 const PlayerInvite = () => {
-  const { clubs, player, invite, invalid } = useLoaderData<typeof loader>();
+  const { clubs, player, invite, invalid, content } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   if (invalid) {
@@ -111,47 +131,27 @@ const PlayerInvite = () => {
   }
 
   if (actionData?.status === "complete") {
-    return (
-      <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
-        <div className="w-full py-6 flex flex-col w-[50rem] items-center">
-          <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
-
-          <h1 className="text-4xl">Player Invitation</h1>
-          <p className="text-muted">
-            Thank you we will be in touch soon with more details!
-          </p>
-        </div>
-      </div>
-    );
+    return <InviteMessage>{content.acceptCompleteMessage}</InviteMessage>;
   }
 
   if (invite?.status === "accepted") {
     return (
-      <div className="min-h-screen min-w-screen bg-background text-foreground flex justify-center items-center">
-        <div className="w-full py-6 flex flex-col w-[50rem] items-center">
-          <img src="/logo.png" className="w-20 mb-2" width={50} height={50} />
-
-          <h1 className="text-4xl">Player Invitation</h1>
-          <p className="text-muted">
-            The Invite has expired or has already been completed
-          </p>
-        </div>
-      </div>
+      <InviteMessage>
+        The Invite has expired or has already been completed
+      </InviteMessage>
     );
   }
 
   return (
     <div className="min-h-screen min-w-screen bg-background text-foreground">
       <div className="w-full py-10 bg-wkbackground">
-        <div className="container mx-auto max-w-[50rem] py-10 flex flex-row gap-3 flex flex-col items-center p-4 text-center">
+        <div className="container mx-auto max-w-[50rem] py-10 flex flex-col gap-3 items-center p-4 text-center">
           <img src="/logo.png" className="w-20" width={50} height={50} />
           <h1 className="text-4xl">Player Invitation</h1>
-          <p>
-            Congratulations on your Invitation to the Saints LDP Excel Program
-          </p>
-          <p className="text-muted">
-            Please complete the form below to accept your invitation
-          </p>
+          <div
+            className="prose prose-sm dark:prose-invert max-w-none text-center"
+            dangerouslySetInnerHTML={{ __html: content.acceptPageContent }}
+          />
         </div>
       </div>
 

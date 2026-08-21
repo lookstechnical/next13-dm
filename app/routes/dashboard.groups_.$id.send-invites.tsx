@@ -10,6 +10,7 @@ import { GroupEmailForm } from "~/components/forms/form/group-email-form";
 import SheetPage from "~/components/sheet-page";
 import { Button } from "~/components/ui/button";
 import { emailTemplate } from "~/services/email";
+import type { InvitePageContent } from "~/services/inviteContent";
 import { GroupService } from "~/services/groupService";
 import { InvitationService } from "~/services/invitationService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
@@ -80,6 +81,24 @@ export const action: ActionFunction = withAuthAction(
     const mode = formData.get("mode") as string; // "test" | "all"
     const testEmail = (formData.get("testEmail") as string)?.trim();
 
+    // Copy for the public accept/reject pages, snapshotted onto each
+    // invitation. The reasons list is newline-separated (see StringListField)
+    // because the reasons are sentences that may contain commas.
+    const pageContent: InvitePageContent = {
+      acceptPageContent: formData.get("acceptPageContent") as string,
+      acceptCompleteMessage: (
+        formData.get("acceptCompleteMessage") as string
+      )?.trim(),
+      rejectPageContent: formData.get("rejectPageContent") as string,
+      rejectCompleteMessage: (
+        formData.get("rejectCompleteMessage") as string
+      )?.trim(),
+      rejectReasons: ((formData.get("rejectReasons") as string) || "")
+        .split("\n")
+        .map((r) => r.trim())
+        .filter(Boolean),
+    };
+
     if (!subject) return { error: "Please enter a subject." };
     if (!description?.trim()) return { error: "Please enter an email body." };
 
@@ -134,7 +153,8 @@ export const action: ActionFunction = withAuthAction(
     if (type === "invite") {
       try {
         const result = await invitationService.ensureInvitations(
-          members.map((m) => m.playerId)
+          members.map((m) => m.playerId),
+          pageContent
         );
         invitesByPlayer = result.invitations;
         reopened = result.reopened.length;

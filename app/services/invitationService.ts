@@ -1,5 +1,6 @@
 import { convertKeysToCamelCase } from "~/utils/helpers";
 import { Invitation } from "../types";
+import { InvitePageContent } from "./inviteContent";
 
 function randomString(length: number): string {
   const chars =
@@ -93,7 +94,10 @@ export class InvitationService {
    * Returns a playerId -> invitation map, and the ids of the players whose
    * invitation had to be re-opened so the caller can report it.
    */
-  async ensureInvitations(playerIds: string[]): Promise<{
+  async ensureInvitations(
+    playerIds: string[],
+    content?: InvitePageContent
+  ): Promise<{
     invitations: Map<string, Invitation>;
     reopened: string[];
   }> {
@@ -101,6 +105,21 @@ export class InvitationService {
     const reopened: string[] = [];
     const unique = [...new Set(playerIds.filter(Boolean))];
     if (unique.length === 0) return { invitations, reopened };
+
+    // Copy for the public accept/reject pages is snapshotted onto every row we
+    // touch, so a link keeps the wording it was sent with. Undefined fields are
+    // dropped rather than written as null, which leaves an untouched column
+    // alone and lets inviteContent fall back to its defaults.
+    const pageContent = {
+      accept_page_content: content?.acceptPageContent,
+      accept_complete_message: content?.acceptCompleteMessage,
+      reject_page_content: content?.rejectPageContent,
+      reject_complete_message: content?.rejectCompleteMessage,
+      reject_reasons: content?.rejectReasons,
+    };
+    const snapshot = Object.fromEntries(
+      Object.entries(pageContent).filter(([, v]) => v !== undefined)
+    );
 
     const { data: existing, error: selectError } = await this.client
       .from("invitations")
@@ -136,6 +155,7 @@ export class InvitationService {
               status: "pending",
               reason: null,
               token: randomString(40),
+              ...snapshot,
             })
             .eq("id", row.id)
             .select()
@@ -155,6 +175,31 @@ export class InvitationService {
       invitations.set(playerId, convertKeysToCamelCase(row));
     }
 
+    // Players already sitting on a pending invitation keep their token, but
+    // still need the copy for this send written to them.
+    const alreadyPending = [...latest.values()].filter(
+      (row) => !reopened.includes(row.player_id)
+    );
+
+    if (alreadyPending.length > 0 && Object.keys(snapshot).length > 0) {
+      const { error: contentError } = await this.client
+        .from("invitations")
+        .update(snapshot)
+        .in(
+          "id",
+          alreadyPending.map((row) => row.id)
+        );
+
+      if (contentError) throw contentError;
+
+      for (const row of alreadyPending) {
+        invitations.set(
+          row.player_id,
+          convertKeysToCamelCase({ ...row, ...snapshot })
+        );
+      }
+    }
+
     const missing = unique.filter((id) => !invitations.has(id));
     if (missing.length === 0) return { invitations, reopened };
 
@@ -165,6 +210,7 @@ export class InvitationService {
           player_id: playerId,
           status: "pending",
           token: randomString(40),
+          ...snapshot,
         }))
       )
       .select();
