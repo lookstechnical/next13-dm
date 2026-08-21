@@ -42,14 +42,14 @@ const DEFAULT_BODY = `<p>Dear Parent/Guardian,</p>
 <p><strong>3 phases. 1 clear goal — develop, challenge and prepare.</strong></p>
 
 <h3>🏗️ Foundation | October–November</h3>
-<p>Weekly Wednesday training focused on building core skills, good habits and understanding the standards of Excel.</p>
+<p>Weekly training focused on building core skills, good habits and understanding the standards of Excel.</p>
 
 <h3>🔄 Touchpoints | January–April</h3>
-<p>Monthly check-ins to track progress, maintain accountability and keep development moving forward.</p>
+<p>Once per-month check-ins to track progress, maintain accountability and keep development moving forward.</p>
 
 <h3>⚡ Performance | April–June</h3>
 <p>Weekly training where the intensity increases, players apply what they’ve learned and have opportunities to integrate with the current scholars.</p>
-
+<p><strong>Note" Most sessions will be wednesdays 5pm - 6:30/6:45pm <strong></p>
 <p><strong>Every phase is designed to challenge players, track their progress and help them take the next step.</strong></p>
 <hr>
 <h2>Accept or Decline Your Place</h2>
@@ -90,6 +90,7 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
           <Field name="subject" label="Subject">
             <Input
               name="subject"
+              defaultValue="Invitation to Join the St Helens RLFC Excel Programme"
               placeholder="Enter Subject"
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />

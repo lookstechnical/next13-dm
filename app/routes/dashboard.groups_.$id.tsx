@@ -5,7 +5,13 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import { Calendar, MapPin, MoreVertical, Users2Icon } from "lucide-react";
+import {
+  Building2,
+  Calendar,
+  MapPin,
+  MoreVertical,
+  Users2Icon,
+} from "lucide-react";
 import { useState } from "react";
 import { SelectField } from "~/components/forms/select";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
@@ -141,6 +147,33 @@ const quartileOf = (player: any) => {
   return !label || label === "Q?" ? UNKNOWN : label;
 };
 
+const clubOf = (player: any) => {
+  const club = (player?.club || "").trim();
+  return club || UNKNOWN;
+};
+
+/**
+ * Which clubs the members on screen are drawn from, biggest contingent first so
+ * the clubs the group leans on are the ones read first. Unknown always sorts
+ * last regardless of size.
+ */
+const clubSummary = (members: any[]) => {
+  const counts = new Map<string, number>();
+  for (const member of members) {
+    const club = clubOf(member);
+    counts.set(club, (counts.get(club) || 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([club, count]) => ({ club, count }))
+    .sort(
+      (a, b) =>
+        Number(a.club === UNKNOWN) - Number(b.club === UNKNOWN) ||
+        b.count - a.count ||
+        a.club.localeCompare(b.club),
+    );
+};
+
 /**
  * Options for a filter, drawn from the members actually present so a group only
  * ever offers values it contains. Counts are shown so it's obvious what a
@@ -204,6 +237,8 @@ export default function PlayerPage() {
   const visibleMembers = availableIds
     ? scopedMembers.filter((p: any) => availableIds.has(p.id))
     : scopedMembers;
+
+  const clubs = clubSummary(visibleMembers);
 
   const filtered = visibleMembers.length !== allMembers.length;
   const clearFilters = () => {
@@ -443,6 +478,47 @@ export default function PlayerPage() {
                     Clear filters
                   </Button>
                 </div>
+              )}
+
+              {clubs.length > 0 && (
+                <Card className="border-border mb-8">
+                  <div className="p-6 flex flex-col gap-4">
+                    <div className="flex flex-row flex-wrap gap-2 items-center justify-between">
+                      <h2 className="text-xl font-semibold text-white flex flex-row gap-2 items-center">
+                        <Building2 className="w-5" /> Clubs{" "}
+                        <span className="text-muted text-base font-normal">
+                          ({clubs.length})
+                        </span>
+                      </h2>
+                      <p className="text-sm text-muted">
+                        Where {visibleMembers.length}{" "}
+                        {visibleMembers.length === 1 ? "player" : "players"} in
+                        this list play
+                      </p>
+                    </div>
+                    <div className="flex flex-row flex-wrap gap-2">
+                      {clubs.map(({ club, count }) => (
+                        <Badge
+                          key={`club-${club}`}
+                          variant="outline"
+                          className="border-muted gap-2 py-1 text-sm font-normal"
+                        >
+                          <span
+                            className={cn(
+                              club === UNKNOWN ? "text-muted" : "text-white",
+                            )}
+                          >
+                            {club === UNKNOWN ? "No club recorded" : club}
+                          </span>
+                          <span className="text-muted">
+                            {count} (
+                            {Math.round((count / visibleMembers.length) * 100)}%)
+                          </span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
               )}
 
               {POSITION_GROUPS.map((pg) => {
