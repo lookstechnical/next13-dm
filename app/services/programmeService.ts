@@ -157,7 +157,7 @@ export class ProgrammeService {
   ): Promise<ProgrammeEvent[]> {
     const { data, error } = await this.client
       .from("programme_events")
-      .select("*, events ( id, name, date, end_date, location, status )")
+      .select("*, events ( id, name, date, end_date, start_time, end_time, location, status )")
       .eq("programme_id", programmeId)
       .order("sort_order", { ascending: true });
 

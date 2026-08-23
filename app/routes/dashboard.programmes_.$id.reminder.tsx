@@ -15,6 +15,7 @@ import { programmeEmailTemplate } from "~/services/email";
 import { GroupService } from "~/services/groupService";
 import { ProgrammeService } from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { eventTimeRange } from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -173,6 +174,7 @@ function buildEventOptions(
     id: pe.eventId,
     name: pe.events?.name || "Event",
     date: pe.events?.date,
+    time: eventTimeRange(pe.events),
     availableEmails: [...(emailsByEvent.get(pe.eventId) ?? [])],
   }));
 }
@@ -271,6 +273,7 @@ export const action: ActionFunction = withAuthAction(
       const sampleAvailability = programmeEvents.map((pe, i) => ({
         name: pe.events?.name || "Event",
         date: pe.events?.date,
+        time: eventTimeRange(pe.events),
         available: i % 2 === 0,
       }));
 
@@ -368,6 +371,7 @@ export const action: ActionFunction = withAuthAction(
           const availability = programmeEvents.map((pe) => ({
             name: pe.events?.name || "Event",
             date: pe.events?.date,
+            time: eventTimeRange(pe.events),
             available: availMap?.has(pe.eventId)
               ? availMap.get(pe.eventId)
               : undefined,

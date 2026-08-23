@@ -55,6 +55,8 @@ export interface Database {
           description: string;
           date: string;
           end_date: string | null;
+          start_time: string | null;
+          end_time: string | null;
           location: string;
           age_group: string;
           max_participants: number | null;
@@ -73,6 +75,8 @@ export interface Database {
           description: string;
           date: string;
           end_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
           location: string;
           age_group: string;
           max_participants?: number | null;
@@ -91,6 +95,8 @@ export interface Database {
           description?: string;
           date?: string;
           end_date?: string | null;
+          start_time?: string | null;
+          end_time?: string | null;
           location?: string;
           age_group?: string;
           max_participants?: number | null;

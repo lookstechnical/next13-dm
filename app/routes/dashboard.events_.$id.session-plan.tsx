@@ -32,6 +32,7 @@ import { EventService } from "~/services/eventService";
 import { SessionService } from "~/services/sessionService";
 import { SessionItem } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { eventTimeRange } from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -166,6 +167,7 @@ export default function SessionPlan() {
                 sessionItems={sessionItems}
                 eventName={event.name}
                 eventDate={event.date}
+                eventTime={eventTimeRange(event)}
               />
               <ActionProtection
                 allowedRoles={AllowedRoles.headOfDept}

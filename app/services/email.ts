@@ -166,7 +166,13 @@ export const programmeEmailTemplate = (
     ctaLabel?: string;
     withdrawUrl?: string;
     withdrawLabel?: string;
-    availability?: { name: string; date?: string; available?: boolean }[];
+    availability?: {
+      name: string;
+      date?: string;
+      /** Pre-formatted range, e.g. "18:30 - 20:00". Blank when no time is set. */
+      time?: string;
+      available?: boolean;
+    }[];
   },
 ) => {
   const name = options?.name || "";
@@ -190,10 +196,11 @@ export const programmeEmailTemplate = (
                   : a.available === false
                   ? '<span style="color: #ef4444;">&#10008; Not available</span>'
                   : '<span style="color: #7c8190;">&#8212; Not specified</span>';
-              const date = a.date
-                ? ` <span style="color: #7c8190;">(${formatDate(
-                    a.date,
-                  )})</span>`
+              const when = [a.date ? formatDate(a.date) : "", a.time]
+                .filter(Boolean)
+                .join(" ");
+              const date = when
+                ? ` <span style="color: #7c8190;">(${when})</span>`
                 : "";
               return `<tr>
                 <td style="padding: 6px 0; border-bottom: 1px solid #2a2d3b; color: #c2c7d0; font-size: 14px;">${a.name}${date}</td>

@@ -8,12 +8,14 @@ import { Form, Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
 import {
   Building2,
   Calendar,
+  Clock,
   MapPin,
   MoreVertical,
   Users2Icon,
 } from "lucide-react";
 import { useState } from "react";
 import { SelectField } from "~/components/forms/select";
+import { PlayersImageButton } from "~/components/groups/players-image-button";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { Avatar } from "~/components/players/avatar";
@@ -41,6 +43,7 @@ import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import {
   calculateAgeGroup,
   calculateRelativeAgeQuartile,
+  eventTimeRange,
   formatDate,
 } from "~/utils/helpers";
 import { POSITION_GROUPS } from "~/utils/position-groups";
@@ -61,9 +64,39 @@ export const loader: LoaderFunction = withAuth(
 
     const group = await eventService.getGroupById(params.id as string);
 
-    const playerGroupMembers = players;
-
     const groupPlayerIds = players.map((p: any) => p.id);
+
+    // Squads overlap — the same player often sits in a development group, an
+    // age-group squad and a matchday group at once. Pulling every *other*
+    // membership lets the list be narrowed to "who here is also in X".
+    // getPlayersByGroup can't supply this: its embedded player_group_members
+    // is filtered to this group, so it only ever returns the one row.
+    const otherGroupsByPlayer = new Map<
+      string,
+      { id: string; name: string }[]
+    >();
+    if (groupPlayerIds.length > 0) {
+      const { data: memberships } = await supabaseClient
+        .from("player_group_members")
+        .select("player_id, player_groups!inner ( id, name )")
+        .in("player_id", groupPlayerIds)
+        .neq("group_id", params.id as string);
+
+      for (const row of memberships || []) {
+        const other = (row as any).player_groups;
+        if (!other) continue;
+        const existing = otherGroupsByPlayer.get(row.player_id) || [];
+        existing.push({ id: other.id, name: other.name });
+        otherGroupsByPlayer.set(row.player_id, existing);
+      }
+    }
+
+    const playerGroupMembers = players.map((p: any) => ({
+      ...p,
+      otherGroups: (otherGroupsByPlayer.get(p.id) || []).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    }));
 
     // Events stay listed for the whole of the day they happen on, so anchor the
     // cutoff to midnight rather than the current time.
@@ -72,7 +105,7 @@ export const loader: LoaderFunction = withAuth(
 
     const { data: rawEvents } = await supabaseClient
       .from("events")
-      .select("id, name, date, location, status")
+      .select("id, name, date, start_time, end_time, location, status")
       .eq("team_id", (group as any).teamId)
       .gte("date", todayStart.toISOString())
       .order("date", { ascending: true });
@@ -175,6 +208,26 @@ const clubSummary = (members: any[]) => {
 };
 
 /**
+ * Options for a filter whose value is multi-valued per player — a player can be
+ * in any number of other groups, so one member counts towards several options.
+ * Listed alphabetically: unlike age groups there's no natural order to lean on.
+ */
+const groupFilterOptions = (members: any[]) => {
+  const counts = new Map<string, { name: string; count: number }>();
+  for (const member of members) {
+    for (const other of member.otherGroups || []) {
+      const entry = counts.get(other.id) || { name: other.name, count: 0 };
+      entry.count += 1;
+      counts.set(other.id, entry);
+    }
+  }
+
+  return [...counts.entries()]
+    .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+    .map(([id, { name, count }]) => ({ id, name: `${name} (${count})` }));
+};
+
+/**
  * Options for a filter, drawn from the members actually present so a group only
  * ever offers values it contains. Counts are shown so it's obvious what a
  * choice will narrow to before making it.
@@ -215,19 +268,24 @@ export default function PlayerPage() {
   const [eventFilter, setEventFilter] = useState<string>("");
   const [ageGroupFilter, setAgeGroupFilter] = useState<string>("");
   const [quartileFilter, setQuartileFilter] = useState<string>("");
+  const [otherGroupFilter, setOtherGroupFilter] = useState<string>("");
 
   const allMembers = group.playerGroupMembers;
 
   const ageGroupChoices = filterOptions(allMembers, ageGroupOf, ageGroupRank);
   const quartileChoices = filterOptions(allMembers, quartileOf, quartileRank);
+  const otherGroupChoices = groupFilterOptions(allMembers);
 
-  // Age group and quartile narrow *which squad* we're looking at; the event
-  // filter then marks who within it is available. Keeping them in that order
-  // lets the teamsheet below stay consistent with what's on screen.
+  // Age group, quartile and other-group membership narrow *which squad* we're
+  // looking at; the event filter then marks who within it is available. Keeping
+  // them in that order lets the teamsheet below stay consistent with what's on
+  // screen.
   const scopedMembers = allMembers.filter(
     (p: any) =>
       (!ageGroupFilter || ageGroupOf(p) === ageGroupFilter) &&
-      (!quartileFilter || quartileOf(p) === quartileFilter),
+      (!quartileFilter || quartileOf(p) === quartileFilter) &&
+      (!otherGroupFilter ||
+        (p.otherGroups || []).some((g: any) => g.id === otherGroupFilter)),
   );
 
   const selectedEvent = events?.find((e: any) => e.id === eventFilter);
@@ -240,11 +298,20 @@ export default function PlayerPage() {
 
   const clubs = clubSummary(visibleMembers);
 
+  // The option label carries a count, so pull the plain name back off the
+  // members for the "showing …" line.
+  const selectedOtherGroup = otherGroupFilter
+    ? allMembers
+        .flatMap((p: any) => p.otherGroups || [])
+        .find((g: any) => g.id === otherGroupFilter)?.name
+    : undefined;
+
   const filtered = visibleMembers.length !== allMembers.length;
   const clearFilters = () => {
     setEventFilter("");
     setAgeGroupFilter("");
     setQuartileFilter("");
+    setOtherGroupFilter("");
   };
 
   // When an event is selected, the PDF cards only the available members and
@@ -290,6 +357,18 @@ export default function PlayerPage() {
                     teamName={group.name}
                     unavailablePlayerIds={unavailablePlayerIds}
                     eventName={selectedEvent?.name}
+                  />
+                </DropdownMenuItem>
+                {/* Building the grid is async and shows progress on the
+                    button, so keep the menu open rather than unmounting it
+                    mid-export. */}
+                <DropdownMenuItem
+                  className="p-0"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  <PlayersImageButton
+                    players={visibleMembers}
+                    groupName={group.name}
                   />
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">
@@ -346,6 +425,11 @@ export default function PlayerPage() {
                               <Calendar className="w-4" />
                               {formatDate(event.date)}
                             </p>
+                            {eventTimeRange(event) && (
+                              <p className="text-sm flex flex-row gap-2 items-center">
+                                <Clock className="w-4" /> {eventTimeRange(event)}
+                              </p>
+                            )}
                             {event.location && (
                               <p className="text-sm text-muted flex flex-row gap-2 items-center">
                                 <MapPin className="w-3" /> {event.location}
@@ -408,7 +492,9 @@ export default function PlayerPage() {
                           onValueChange={(val) => setEventFilter(val ?? "")}
                           options={events.map((e: any) => ({
                             id: e.id,
-                            name: `${e.name} (${formatDate(e.date)})`,
+                            name: `${e.name} (${formatDate(e.date)}${
+                              eventTimeRange(e) ? ` ${eventTimeRange(e)}` : ""
+                            })`,
                           }))}
                         />
                       </div>
@@ -437,6 +523,20 @@ export default function PlayerPage() {
                         />
                       </div>
                     )}
+                    {otherGroupChoices.length > 0 && (
+                      <div className="min-w-[200px]">
+                        <SelectField
+                          name="otherGroup"
+                          label=""
+                          placeholder="Also in group"
+                          defaultValue={otherGroupFilter}
+                          onValueChange={(val) =>
+                            setOtherGroupFilter(val ?? "")
+                          }
+                          options={otherGroupChoices}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               />
@@ -457,6 +557,15 @@ export default function PlayerPage() {
                         {" "}
                         born in{" "}
                         <span className="text-white">{quartileFilter}</span>
+                      </>
+                    )}
+                    {selectedOtherGroup && (
+                      <>
+                        {" "}
+                        also in{" "}
+                        <span className="text-white">
+                          {selectedOtherGroup}
+                        </span>
                       </>
                     )}
                     {selectedEvent && (

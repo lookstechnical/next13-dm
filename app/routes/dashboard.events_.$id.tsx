@@ -6,7 +6,7 @@ import type {
 } from "@remix-run/node";
 import type { ShouldRevalidateFunctionArgs } from "@remix-run/react";
 import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import { Calendar, MapPin, MoreVertical } from "lucide-react";
+import { Calendar, Clock, MapPin, MoreVertical } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { AllowedRoles, RouteProtection } from "~/components/route-protections";
@@ -19,7 +19,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { EventService } from "~/services/eventService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { formatDate } from "~/utils/helpers";
+import { eventTimeRange, formatDate } from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -103,6 +103,11 @@ export default function EventPage() {
                 <p className="text-md flex flex-row gap-2 ">
                   <Calendar /> {formatDate(event.date)}
                 </p>
+                {eventTimeRange(event) && (
+                  <p className="text-md flex flex-row gap-2 ">
+                    <Clock /> {eventTimeRange(event)}
+                  </p>
+                )}
 
                 <p>
                   <span className="flex text-sm flex-row gap-2 ">

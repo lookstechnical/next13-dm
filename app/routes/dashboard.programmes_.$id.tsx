@@ -4,7 +4,7 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
-import { Calendar, MapPin, MoreVertical } from "lucide-react";
+import { Calendar, Clock, MapPin, MoreVertical } from "lucide-react";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { AddPlayerDialog } from "~/components/programmes/add-player-dialog";
 import { AttendanceOverview } from "~/components/programmes/attendance-overview";
@@ -16,7 +16,11 @@ import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { ProgrammeService } from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
-import { formatDate, registrationDeadlinePassed } from "~/utils/helpers";
+import {
+  eventTimeRange,
+  formatDate,
+  registrationDeadlinePassed,
+} from "~/utils/helpers";
 import {
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -317,6 +321,12 @@ export default function ProgrammeDetail() {
                 <p className="text-sm text-muted flex items-center gap-1">
                   <Calendar className="w-4" />
                   {formatDate(pe.events.date)}
+                </p>
+              )}
+              {eventTimeRange(pe.events) && (
+                <p className="text-sm text-muted flex items-center gap-1">
+                  <Clock className="w-4" />
+                  {eventTimeRange(pe.events)}
                 </p>
               )}
               {pe.events?.location && (

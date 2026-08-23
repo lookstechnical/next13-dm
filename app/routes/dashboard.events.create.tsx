@@ -32,6 +32,10 @@ export const action: ActionFunction = withAuthAction(
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
     const registrationDeadline = formData.get("registrationDeadline");
+    // An untouched <input type="time"> submits "", which Postgres rejects for a
+    // `time` column — store "no time set" as null.
+    const startTime = (formData.get("startTime") as string) || null;
+    const endTime = (formData.get("endTime") as string) || null;
     const description = formData.get("description") as string;
     const eventType = formData.get("event-type") as string;
     const canRegister = formData.get("canRegister") as string;
@@ -41,6 +45,8 @@ export const action: ActionFunction = withAuthAction(
     const data = {
       name,
       date,
+      startTime,
+      endTime,
       location,
       description,
       registrationDeadline:

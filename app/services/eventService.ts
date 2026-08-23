@@ -54,7 +54,7 @@ export class EventService {
   async getEventsByTeam(teamId: string): Promise<Event[]> {
     const { data, error } = await this.client
       .from("events")
-      .select("id, name, location, date")
+      .select("id, name, location, date, start_time, end_time")
       .eq("team_id", teamId)
       .order("date", { ascending: false });
 
@@ -118,6 +118,8 @@ export class EventService {
         description: eventData.description,
         date: eventData.date,
         end_date: eventData.endDate,
+        start_time: eventData.startTime,
+        end_time: eventData.endTime,
         location: eventData.location,
         age_group: eventData.ageGroup,
         max_participants: eventData.maxParticipants,
@@ -147,6 +149,9 @@ export class EventService {
       updateData.description = updates.description;
     if (updates.date !== undefined) updateData.date = updates.date;
     if (updates.endDate !== undefined) updateData.end_date = updates.endDate;
+    if (updates.startTime !== undefined)
+      updateData.start_time = updates.startTime;
+    if (updates.endTime !== undefined) updateData.end_time = updates.endTime;
     if (updates.location !== undefined) updateData.location = updates.location;
     if (updates.ageGroup !== undefined) updateData.age_group = updates.ageGroup;
     if (updates.maxParticipants !== undefined)

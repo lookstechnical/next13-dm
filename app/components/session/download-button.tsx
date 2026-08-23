@@ -7,6 +7,8 @@ type DownloadButton = {
   sessionItems: SessionItem[];
   eventName: string;
   eventDate: string;
+  /** Pre-formatted range, e.g. "18:30 - 20:00". Blank when no time is set. */
+  eventTime?: string;
 };
 
 function stripHtml(html) {
@@ -40,7 +42,8 @@ function wrapText(text, font, fontSize, maxWidth) {
 export async function generateSessionPlanPDF(
   items,
   eventName: string,
-  eventDate: string
+  eventDate: string,
+  eventTime?: string
 ) {
   const pdfDoc = await PDFDocument.create();
   let page = pdfDoc.addPage([595.28, 841.89]); // A4
@@ -102,13 +105,18 @@ export async function generateSessionPlanPDF(
         })
       : "";
 
-    currentPage.drawText(formattedDate, {
-      x: margin,
-      y: headerY - 20,
-      font: font,
-      size: 12,
-      color: rgb(0.3, 0.3, 0.3),
-    });
+    // The time sits on the same line as the date so the header block keeps its
+    // fixed height and the rule below it doesn't need moving.
+    currentPage.drawText(
+      eventTime ? `${formattedDate} · ${eventTime}` : formattedDate,
+      {
+        x: margin,
+        y: headerY - 20,
+        font: font,
+        size: 12,
+        color: rgb(0.3, 0.3, 0.3),
+      },
+    );
 
     // Draw horizontal line below header
     currentPage.drawLine({
@@ -397,12 +405,15 @@ export const SessionDownloadButton: React.FC<DownloadButton> = ({
   sessionItems,
   eventName,
   eventDate,
+  eventTime,
 }) => {
   return (
     <Button
       variant="outline"
       className="text-foreground"
-      onClick={() => generateSessionPlanPDF(sessionItems, eventName, eventDate)}
+      onClick={() =>
+        generateSessionPlanPDF(sessionItems, eventName, eventDate, eventTime)
+      }
     >
       <DownloadIcon />
       <span>Download PDF</span>

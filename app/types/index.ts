@@ -171,6 +171,9 @@ export interface Event {
   description: string;
   date: string;
   endDate?: string;
+  /** Wall-clock "HH:MM[:SS]" on `date`. Undefined when no time is set. */
+  startTime?: string | null;
+  endTime?: string | null;
   location: string;
   ageGroup: string;
   maxParticipants?: number;

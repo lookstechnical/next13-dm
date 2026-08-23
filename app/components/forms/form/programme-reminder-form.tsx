@@ -5,7 +5,7 @@ import {
   ReminderRecipientSelector,
 } from "~/components/programmes/reminder-recipient-selector";
 import { Input } from "~/components/ui/input";
-import { formatDate } from "~/utils/helpers";
+import { eventTimeRange, formatDate } from "~/utils/helpers";
 import { RichTextField } from "../rich-text";
 
 type ReminderEventOption = {
@@ -63,7 +63,11 @@ export const ProgrammeReminderForm: React.FC<ProgrammeReminderFormProps> = ({
               onValueChange={(val) => onEventFilterChange(val ?? "")}
               options={events.map((e) => ({
                 id: e.id,
-                name: e.date ? `${e.name} (${formatDate(e.date)})` : e.name,
+                name: e.date
+                  ? `${e.name} (${formatDate(e.date)}${
+                      eventTimeRange(e) ? ` ${eventTimeRange(e)}` : ""
+                    })`
+                  : e.name,
               }))}
             />
             <p className="text-xs text-muted">

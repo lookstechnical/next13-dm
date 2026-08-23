@@ -7,6 +7,7 @@ import { SelectField } from "../select";
 import { ImageUpload } from "~/components/forms/image-upload";
 import { RichTextField } from "~/components/forms/rich-text";
 import { SectionsEditor } from "~/components/programmes/sections-editor";
+import { eventTimeRange } from "~/utils/helpers";
 
 type ProgrammeFormProps = {
   programme?: Programme;
@@ -147,6 +148,7 @@ export const ProgrammeForm: React.FC<ProgrammeFormProps> = ({
                   {event.date && (
                     <span className="text-xs text-muted ml-auto">
                       {new Date(event.date).toLocaleDateString()}
+                      {eventTimeRange(event) ? ` · ${eventTimeRange(event)}` : ""}
                     </span>
                   )}
                 </label>

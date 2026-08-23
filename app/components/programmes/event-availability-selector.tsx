@@ -1,6 +1,6 @@
 import { Event } from "~/types";
-import { formatDate } from "~/utils/helpers";
-import { Calendar, MapPin } from "lucide-react";
+import { eventTimeRange, formatDate } from "~/utils/helpers";
+import { Calendar, Clock, MapPin } from "lucide-react";
 
 type EventAvailabilitySelectorProps = {
   events: { eventId: string; events: Event }[];
@@ -38,6 +38,12 @@ export const EventAvailabilitySelector: React.FC<
               <p className="text-xs text-muted flex items-center gap-1">
                 <Calendar className="w-3" />
                 {formatDate(pe.events.date)}
+              </p>
+            )}
+            {eventTimeRange(pe.events) && (
+              <p className="text-xs text-muted flex items-center gap-1">
+                <Clock className="w-3" />
+                {eventTimeRange(pe.events)}
               </p>
             )}
             {pe.events?.location && (

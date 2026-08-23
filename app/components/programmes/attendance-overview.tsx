@@ -7,7 +7,11 @@ import {
   ProgrammeEventAttendance,
   ProgrammeEvent,
 } from "~/types";
-import { calculateAgeGroup, formatDate } from "~/utils/helpers";
+import {
+  calculateAgeGroup,
+  eventTimeRange,
+  formatDate,
+} from "~/utils/helpers";
 import { POSITION_GROUPS } from "~/utils/position-groups";
 import { Check, X, Trash2, Minus } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -1318,6 +1322,11 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                       {formatDate(pe.events.date)}
                     </div>
                   )}
+                  {eventTimeRange(pe.events) && (
+                    <div className="text-xs font-normal text-muted">
+                      {eventTimeRange(pe.events)}
+                    </div>
+                  )}
                 </th>
               ))}
               <th className="text-center py-3 px-2 text-muted font-medium min-w-[80px]">
@@ -1425,6 +1434,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                       {pe.events?.date && (
                         <p className="text-xs text-muted">
                           {formatDate(pe.events.date)}
+                          {eventTimeRange(pe.events)
+                            ? ` · ${eventTimeRange(pe.events)}`
+                            : ""}
                         </p>
                       )}
                     </div>

@@ -29,6 +29,50 @@ export const formatDate = (dateString: string): string => {
 };
 
 /**
+ * Render a stored `time` column ("18:30:00", or "18:30") for display.
+ *
+ * Parsed by hand rather than via `new Date(...)`: a bare time has no date to
+ * attach to, so every Date-based route needs a fake day bolted on first, and
+ * that reintroduces the timezone shifting these columns exist to avoid. The
+ * value is already wall-clock — it only needs the seconds trimmed.
+ */
+export const formatTime = (time?: string | null): string => {
+  if (!time) return "";
+  const match = time.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "";
+  return `${match[1].padStart(2, "0")}:${match[2]}`;
+};
+
+/**
+ * "18:30 - 20:00", or just "18:30" when there's no finish time. Returns an
+ * empty string when no start time is set, so callers can treat it as falsy and
+ * fall back to showing the date on its own.
+ */
+export const formatTimeRange = (
+  startTime?: string | null,
+  endTime?: string | null,
+): string => {
+  const start = formatTime(startTime);
+  if (!start) return "";
+  const end = formatTime(endTime);
+  return end ? `${start} - ${end}` : start;
+};
+
+/**
+ * Time range for an event record, whichever casing it arrived in.
+ *
+ * EventService is inconsistent: getEventById runs the row through
+ * convertKeysToCamelCase, while getEventsByTeam, the programme join and the
+ * group page's inline query all return raw snake_case. Rather than have every
+ * render site guess which service produced its object, accept both.
+ */
+export const eventTimeRange = (event: any): string =>
+  formatTimeRange(
+    event?.startTime ?? event?.start_time,
+    event?.endTime ?? event?.end_time,
+  );
+
+/**
  * Whether a programme's registration deadline has passed. A missing deadline
  * means registration never auto-closes on a date.
  */

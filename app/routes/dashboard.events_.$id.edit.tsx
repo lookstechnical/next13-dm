@@ -36,6 +36,10 @@ export const action: ActionFunction = withAuthAction(
     const date = formData.get("date") as string;
     const location = formData.get("location") as string;
     const registrationDeadline = formData.get("registrationDeadline") as string;
+    // "" is both "never set" and "cleared by the user"; null covers each and is
+    // what a `time` column accepts.
+    const startTime = (formData.get("startTime") as string) || null;
+    const endTime = (formData.get("endTime") as string) || null;
     const description = formData.get("description") as string;
     const eventType = formData.get("event-type") as string;
     const canRegister = formData.get("canRegister") as string;
@@ -43,6 +47,8 @@ export const action: ActionFunction = withAuthAction(
     await eventService.updateEvent(params.id as string, {
       name,
       date,
+      startTime,
+      endTime,
       location,
       description,
       registrationDeadline:

@@ -7,7 +7,11 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ProgrammeService } from "~/services/programmeService";
-import { formatDate, registrationDeadlinePassed } from "~/utils/helpers";
+import {
+  eventTimeRange,
+  formatDate,
+  registrationDeadlinePassed,
+} from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -188,6 +192,12 @@ export default function ProgrammeDetail() {
                       <p className="text-sm text-muted flex items-center gap-1">
                         <Calendar className="w-4" />
                         {formatDate(pe.events.date)}
+                      </p>
+                    )}
+                    {eventTimeRange(pe.events) && (
+                      <p className="text-sm text-muted flex items-center gap-1">
+                        <Clock className="w-4" />
+                        {eventTimeRange(pe.events)}
                       </p>
                     )}
                     {pe.events?.location && (

@@ -1,9 +1,9 @@
 import { Link } from "@remix-run/react";
 import { Card } from "../ui/card";
 import { Event } from "~/types";
-import { formatDate } from "~/utils/helpers";
+import { eventTimeRange, formatDate } from "~/utils/helpers";
 import { Badge } from "../ui/badge";
-import { Calendar, Locate, MapPin } from "lucide-react";
+import { Calendar, Clock, Locate, MapPin } from "lucide-react";
 
 type EventCard = {
   /**
@@ -29,6 +29,7 @@ export const EventCard: React.FC<EventCard> = ({
   }
 
   const link = to ? to(event.id) : undefined;
+  const times = eventTimeRange(event);
 
   const renderContent = () => {
     return (
@@ -40,6 +41,12 @@ export const EventCard: React.FC<EventCard> = ({
               <Calendar className="w-4" />
               {formatDate(event.date)}
             </p>
+            {times && (
+              <p className="text-sm flex flex-row gap-2 items-center">
+                <Clock className="w-4" />
+                {times}
+              </p>
+            )}
             <p className="text-sm text-muted flex flex-row gap-2 items-center">
               <MapPin className="w-3" /> {event.location}
             </p>

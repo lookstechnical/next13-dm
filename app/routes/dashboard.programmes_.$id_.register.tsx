@@ -20,7 +20,11 @@ import type {
   ProgrammeRegistration,
 } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
-import { calculateAgeGroup, formatDate } from "~/utils/helpers";
+import {
+  calculateAgeGroup,
+  eventTimeRange,
+  formatDate,
+} from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -283,6 +287,9 @@ export default function ProgrammeRegister() {
                       className="text-foreground"
                     >
                       {pe.events?.date ? formatDate(pe.events.date) : "No date"}
+                      {eventTimeRange(pe.events)
+                        ? ` ${eventTimeRange(pe.events)}`
+                        : ""}
                       {pe.events?.name ? ` — ${pe.events.name}` : ""}
                     </SelectItem>
                   ))}
@@ -355,6 +362,8 @@ export default function ProgrammeRegister() {
             Register
             {selectedEvent?.events?.date &&
               ` — ${formatDate(selectedEvent.events.date)}`}
+            {eventTimeRange(selectedEvent?.events) &&
+              ` ${eventTimeRange(selectedEvent.events)}`}
             {selectedEvent?.events?.name && ` (${selectedEvent.events.name})`}
             {selectedEvent?.events?.location &&
               ` · ${selectedEvent.events.location}`}

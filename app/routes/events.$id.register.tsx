@@ -20,6 +20,7 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { EventService } from "~/services/eventService";
 import { PlayerService } from "~/services/playerService";
+import { eventTimeRange, formatDate } from "~/utils/helpers";
 import { step1 } from "~/validations/player-registration";
 import z from "zod";
 
@@ -136,6 +137,14 @@ export const PublicEventsRegister = () => {
       <DialogContent className="text-foreground">
         <DialogHeader>
           <DialogTitle>Register for {event.name}</DialogTitle>
+          {/* Neither date nor time was shown here, so someone could register
+              without ever being told when the session actually is. */}
+          {event.date && (
+            <p className="text-sm text-muted">
+              {formatDate(event.date)}
+              {eventTimeRange(event) ? ` · ${eventTimeRange(event)}` : ""}
+            </p>
+          )}
           <DialogDescription>{event.description}</DialogDescription>
         </DialogHeader>
 

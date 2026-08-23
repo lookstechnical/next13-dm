@@ -2,6 +2,7 @@ import { Event, Template } from "~/types";
 import { Input } from "~/components/ui/input";
 import { Field } from "~/components/forms/field";
 import { DateField } from "~/components/forms/date";
+import { TimeField } from "~/components/forms/time";
 import { Textarea } from "~/components/ui/textarea";
 import { SelectField } from "../select";
 
@@ -47,6 +48,18 @@ export const EventForm: React.FC<EventForm> = ({ event, templates }) => {
                 ? new Date(event?.registrationDeadline)
                 : undefined
             }
+          />
+        </div>
+        <div className="flex flex-row w-full gap-5">
+          <TimeField
+            name="startTime"
+            label="Start Time"
+            defaultValue={event?.startTime}
+          />
+          <TimeField
+            name="endTime"
+            label="Finish Time"
+            defaultValue={event?.endTime}
           />
         </div>
         <div className="flex flex-row w-full gap-4">
