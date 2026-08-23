@@ -136,8 +136,7 @@ export default function ProgrammeDetail() {
           {programme.canRegister && !deadlinePassed && isFull && (
             <div className="mt-4">
               <p className="text-sm text-destructive">
-                This programme is full — all {capacity?.max} places have been
-                taken.
+                This programme is full — all places have been taken.
               </p>
               <p className="text-sm text-muted mt-1">
                 Already registered?{" "}
