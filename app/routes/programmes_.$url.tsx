@@ -103,14 +103,6 @@ export default function ProgrammeDetail() {
                     {formatDate(programme.registrationDeadline)}
                   </span>
                 )}
-                {capacity?.max != null && (
-                  <span className="flex items-center gap-1">
-                    <Users className="w-4" />
-                    {capacity.remaining === 0
-                      ? "Full"
-                      : `${capacity.remaining} of ${capacity.max} places left`}
-                  </span>
-                )}
               </div>
             </div>
           </div>
