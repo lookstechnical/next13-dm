@@ -76,6 +76,9 @@ export class PlayerService {
             school,
             height,
             foot,
+            mother_height_inches,
+            father_height_inches,
+            medical_conditions,
             photo_url,
             email,
             scout_id,
@@ -394,6 +397,9 @@ export class PlayerService {
         nationality: playerData.nationality,
         club: playerData.club,
         school: playerData.school,
+        mother_height_inches: playerData.motherHeightInches,
+        father_height_inches: playerData.fatherHeightInches,
+        medical_conditions: playerData.medicalConditions,
         photo_url: playerData.photoUrl,
         email: playerData.email,
         mobile: playerData.mobile,
@@ -449,6 +455,12 @@ export class PlayerService {
       updateData.nationality = updates.nationality;
     if (updates.club !== undefined) updateData.club = updates.club;
     if (updates.school !== undefined) updateData.school = updates.school;
+    if (updates.motherHeightInches !== undefined)
+      updateData.mother_height_inches = updates.motherHeightInches;
+    if (updates.fatherHeightInches !== undefined)
+      updateData.father_height_inches = updates.fatherHeightInches;
+    if (updates.medicalConditions !== undefined)
+      updateData.medical_conditions = updates.medicalConditions;
     if (updates.photoUrl !== undefined) updateData.photo_url = updates.photoUrl;
     if (updates.email !== undefined) updateData.email = updates.email;
     if (updates.mobile !== undefined) updateData.mobile = updates.mobile;
@@ -551,6 +563,9 @@ export class PlayerService {
       nationality: dbRow.nationality,
       club: dbRow.club,
       school: dbRow.school,
+      motherHeightInches: dbRow.mother_height_inches,
+      fatherHeightInches: dbRow.father_height_inches,
+      medicalConditions: dbRow.medical_conditions,
       ageGroup: "", // Will be calculated by the UI
       photoUrl: dbRow.photo_url,
       email: dbRow.email,

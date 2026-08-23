@@ -8,6 +8,7 @@ import { ImageUpload } from "~/components/forms/image-upload";
 import { RichTextField } from "~/components/forms/rich-text";
 import { SectionsEditor } from "~/components/programmes/sections-editor";
 import { eventTimeRange } from "~/utils/helpers";
+import { RequestedFieldsEditor } from "~/components/programmes/requested-fields-editor";
 
 type ProgrammeFormProps = {
   programme?: Programme;
@@ -118,6 +119,25 @@ export const ProgrammeForm: React.FC<ProgrammeFormProps> = ({
             className="bg-card border-gray-600 text-white placeholder:text-gray-400"
           />
         </Field>
+        <Field name="maxRegistrations" label="Registration Limit">
+          <Input
+            name="maxRegistrations"
+            type="number"
+            min={1}
+            step={1}
+            placeholder="Leave blank for no limit"
+            defaultValue={programme?.maxRegistrations ?? ""}
+            className="bg-card border-gray-600 text-white placeholder:text-gray-400"
+          />
+          <p className="text-xs text-muted mt-1">
+            Registration closes automatically once this many players have
+            signed up. Players already registered can still update or withdraw.
+          </p>
+        </Field>
+        <RequestedFieldsEditor
+          requestedFields={programme?.requestedFields}
+          requiredFields={programme?.requiredFields}
+        />
         <Field name="canRegister" label="Open for Registration">
           <Input
             name="canRegister"

@@ -42,9 +42,12 @@ export const AddPlayerDialog: React.FC<AddPlayerDialogProps> = ({
     ? (fetcher.formData?.get("playerId") as string)
     : undefined;
 
-  // Close the dialog once a registration succeeds.
+  const error = (fetcher.data as { error?: string } | undefined)?.error;
+
+  // Close only on success. Closing on any response would swallow the error and
+  // look like the player had been added.
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data) {
+    if (fetcher.state === "idle" && (fetcher.data as any)?.ok) {
       setOpen(false);
     }
   }, [fetcher.state, fetcher.data]);
@@ -72,6 +75,12 @@ export const AddPlayerDialog: React.FC<AddPlayerDialogProps> = ({
             programme.
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
         {availablePlayers.length === 0 ? (
           <p className="text-sm text-muted py-6 text-center">

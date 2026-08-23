@@ -8,6 +8,8 @@ type Field = PropsWithChildren<{
   label: string;
   name: string;
   tooltip?: string;
+  /** Renders the asterisk. Server-side validation is still the enforcer. */
+  required?: boolean;
   errors?: any;
 }>;
 
@@ -15,6 +17,7 @@ export const Field: React.FC<Field> = ({
   label,
   name,
   tooltip,
+  required,
   children,
   errors,
 }) => {
@@ -24,7 +27,10 @@ export const Field: React.FC<Field> = ({
         htmlFor={name}
         className="text-sm font-medium text-gray-300 flex flex-row justify-between items-center gap-2"
       >
-        {label}
+        <span>
+          {label}
+          {required && <span className="text-destructive"> *</span>}
+        </span>
         {tooltip && (
           <Popover defaultOpen={false}>
             <PopoverTrigger asChild tabIndex={-1}>

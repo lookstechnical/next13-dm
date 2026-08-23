@@ -4,14 +4,11 @@ export const step1 = z.object({
   email: z.email(),
 });
 
-export const step2 = z.object({
-  email: z.email("Please enter a valid email address"),
-  name: z.string().nonempty("Please enter your full name"),
-  position: z
-    .string()
-    .nonempty("Please select your preferred playing position"),
-  club: z.string().nonempty("Please select the club you currently play for"),
-});
+// step2 used to be a fixed schema here: email + name + position + club. The
+// programme registration form is now configurable per programme, so what's
+// required depends on the row — see validateProfileFields in
+// app/routes/programmes_.$url_.register.tsx and the defaults in
+// app/utils/programme-fields.ts, which reproduce exactly this old set.
 
 export const inviteRegistration = z
   .object({

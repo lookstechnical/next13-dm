@@ -35,6 +35,7 @@ type DateField = {
   name: string;
   label: string;
   defaultValue?: Date;
+  required?: boolean;
   errors?: any;
   range?: keyof typeof RANGES;
 };
@@ -42,6 +43,7 @@ export const DateField: React.FC<DateField> = ({
   name,
   label,
   defaultValue,
+  required,
   errors,
   range = "any",
 }) => {
@@ -49,7 +51,7 @@ export const DateField: React.FC<DateField> = ({
   const [date, setDate] = useState<Date | undefined>(defaultValue);
   const { start, end } = RANGES[range];
   return (
-    <Field name={name} label={label} errors={errors}>
+    <Field name={name} label={label} required={required} errors={errors}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button

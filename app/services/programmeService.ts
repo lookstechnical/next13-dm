@@ -8,6 +8,23 @@ import {
 } from "../types";
 import { convertKeysToCamelCase } from "../utils/helpers";
 
+/** Raised when the registration cap was hit — surfaced as a "full" page. */
+export class ProgrammeFullError extends Error {
+  constructor() {
+    super("PROGRAMME_FULL");
+    this.name = "ProgrammeFullError";
+  }
+}
+
+/**
+ * The trigger raises a check_violation whose message is PROGRAMME_FULL. Match
+ * on the message rather than the code alone: any other check constraint on the
+ * table would share the code, and reporting those as "full" would hide a real
+ * bug behind a friendly page.
+ */
+const isProgrammeFullError = (error: any): boolean =>
+  typeof error?.message === "string" && error.message.includes("PROGRAMME_FULL");
+
 export class ProgrammeService {
   client;
   constructor(client: any) {
@@ -93,6 +110,9 @@ export class ProgrammeService {
         availability_description: programmeData.availabilityDescription || null,
         eligible_dob_from: programmeData.eligibleDobFrom || null,
         eligible_dob_to: programmeData.eligibleDobTo || null,
+        requested_fields: programmeData.requestedFields || null,
+        required_fields: programmeData.requiredFields || null,
+        max_registrations: programmeData.maxRegistrations ?? null,
         created_by: createdBy,
       })
       .select()
@@ -127,6 +147,16 @@ export class ProgrammeService {
       updateData.eligible_dob_from = updates.eligibleDobFrom || null;
     if (updates.eligibleDobTo !== undefined)
       updateData.eligible_dob_to = updates.eligibleDobTo || null;
+    if (updates.requestedFields !== undefined)
+      updateData.requested_fields = updates.requestedFields?.length
+        ? updates.requestedFields
+        : null;
+    if (updates.requiredFields !== undefined)
+      updateData.required_fields = updates.requiredFields?.length
+        ? updates.requiredFields
+        : null;
+    if (updates.maxRegistrations !== undefined)
+      updateData.max_registrations = updates.maxRegistrations ?? null;
 
     const { data, error } = await this.client
       .from("programmes")
@@ -201,6 +231,45 @@ export class ProgrammeService {
     return true;
   }
 
+  /**
+   * How many places a programme has, and how many are gone.
+   *
+   * `remaining` is null when the programme is uncapped — distinct from 0, which
+   * means capped and full.
+   */
+  async getRegistrationCapacity(programmeId: string): Promise<{
+    max: number | null;
+    taken: number;
+    remaining: number | null;
+    isFull: boolean;
+  }> {
+    const { data: programme, error: progError } = await this.client
+      .from("programmes")
+      .select("max_registrations")
+      .eq("id", programmeId)
+      .single();
+
+    if (progError) throw progError;
+
+    // head:true asks Postgres for the count without shipping the rows back.
+    const { count, error: countError } = await this.client
+      .from("programme_registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("programme_id", programmeId);
+
+    if (countError) throw countError;
+
+    const max = programme?.max_registrations ?? null;
+    const taken = count ?? 0;
+
+    return {
+      max,
+      taken,
+      remaining: max === null ? null : Math.max(0, max - taken),
+      isFull: max !== null && taken >= max,
+    };
+  }
+
   async registerForProgramme(data: {
     programmeId: string;
     playerId: string;
@@ -219,6 +288,13 @@ export class ProgrammeService {
       .select()
       .single();
 
+    // The database enforces the cap too (see the trigger in
+    // 20260823_programme_registration_limit.sql), which is what catches two
+    // people taking the last place at the same moment. Translate it into
+    // something the route can show a proper page for.
+    if (regError && isProgrammeFullError(regError)) {
+      throw new ProgrammeFullError();
+    }
     if (regError) throw regError;
 
     // Create availability rows

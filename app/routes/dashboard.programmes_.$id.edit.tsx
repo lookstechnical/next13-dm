@@ -53,6 +53,20 @@ export const action: ActionFunction = withAuthAction(
     const availabilityDescription = formData.get("availabilityDescription") as string;
     const eligibleDobFrom = formData.get("eligibleDobFrom") as string;
     const eligibleDobTo = formData.get("eligibleDobTo") as string;
+    // Unticked boxes post nothing, so an empty list legitimately means "ask
+    // for nothing extra" rather than "field missing".
+    const requestedFields = formData.getAll("requestedFields") as string[];
+    // Intersected with requestedFields by parseRequiredFields on read, so a
+    // stale key here can never enforce a field the form doesn't render.
+    const requiredFields = formData.getAll("requiredFields") as string[];
+    // Blank means "no limit", which is null rather than 0 — a zero cap would
+    // be a second way of saying can_register = false.
+    const maxRegistrationsRaw = (
+      (formData.get("maxRegistrations") as string) || ""
+    ).trim();
+    const maxRegistrations = maxRegistrationsRaw
+      ? Number(maxRegistrationsRaw)
+      : null;
 
     await programmeService.updateProgramme(programmeId, {
       name,
@@ -66,6 +80,10 @@ export const action: ActionFunction = withAuthAction(
       availabilityDescription: availabilityDescription || null,
       eligibleDobFrom: eligibleDobFrom || null,
       eligibleDobTo: eligibleDobTo || null,
+      requestedFields,
+      requiredFields,
+      maxRegistrations:
+        maxRegistrations && maxRegistrations > 0 ? maxRegistrations : null,
     });
 
     if (image && image.size > 0) {

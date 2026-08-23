@@ -71,6 +71,10 @@ export interface Player {
   updatedAt: string;
   shirt?: string;
   shorts?: string;
+  /** Total inches — see app/utils/height.ts. Collected as feet + inches. */
+  motherHeightInches?: number | null;
+  fatherHeightInches?: number | null;
+  medicalConditions?: string | null;
   playerAvgScores?: {
     avgOverallScore?: string;
   };
@@ -251,6 +255,15 @@ export interface Programme {
   availabilityDescription?: string;
   eligibleDobFrom?: string;
   eligibleDobTo?: string;
+  /**
+   * Optional profile details this programme asks for at registration.
+   * Keys are defined in app/utils/programme-fields.ts.
+   */
+  requestedFields?: string[] | null;
+  /** Subset of requestedFields the registrant must fill in. */
+  requiredFields?: string[] | null;
+  /** Maximum registrations allowed. Null/undefined = unlimited. */
+  maxRegistrations?: number | null;
   createdBy: string;
   createdAt: string;
 }

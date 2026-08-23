@@ -11,6 +11,7 @@ import { Button } from "~/components/ui/button copy";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { PlayerDetails } from "~/components/players/player-details";
 import { cn } from "~/lib/utils";
 import { PlayerService } from "~/services/playerService";
 import { ReportService } from "~/services/reportService";
@@ -213,6 +214,7 @@ export default function PlayerPage() {
         <Tabs defaultValue="reports" className="container mx-auto">
           <TabsList>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>
           <TabsContent value="reports">
             <div className="gap-4 flex flex-col">
@@ -220,6 +222,9 @@ export default function PlayerPage() {
                 <ReportCard report={report} />
               ))}
             </div>
+          </TabsContent>
+          <TabsContent value="details">
+            <PlayerDetails player={player} />
           </TabsContent>
         </Tabs>
         <Outlet />

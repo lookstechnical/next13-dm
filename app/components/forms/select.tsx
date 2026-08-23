@@ -18,6 +18,7 @@ type SelectField = {
   options: { id: string; name: string }[];
   label: string;
   placeholder?: string;
+  required?: boolean;
   errors?: any;
 } & SelectProps;
 
@@ -28,6 +29,7 @@ export const SelectField: React.FC<SelectField> = ({
   options,
   placeholder,
   onValueChange,
+  required,
   errors,
   ...rest
 }) => {
@@ -40,7 +42,12 @@ export const SelectField: React.FC<SelectField> = ({
   const selectedOption = options.find((o) => o.id === value);
 
   return (
-    <Field name={name as string} label={label} errors={errors}>
+    <Field
+      name={name as string}
+      label={label}
+      required={required}
+      errors={errors}
+    >
       <input type="hidden" name={name} value={value} />
       <div className="block md:hidden w-full">
         <Sheet>

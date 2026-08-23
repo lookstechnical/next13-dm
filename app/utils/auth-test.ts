@@ -65,7 +65,7 @@ export function createMockSupabaseClient(mockUser: any = null, delay = 50) {
               }
               
               return { data: [], error: null };
-            })
+            }
           }),
           in: () => ({
             select: async () => {

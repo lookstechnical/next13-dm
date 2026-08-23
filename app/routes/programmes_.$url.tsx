@@ -27,11 +27,16 @@ export const loader: LoaderFunction = async ({ request, params }) => {
     ? await programmeService.getProgrammeEvents(programme.id)
     : [];
 
-  return { programme, programmeEvents };
+  const capacity = programme
+    ? await programmeService.getRegistrationCapacity(programme.id)
+    : null;
+
+  return { programme, programmeEvents, capacity };
 };
 
 export default function ProgrammeDetail() {
-  const { programme, programmeEvents } = useLoaderData<typeof loader>();
+  const { programme, programmeEvents, capacity } =
+    useLoaderData<typeof loader>();
 
   if (!programme) {
     return (
@@ -41,6 +46,9 @@ export default function ProgrammeDetail() {
     );
   }
 
+  // A full programme closes registration the same way a passed deadline does,
+  // except there's no allow-list route back in — the places are simply gone.
+  const isFull = !!capacity?.isFull;
   const deadlinePassed = registrationDeadlinePassed(
     programme.registrationDeadline,
   );
@@ -95,6 +103,14 @@ export default function ProgrammeDetail() {
                     {formatDate(programme.registrationDeadline)}
                   </span>
                 )}
+                {capacity?.max != null && (
+                  <span className="flex items-center gap-1">
+                    <Users className="w-4" />
+                    {capacity.remaining === 0
+                      ? "Full"
+                      : `${capacity.remaining} of ${capacity.max} places left`}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -114,7 +130,7 @@ export default function ProgrammeDetail() {
           )}
 
           {/* CTA */}
-          {programme.canRegister && !deadlinePassed && (
+          {programme.canRegister && !deadlinePassed && !isFull && (
             <Button
               asChild
               size="lg"
@@ -124,6 +140,24 @@ export default function ProgrammeDetail() {
                 Register Now
               </Link>
             </Button>
+          )}
+          {programme.canRegister && !deadlinePassed && isFull && (
+            <div className="mt-4">
+              <p className="text-sm text-destructive">
+                This programme is full — all {capacity?.max} places have been
+                taken.
+              </p>
+              <p className="text-sm text-muted mt-1">
+                Already registered?{" "}
+                <Link
+                  to={`/programmes/${programme.url}/register`}
+                  className="text-primary hover:underline"
+                >
+                  Manage your registration
+                </Link>
+                .
+              </p>
+            </div>
           )}
           {programme.canRegister && deadlinePassed && (
             <div className="mt-4">
@@ -262,7 +296,7 @@ export default function ProgrammeDetail() {
         )}
 
         {/* Bottom CTA */}
-        {programme.canRegister && !deadlinePassed && (
+        {programme.canRegister && !deadlinePassed && !isFull && (
           <section className="text-center py-6">
             <p className="text-muted mb-4">
               Ready to join? Secure your spot now.

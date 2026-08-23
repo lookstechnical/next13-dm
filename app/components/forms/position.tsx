@@ -17,6 +17,7 @@ export const POSITIONS = [
 type PositionSelect = {
   label: string;
   placeholder?: string;
+  required?: boolean;
   errors?: any;
 } & SelectProps;
 
@@ -25,6 +26,7 @@ export const PositionSelect: React.FC<PositionSelect> = ({
   name,
   label,
   placeholder,
+  required,
   errors,
 }) => {
   return (
@@ -33,6 +35,7 @@ export const PositionSelect: React.FC<PositionSelect> = ({
       name={name}
       label={label}
       placeholder={placeholder}
+      required={required}
       errors={errors}
       options={POSITIONS.map((p) => ({ id: p, name: p }))}
     />

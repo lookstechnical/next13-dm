@@ -14,7 +14,10 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
-import { ProgrammeService } from "~/services/programmeService";
+import {
+  ProgrammeFullError,
+  ProgrammeService,
+} from "~/services/programmeService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import {
   eventTimeRange,
@@ -142,12 +145,25 @@ export const action: ActionFunction = withAuthAction(
         available: true,
       }));
 
-      await programmeService.registerForProgramme({
-        programmeId,
-        playerId,
-        email: player?.email,
-        eventAvailability,
-      });
+      try {
+        await programmeService.registerForProgramme({
+          programmeId,
+          playerId,
+          email: player?.email,
+          eventAvailability,
+        });
+      } catch (error) {
+        // Staff are held to the cap too — it's the same number of places. The
+        // way to add more is to raise the limit, which keeps one source of
+        // truth rather than letting the dashboard quietly exceed it.
+        if (error instanceof ProgrammeFullError) {
+          return {
+            error:
+              "This programme is full. Raise the registration limit on the programme settings to add more players.",
+          };
+        }
+        throw error;
+      }
       return { ok: true };
     }
 
@@ -361,9 +377,21 @@ export default function ProgrammeDetail() {
       </Card>
 
       <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-xl font-semibold text-white">
-          Registrations ({registrations.length})
-        </h2>
+        <div className="flex flex-row items-baseline gap-3">
+          <h2 className="text-xl font-semibold text-white">
+            Registrations ({registrations.length}
+            {programme.maxRegistrations
+              ? ` of ${programme.maxRegistrations}`
+              : ""}
+            )
+          </h2>
+          {programme.maxRegistrations &&
+            registrations.length >= programme.maxRegistrations && (
+              <Badge variant="outline" className="border-destructive">
+                Full
+              </Badge>
+            )}
+        </div>
         <AddPlayerDialog
           programmeId={programme.id}
           availablePlayers={availablePlayers}

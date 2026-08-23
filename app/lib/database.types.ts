@@ -239,6 +239,9 @@ export interface Database {
           school: string | null;
           height: string | null;
           foot: string | null;
+          mother_height_inches: number | null;
+          father_height_inches: number | null;
+          medical_conditions: string | null;
           photo_url: string | null;
           email: string | null;
           scout_id: string;
@@ -257,6 +260,9 @@ export interface Database {
           school?: string | null;
           height?: string | null;
           foot?: string | null;
+          mother_height_inches?: number | null;
+          father_height_inches?: number | null;
+          medical_conditions?: string | null;
           photo_url?: string | null;
           email?: string | null;
           scout_id: string;
@@ -275,6 +281,9 @@ export interface Database {
           school?: string | null;
           height?: string | null;
           foot?: string | null;
+          mother_height_inches?: number | null;
+          father_height_inches?: number | null;
+          medical_conditions?: string | null;
           photo_url?: string | null;
           email?: string | null;
           scout_id?: string;
@@ -535,6 +544,9 @@ export interface Database {
           availability_description: string | null;
           eligible_dob_from: string | null;
           eligible_dob_to: string | null;
+          requested_fields: string[] | null;
+          required_fields: string[] | null;
+          max_registrations: number | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -552,6 +564,9 @@ export interface Database {
           availability_description?: string | null;
           eligible_dob_from?: string | null;
           eligible_dob_to?: string | null;
+          requested_fields?: string[] | null;
+          required_fields?: string[] | null;
+          max_registrations?: number | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -569,6 +584,9 @@ export interface Database {
           availability_description?: string | null;
           eligible_dob_from?: string | null;
           eligible_dob_to?: string | null;
+          requested_fields?: string[] | null;
+          required_fields?: string[] | null;
+          max_registrations?: number | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
@@ -641,6 +659,7 @@ export interface Database {
         };
       };
       report_attributes: {
+        Row: {
           id: string;
           name: string;
           description: string;
@@ -661,7 +680,7 @@ export interface Database {
           active?: string;
           created_at?: string;
         };
-      }
+      };
     };
     Views: {
       [_ in never]: never;

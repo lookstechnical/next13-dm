@@ -5,7 +5,7 @@ import {
   useActionData,
   useLoaderData,
 } from "@remix-run/react";
-import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, AlertCircle, Users } from "lucide-react";
 import { Resend } from "resend";
 import { Field } from "~/components/forms/field";
 import { PlayerForm } from "~/components/forms/player";
@@ -28,9 +28,18 @@ import { Input } from "~/components/ui/input";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
-import { ProgrammeService } from "~/services/programmeService";
+import {
+  ProgrammeFullError,
+  ProgrammeService,
+} from "~/services/programmeService";
+import { ExtraProfileFields } from "~/components/programmes/extra-profile-fields";
 import { registrationDeadlinePassed } from "~/utils/helpers";
-import { step1, step2 } from "~/validations/player-registration";
+import { HEIGHT_RANGE_LABEL, parseHeightInput } from "~/utils/height";
+import {
+  ProgrammeFieldKey,
+  resolveProgrammeFields,
+} from "~/utils/programme-fields";
+import { step1 } from "~/validations/player-registration";
 import z from "zod";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -51,6 +60,198 @@ export const loader: LoaderFunction = async ({ request, params }) => {
   const clubs = await clubsService.getAllClubs();
 
   return { programme, programmeEvents, clubs };
+};
+
+/**
+ * Text inputs whose value maps straight onto a player column, keyed by
+ * catalogue field. Anything needing more than a trim — heights, kit, the photo
+ * — is handled separately below.
+ */
+const SIMPLE_FIELDS: Partial<Record<ProgrammeFieldKey, string>> = {
+  name: "name",
+  email: "email",
+  mobile: "mobile",
+  dateOfBirth: "dateOfBirth",
+  position: "position",
+  secondaryPosition: "secondaryPosition",
+  club: "club",
+  school: "school",
+  medicalConditions: "medicalConditions",
+};
+
+/**
+ * The profile values this programme asked for, and only those.
+ *
+ * Reading a field the form never rendered posts null over whatever the player
+ * already had. That is not hypothetical: before fields were configurable this
+ * action read `school`, `nationality` and `mentor` on every registration while
+ * none of them rendered, so registering silently blanked all three.
+ */
+const profileFields = (formData: FormData, programme: any) => {
+  const { requested } = resolveProgrammeFields(programme);
+  const submitted: Record<string, unknown> = {};
+
+  for (const [key, input] of Object.entries(SIMPLE_FIELDS)) {
+    if (requested.includes(key as ProgrammeFieldKey)) {
+      submitted[input] = formData.get(input) as string;
+    }
+  }
+
+  if (requested.includes("kit")) {
+    submitted.shirt = formData.get("shirt") as string;
+    submitted.shorts = formData.get("shorts") as string;
+  }
+
+  for (const key of ["motherHeight", "fatherHeight"] as const) {
+    if (!requested.includes(key)) continue;
+    const parsed = parseHeightInput(
+      formData.get(`${key}Feet`) as string,
+      formData.get(`${key}Inches`) as string,
+    );
+    submitted[`${key}Inches`] = parsed.status === "ok" ? parsed.inches : null;
+  }
+
+  // Always carried: this is the existing photo's URL, echoed back by a hidden
+  // input so a save doesn't drop a photo the registrant already has.
+  submitted.photoUrl = formData.get("photoUrl") as string;
+
+  return submitted;
+};
+
+/**
+ * What the registrant actually typed, echoed back on a rejected submit. A
+ * height that failed validation stores as null, so without this the boxes come
+ * back empty and hide the very value being complained about.
+ */
+const profileRawValues = (formData: FormData, programme: any) => {
+  const { requested } = resolveProgrammeFields(programme);
+  const raw: Record<string, string> = {};
+
+  const carry = (name: string) => {
+    const value = formData.get(name);
+    if (typeof value === "string") raw[name] = value;
+  };
+
+  for (const key of ["motherHeight", "fatherHeight"] as const) {
+    if (!requested.includes(key)) continue;
+    carry(`${key}Feet`);
+    carry(`${key}Inches`);
+  }
+  if (requested.includes("school")) carry("school");
+  if (requested.includes("medicalConditions")) carry("medicalConditions");
+
+  return raw;
+};
+
+/** Error copy per required field, keyed by the input the message hangs off. */
+const REQUIRED_MESSAGES: Partial<
+  Record<ProgrammeFieldKey, { input: string; message: string }[]>
+> = {
+  name: [{ input: "name", message: "Please enter your full name" }],
+  mobile: [
+    { input: "mobile", message: "Please enter a contact phone number" },
+  ],
+  dateOfBirth: [
+    { input: "dateOfBirth", message: "Please select your date of birth" },
+  ],
+  position: [
+    {
+      input: "position",
+      message: "Please select your preferred playing position",
+    },
+  ],
+  secondaryPosition: [
+    {
+      input: "secondaryPosition",
+      message: "Please select a secondary playing position",
+    },
+  ],
+  club: [
+    { input: "club", message: "Please select the club you currently play for" },
+  ],
+  school: [{ input: "school", message: "Please enter the school you attend" }],
+  kit: [
+    { input: "shirt", message: "Please select a shirt size" },
+    { input: "shorts", message: "Please select a shorts size" },
+  ],
+  medicalConditions: [
+    {
+      input: "medicalConditions",
+      message: "Please list any medical conditions, or write 'none'",
+    },
+  ],
+};
+
+const HEIGHT_LABELS = {
+  motherHeight: "mother's height",
+  fatherHeight: "father's height",
+} as const;
+
+/**
+ * Validate the submitted profile against this programme's configuration.
+ *
+ * Returns errors in the shape z.treeifyError produces, so they merge straight
+ * into the zod errors from step 1 and the shared Field component renders them
+ * without knowing where they came from.
+ */
+const validateProfileFields = (formData: FormData, programme: any) => {
+  const { requested, required } = resolveProgrammeFields(programme);
+  const properties: Record<string, { errors: string[] }> = {};
+  const fail = (input: string, message: string) => {
+    if (!properties[input]) properties[input] = { errors: [message] };
+  };
+  const value = (input: string) =>
+    ((formData.get(input) as string) || "").trim();
+
+  // Email is always asked for and always required — it's the identity the
+  // whole flow is built on — so it gets a format check, not just a presence one.
+  const email = value("email");
+  if (!email) {
+    fail("email", "Please enter your email address");
+  } else if (!z.email().safeParse(email).success) {
+    fail("email", "Please enter a valid email address");
+  }
+
+  for (const key of required) {
+    for (const { input, message } of REQUIRED_MESSAGES[key] || []) {
+      if (!value(input)) fail(input, message);
+    }
+  }
+
+  // The photo lives behind a file input, so presence means "a file this time,
+  // or one already on the record".
+  if (required.includes("photo")) {
+    const avatar = formData.get("avatar");
+    const hasNewPhoto = avatar instanceof File && avatar.size > 0;
+    if (!hasNewPhoto && !value("photoUrl")) {
+      fail(
+        "avatar",
+        "Please upload a photo — it helps our coaches identify you when you attend",
+      );
+    }
+  }
+
+  // A malformed height is rejected whether or not the field is required:
+  // silently storing null would tell the registrant their answer was accepted
+  // when it was thrown away.
+  for (const key of ["motherHeight", "fatherHeight"] as const) {
+    if (!requested.includes(key)) continue;
+    const parsed = parseHeightInput(
+      formData.get(`${key}Feet`) as string,
+      formData.get(`${key}Inches`) as string,
+    );
+    if (parsed.status === "empty") {
+      if (required.includes(key)) {
+        fail(key, `Please enter the ${HEIGHT_LABELS[key]}`);
+      }
+      continue;
+    }
+    if (parsed.status === "invalid") {
+      fail(key, `Please enter a height between ${HEIGHT_RANGE_LABEL}`);
+    }
+  }
+
+  return Object.keys(properties).length > 0 ? { errors: [], properties } : null;
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -91,6 +292,17 @@ export const action: ActionFunction = async ({ request }) => {
       !(await programmeService.isEmailAllowed(programmeId, email))
     ) {
       return { step: "closed", email };
+    }
+
+    // Turn people away at the front door rather than after they've filled in a
+    // whole profile. Already-registered players are exempt for the same reason
+    // as above: they need to reach the manage screen to update or withdraw,
+    // and they aren't taking a new place.
+    if (programme && !existingReg) {
+      const capacity = await programmeService.getRegistrationCapacity(
+        programmeId
+      );
+      if (capacity.isFull) return { step: "full", email };
     }
 
     if (player) {
@@ -165,31 +377,15 @@ export const action: ActionFunction = async ({ request }) => {
     const playerId = formData.get("playerId") as string;
     const dateOfBirth = formData.get("dateOfBirth") as string;
 
-    const submitted = {
-      name: formData.get("name") as string,
-      position: formData.get("position") as string,
-      secondaryPosition: formData.get("secondaryPosition") as string,
-      dateOfBirth,
-      nationality: formData.get("nationality") as string,
-      club: formData.get("club") as string,
-      school: formData.get("school") as string,
-      photoUrl: formData.get("photoUrl") as string,
-      email: formData.get("email") as string,
-      mentor: formData.get("mentor") as string,
-    };
+    const submitted = profileFields(formData, programme);
 
-    const validation = step2.safeParse({
-      name: submitted.name,
-      email: submitted.email,
-      position: submitted.position,
-      club: submitted.club,
-    });
-
-    if (!validation.success) {
+    const errors = validateProfileFields(formData, programme);
+    if (errors) {
       return {
         step: 2,
         player: { id: playerId, ...submitted },
-        errors: z.treeifyError(validation.error),
+        rawValues: profileRawValues(formData, programme),
+        errors,
       };
     }
 
@@ -227,7 +423,10 @@ export const action: ActionFunction = async ({ request }) => {
     if (playerId) {
       player = await playerService.updatePlayer(playerId, data);
     } else {
-      player = await playerService.createPlayer(data);
+      // players.position is NOT NULL, so a programme that doesn't ask for a
+      // position still has to put something in the column. The spread order
+      // matters: a submitted position overrides this default.
+      player = await playerService.createPlayer({ position: "", ...data });
     }
 
     if (player && avatar) {
@@ -269,12 +468,30 @@ export const action: ActionFunction = async ({ request }) => {
       available: formData.get(`event_${pe.eventId}`) === "true",
     }));
 
-    await programmeService.registerForProgramme({
-      programmeId,
-      playerId,
-      email: playerEmail,
-      eventAvailability,
-    });
+    // Second capacity check: the first was several screens ago, and the last
+    // place may have gone while this registrant was filling in their profile.
+    const capacity = await programmeService.getRegistrationCapacity(
+      programmeId
+    );
+    if (capacity.isFull) return { step: "full", email: playerEmail };
+
+    try {
+      await programmeService.registerForProgramme({
+        programmeId,
+        playerId,
+        email: playerEmail,
+        eventAvailability,
+      });
+    } catch (error) {
+      // The check above and the insert are two round trips, so a simultaneous
+      // registration can still take the last place in between. The database
+      // trigger is what actually stops the overbooking; this turns its error
+      // into the same page the pre-check would have shown.
+      if (error instanceof ProgrammeFullError) {
+        return { step: "full", email: playerEmail };
+      }
+      throw error;
+    }
 
     return { step: 4 };
   }
@@ -286,19 +503,9 @@ export const action: ActionFunction = async ({ request }) => {
     const registrationId = formData.get("registrationId") as string;
     const dateOfBirth = formData.get("dateOfBirth") as string;
 
-    // Only the fields the profile form actually exposes — updating anything
-    // else (nationality, school, mentor, kit) would wipe existing values, and
-    // we deliberately don't change the player's team here.
-    const submitted = {
-      name: formData.get("name") as string,
-      email: formData.get("email") as string,
-      mobile: formData.get("mobile") as string,
-      position: formData.get("position") as string,
-      secondaryPosition: formData.get("secondaryPosition") as string,
-      dateOfBirth,
-      club: formData.get("club") as string,
-      photoUrl: formData.get("photoUrl") as string,
-    };
+    // Only the fields this programme's form actually renders — reading any
+    // other column would wipe it. We deliberately don't change the team here.
+    const submitted = profileFields(formData, programme);
 
     // Re-load the availability context so the availability card still renders
     // on this same "manage" screen after a profile save (or a validation error).
@@ -323,17 +530,11 @@ export const action: ActionFunction = async ({ request }) => {
       };
     };
 
-    const validation = step2.safeParse({
-      name: submitted.name,
-      email: submitted.email,
-      position: submitted.position,
-      club: submitted.club,
-    });
-
-    if (!validation.success) {
+    const errors = validateProfileFields(formData, programme);
+    if (errors) {
       return buildManage(
         { id: playerId, ...submitted },
-        { errors: z.treeifyError(validation.error) }
+        { rawValues: profileRawValues(formData, programme), errors }
       );
     }
 
@@ -477,6 +678,10 @@ export default function ProgrammeRegister() {
   const { programme, clubs } = useLoaderData<typeof loader>();
   const action = useActionData<typeof action>();
 
+  // Resolved from the same helper the action validates with, so the form can't
+  // render a field set the server disagrees about.
+  const formFields = resolveProgrammeFields(programme);
+
   const currentStep =
     action?.step === "verify" ? 1 : (action?.step as number) || 1;
 
@@ -505,6 +710,7 @@ export default function ProgrammeRegister() {
         {/* Step indicator - hide on confirmation/already registered/closed */}
         {action?.step !== 4 &&
           action?.step !== "closed" &&
+          action?.step !== "full" &&
           action?.step !== "verify" &&
           action?.step !== "manage" &&
           action?.step !== "updated" &&
@@ -647,7 +853,15 @@ export default function ProgrammeRegister() {
                 clubs={clubs}
                 player={action.player}
                 errors={action.errors}
-                hideKit
+                fields={formFields.requested}
+                requiredFields={formFields.required}
+              />
+              <ExtraProfileFields
+                requestedFields={programme.requestedFields}
+                requiredFields={programme.requiredFields}
+                player={action.player}
+                rawValues={action.rawValues}
+                errors={action.errors}
               />
               <div className="pt-6">
                 <ActionButton title="Continue" className="w-full h-12" />
@@ -734,6 +948,27 @@ export default function ProgrammeRegister() {
           </Card>
         )}
 
+        {/* Full: every place has gone */}
+        {action?.step === "full" && (
+          <Card className="border-border p-8 text-center">
+            <Users className="w-12 h-12 text-muted mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">
+              Programme Full
+            </h2>
+            <p className="text-muted mb-6">
+              All places on {programme.name} have been taken. If you think
+              you've already registered, check you're using the same email
+              address the club has on file — otherwise please get in touch and
+              we'll let you know if a place comes up.
+            </p>
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link to={`/programmes/${programme.url}`}>
+                Back to Programme
+              </Link>
+            </Button>
+          </Card>
+        )}
+
         {/* Manage: existing registration — update availability or withdraw */}
         {action?.step === "manage" && (
           <div className="flex flex-col gap-6">
@@ -777,7 +1012,15 @@ export default function ProgrammeRegister() {
                   clubs={clubs}
                   player={action.player}
                   errors={action.errors}
-                  hideKit
+                  fields={formFields.requested}
+                  requiredFields={formFields.required}
+                />
+                <ExtraProfileFields
+                  requestedFields={programme.requestedFields}
+                  requiredFields={programme.requiredFields}
+                  player={action.player}
+                  rawValues={action.rawValues}
+                  errors={action.errors}
                 />
                 <div className="pt-6">
                   <ActionButton title="Update details" className="w-full h-12" />
