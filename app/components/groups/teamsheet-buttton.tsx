@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { DownloadIcon } from "lucide-react";
 import { Player } from "~/types";
+import { downloadBlob } from "~/utils/download";
 import React from "react";
 import { Button } from "../ui/button";
 import {
@@ -550,10 +551,7 @@ export async function generateTeamPDF(
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "teamsheet.pdf";
-  link.click();
+  downloadBlob(blob, "teamsheet.pdf");
 }
 
 type DownloadButton = {

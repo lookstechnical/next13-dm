@@ -1,6 +1,7 @@
 import { ImageDownIcon, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 import { Player } from "~/types";
+import { downloadBlob } from "~/utils/download";
 import { Button } from "../ui/button";
 
 /**
@@ -119,11 +120,10 @@ export async function generatePlayersImage(players: Player[], name: string) {
   );
   if (!blob) return;
 
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${name.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "players"}-players.jpg`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  downloadBlob(
+    blob,
+    `${name.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "players"}-players.jpg`,
+  );
 }
 
 type PlayersImageButton = {

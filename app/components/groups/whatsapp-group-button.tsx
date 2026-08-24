@@ -1,6 +1,7 @@
 import { Check, Copy, Download, MessageCircle } from "lucide-react";
 import React, { useState } from "react";
 import { Player } from "~/types";
+import { shareOrDownloadFile } from "~/utils/download";
 import { partitionByPhone } from "~/utils/phone";
 import { buildVCards } from "~/utils/vcard";
 import { Button } from "../ui/button";
@@ -41,13 +42,16 @@ export const WhatsAppGroupButton: React.FC<WhatsAppGroupButton> = ({
   groupName,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [delivery, setDelivery] = useState<"shared" | "downloaded" | null>(
+    null,
+  );
 
   const { withPhone, withoutPhone } = partitionByPhone(
     players,
     (player) => player.mobile,
   );
 
-  const downloadContacts = () => {
+  const downloadContacts = async () => {
     const vcf = buildVCards(
       withPhone.map(({ player, phone }) => ({
         name: player.name,
@@ -57,24 +61,26 @@ export const WhatsAppGroupButton: React.FC<WhatsAppGroupButton> = ({
       })),
     );
 
-    const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `${slugify(groupName)}-contacts.vcf`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
+    setDelivery(
+      await shareOrDownloadFile(
+        blob,
+        `${slugify(groupName)}-contacts.vcf`,
+        `${groupName} contacts`,
+      ),
+    );
   };
 
   const copyNumbers = async () => {
-    const numbers = withPhone.map(({ phone }) => phone).join("\n");
+    const numbers = withPhone.map(({ phone }) => phone).join(", ");
     try {
       await navigator.clipboard.writeText(numbers);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard access is refused outside a secure context and in some
-      // embedded browsers. Say so rather than leaving a button that does
-      // nothing — the .vcf route still works.
+      // embedded browsers. Show the list rather than leaving a button that
+      // does nothing.
       window.prompt("Copy these numbers:", numbers);
     }
   };
@@ -100,8 +106,13 @@ export const WhatsAppGroupButton: React.FC<WhatsAppGroupButton> = ({
         </DialogHeader>
 
         <ol className="text-sm text-muted list-decimal pl-5 flex flex-col gap-1">
-          <li>Download the contacts file below and open it on your phone.</li>
-          <li>Import it — every player is added to your address book.</li>
+          <li>Get the contacts file onto your phone using the button below.</li>
+          <li>
+            Open it and choose{" "}
+            <span className="text-white">Add All Contacts</span>. The preview
+            only shows the first player — that's normal, all{" "}
+            {withPhone.length} are in the file.
+          </li>
           <li>
             In WhatsApp: <span className="text-white">New chat</span> →{" "}
             <span className="text-white">New group</span>, then pick the players
@@ -130,6 +141,14 @@ export const WhatsAppGroupButton: React.FC<WhatsAppGroupButton> = ({
             <span>{copied ? "Copied" : "Copy numbers"}</span>
           </Button>
         </div>
+
+        {delivery === "downloaded" && (
+          <p className="text-xs text-muted">
+            On an iPhone, open the file from the Files app rather than the
+            Safari download banner — Safari's preview only offers the first
+            contact.
+          </p>
+        )}
 
         {withPhone.length === 0 && (
           <p className="text-sm text-destructive">

@@ -1,6 +1,7 @@
 import { ShirtIcon } from "lucide-react";
 import React from "react";
 import { Player } from "~/types";
+import { downloadBlob } from "~/utils/download";
 import { formatDate } from "~/utils/helpers";
 import { kitLines, kitSummary, missingKitSizes } from "~/utils/kit";
 import { Button } from "../ui/button";
@@ -60,11 +61,7 @@ export function generateKitOrderCsv(players: Player[], groupName: string) {
     type: "text/csv;charset=utf-8;",
   });
 
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${slugify(groupName)}-kit-order.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  downloadBlob(blob, `${slugify(groupName)}-kit-order.csv`);
 }
 
 type KitOrderButton = {
