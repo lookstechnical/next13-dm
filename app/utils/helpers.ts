@@ -376,3 +376,32 @@ export function zodErrorToFormErrors<T>(
 export function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// Bucket holding both player photos and user avatars (see
+// playerService.uploadPlayerProfilePhoto).
+const PROFILE_IMAGE_BUCKET = "profile-images-public";
+
+/**
+ * Resolve a stored image value to something an <img src> can use.
+ *
+ * `players.photo_url` holds a full public URL, but `users.avatar` holds a bare
+ * storage path (`<id>/<timestamp>.jpg`). Rendered raw, a bare path is resolved
+ * by the browser against the current page — so viewing a group requested
+ * /dashboard/groups/<id>/<avatar-path> and Remix 404'd on every page that shows
+ * the user menu. Anything already absolute is passed through untouched.
+ */
+export const profileImageUrl = (value?: string | null): string | undefined => {
+  const path = value?.trim();
+  if (!path) return undefined;
+
+  // Absolute URLs, data/blob URIs and root-relative paths are already usable.
+  if (/^(https?:|data:|blob:|\/)/i.test(path)) return path;
+
+  const base = import.meta.env.VITE_SUPABASE_URL;
+  if (!base) return undefined;
+
+  return `${base.replace(/\/$/, "")}/storage/v1/object/public/${PROFILE_IMAGE_BUCKET}/${path
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
+};

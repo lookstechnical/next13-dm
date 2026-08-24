@@ -10,6 +10,7 @@ import {
 import { Button } from "../ui/button";
 import { User as UserIcon } from "lucide-react";
 import { User } from "~/types";
+import { profileImageUrl } from "~/utils/helpers";
 import { Form, useLocation } from "@remix-run/react";
 import {
   Sheet,
@@ -24,6 +25,7 @@ type UserMenu = {
 };
 export const UserMenu: React.FC<UserMenu> = ({ user }) => {
   const location = useLocation();
+  const avatarUrl = profileImageUrl(user?.avatar);
 
   return (
     <DropdownMenu>
@@ -33,8 +35,8 @@ export const UserMenu: React.FC<UserMenu> = ({ user }) => {
           className="h-full hover:bg-transparent text-foreground border-none focus-visible:ring-0 focus-visible:ring-offset-0"
         >
           <div className="w-[30px] h-[30px] flex items-center justify-center overflow-hidden rounded-full object-cover bg-white">
-            {user?.avatar ? (
-              <img width={20} height={20} alt={user.name} src={user.avatar} />
+            {avatarUrl ? (
+              <img width={20} height={20} alt={user.name} src={avatarUrl} />
             ) : (
               <UserIcon className="text-background" />
             )}
@@ -88,6 +90,7 @@ type MobileUserMenu = {
 };
 export const MobileUserMenu: React.FC<UserMenu> = ({ user }) => {
   const location = useLocation();
+  const avatarUrl = profileImageUrl(user?.avatar);
 
   return (
     <Sheet>
@@ -97,8 +100,8 @@ export const MobileUserMenu: React.FC<UserMenu> = ({ user }) => {
           className="w-full bg-transparent text-foreground flex justify-between hover:bg-white hover:text-background p-8 mb-2"
         >
           <div className="w-[30px] h-[30px] flex items-center justify-center overflow-hidden rounded-full object-cover bg-white">
-            {user?.avatar ? (
-              <img width={20} height={20} alt={user.name} src={user.avatar} />
+            {avatarUrl ? (
+              <img width={20} height={20} alt={user.name} src={avatarUrl} />
             ) : (
               <UserIcon className="text-background" />
             )}

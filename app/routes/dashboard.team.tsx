@@ -122,7 +122,10 @@ export default function Team() {
 
         <CardGrid items={[{}]} name="You have 0 teams">
           {teams.map((team: Team) => (
-            <Card className="rounded-lg shadow-sm border border-gray-100 p-4 text-foreground">
+            <Card
+              key={team.id}
+              className="rounded-lg shadow-sm border border-gray-100 p-4 text-foreground"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold">{team.name}</h3>
                 <Badge
@@ -159,7 +162,10 @@ export default function Team() {
               render: (val, row) => (
                 <>
                   {row.teamMemberships?.map((member) => (
-                    <div className="flex flex-row gap-2 mb-2">
+                    <div
+                      key={member.teamId}
+                      className="flex flex-row gap-2 mb-2"
+                    >
                       <div>{member.teams.name}</div>
                       <div>
                         <Badge variant={roleToVariant(member.role)}>

@@ -73,11 +73,13 @@ export const SelectField: React.FC<SelectField> = ({
                 </Button>
               </SheetClose>
               {options.map((p) => (
-                <SheetClose className="text-foreground w-full">
+                <SheetClose
+                  key={`select-option-${p.id}`}
+                  className="text-foreground w-full"
+                >
                   <Button
                     type="button"
                     variant="outline"
-                    key={`select-option-${p.id}`}
                     className=" text-foreground w-full text-xl"
                     onClick={() => setValue(p.id)}
                   >
