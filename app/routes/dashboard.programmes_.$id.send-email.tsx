@@ -12,6 +12,7 @@ import { Button } from "~/components/ui/button";
 import { programmeEmailTemplate } from "~/services/email";
 import { GroupService } from "~/services/groupService";
 import { ProgrammeService } from "~/services/programmeService";
+import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { eventTimeRange } from "~/utils/helpers";
 
@@ -68,6 +69,7 @@ function playerTeamMap(
 }
 
 export const loader: LoaderFunction = withAuth(
+  AllowedRoles.adminOnly,
   async ({ params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
 
@@ -87,6 +89,7 @@ export const loader: LoaderFunction = withAuth(
 );
 
 export const action: ActionFunction = withAuthAction(
+  AllowedRoles.adminOnly,
   async ({ request, params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
     const groupService = new GroupService(supabaseClient);

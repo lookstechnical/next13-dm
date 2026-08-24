@@ -17,6 +17,7 @@ import {
   InvitationService,
   hasRespondedToInvite,
 } from "~/services/invitationService";
+import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -48,6 +49,7 @@ function recipients(group: any) {
 }
 
 export const loader: LoaderFunction = withAuth(
+  AllowedRoles.adminOnly,
   async ({ params, supabaseClient, user }) => {
     const groupsService = new GroupService(supabaseClient);
     const invitationService = new InvitationService(supabaseClient);
@@ -81,6 +83,7 @@ export const loader: LoaderFunction = withAuth(
 );
 
 export const action: ActionFunction = withAuthAction(
+  AllowedRoles.adminOnly,
   async ({ request, params, supabaseClient, user }) => {
     const groupsService = new GroupService(supabaseClient);
     const invitationService = new InvitationService(supabaseClient);

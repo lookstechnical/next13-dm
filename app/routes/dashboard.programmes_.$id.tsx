@@ -18,6 +18,8 @@ import {
   ProgrammeFullError,
   ProgrammeService,
 } from "~/services/programmeService";
+import { ActionProtection } from "~/components/action-protection";
+import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import {
   eventTimeRange,
@@ -233,6 +235,7 @@ export default function ProgrammeDetail() {
     playerGroups,
     allowedEmails,
     availablePlayers,
+    user,
   } = useLoaderData<typeof loader>();
 
   if (!programme) {
@@ -285,21 +288,26 @@ export default function ProgrammeDetail() {
                   Print Register
                 </Link>
               </Button>
-              <Button asChild variant="outline">
-                <Link to={`/dashboard/programmes/${programme.id}/send-email`}>
-                  Email Members
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link to={`/dashboard/programmes/${programme.id}/invite`}>
-                  Invite Members
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link to={`/dashboard/programmes/${programme.id}/reminder`}>
-                  Send reminder
-                </Link>
-              </Button>
+              <ActionProtection
+                allowedRoles={AllowedRoles.adminOnly}
+                user={user}
+              >
+                <Button asChild variant="outline">
+                  <Link to={`/dashboard/programmes/${programme.id}/send-email`}>
+                    Email Members
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to={`/dashboard/programmes/${programme.id}/invite`}>
+                    Invite Members
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to={`/dashboard/programmes/${programme.id}/reminder`}>
+                    Send reminder
+                  </Link>
+                </Button>
+              </ActionProtection>
               <Button asChild variant="outline">
                 <Link to={`/dashboard/programmes/${programme.id}/edit`}>
                   Edit

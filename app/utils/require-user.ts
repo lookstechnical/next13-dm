@@ -5,7 +5,13 @@ import { Team, User } from "~/types";
 let sessionUser: User | undefined = undefined;
 
 export async function getAppUser(userId: string, client: any) {
-  if (sessionUser && sessionUser.id === userId) return sessionUser;
+  if (sessionUser && sessionUser.id === userId) {
+    if (sessionUser.status === "inactive") {
+      sessionUser = undefined;
+      throw redirect("/deactivated");
+    }
+    return sessionUser;
+  }
 
   const { data: userProfiles, error } = await client
     .from("users")
@@ -17,6 +23,14 @@ export async function getAppUser(userId: string, client: any) {
 
   const userProfile =
     userProfiles && userProfiles.length > 0 ? userProfiles[0] : null;
+
+  // Mirrors the gate in auth.server.ts. This is the older of the two auth paths
+  // and several routes still use it, so it has to refuse deactivated users too
+  // or they keep access wherever it is the only check.
+  if (userProfile?.status === "inactive") {
+    sessionUser = undefined;
+    throw redirect("/deactivated");
+  }
 
   if (userProfile) {
     // Load team memberships separately to avoid RLS recursion

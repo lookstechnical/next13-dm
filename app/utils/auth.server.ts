@@ -19,6 +19,12 @@ interface AuthCache {
 const authCache: AuthCache = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Deactivated users get their own unauthenticated route rather than a bounce
+// back to "/". The login page navigates to /dashboard whenever a Supabase
+// session exists, so sending them there would loop; /deactivated clears the
+// stale session instead.
+const DEACTIVATED_REDIRECT = "/deactivated";
+
 /**
  * Get authenticated user with caching to avoid repeated Supabase calls
  */
@@ -57,6 +63,14 @@ export async function getAuthenticatedUser(
       const isExpired = Date.now() - cached.timestamp > CACHE_TTL;
       
       if (!isExpired) {
+        // Re-check on the cached path too: an admin may have deactivated this
+        // user mid-session, and the cache entry predates that change.
+        if (cached.user.status === "inactive") {
+          delete authCache[cacheKey];
+          if (required) throw redirect(DEACTIVATED_REDIRECT);
+          return null;
+        }
+
         return {
           user: cached.user,
           supabaseUser: cached.supabaseUser
@@ -73,6 +87,14 @@ export async function getAuthenticatedUser(
     if (!appUser) {
       console.error("Failed to load app user data for:", supabaseUser.id);
       if (required) throw redirect(redirectTo);
+      return null;
+    }
+
+    // A deactivated user keeps a valid Supabase session until it expires, so the
+    // session alone is not authorisation. Refuse here and never cache the entry.
+    if (appUser.status === "inactive") {
+      delete authCache[cacheKey];
+      if (required) throw redirect(DEACTIVATED_REDIRECT);
       return null;
     }
 

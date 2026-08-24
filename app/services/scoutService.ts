@@ -159,6 +159,33 @@ export class ScoutService {
     return data;
   }
 
+  /**
+   * Deactivate or reactivate a user.
+   *
+   * Deliberately a status change rather than a row delete: `programmes.created_by`
+   * (and the scout attribution on reports) reference `users(id)` with no
+   * ON DELETE, so a hard delete either fails outright or, once loosened, quietly
+   * strips authorship from historical scouting work. Flipping status keeps the
+   * audit trail intact and lets an admin undo a mistaken offboarding.
+   */
+  async setUserStatus(
+    id: string,
+    status: "active" | "inactive"
+  ): Promise<User | null> {
+    const { data, error } = await this.client
+      .from("users")
+      .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      throw error;
+    }
+    return convertKeysToCamelCase(data);
+  }
+
   async deleteScout(id: string): Promise<boolean> {
     const { error } = await this.client.from("users").delete().eq("id", id);
 

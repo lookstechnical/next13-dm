@@ -11,6 +11,7 @@ import SheetPage from "~/components/sheet-page";
 import { Button } from "~/components/ui/button";
 import { programmeEmailTemplate } from "~/services/email";
 import { ProgrammeService } from "~/services/programmeService";
+import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -43,6 +44,7 @@ function parseEmails(raw: string): string[] {
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export const loader: LoaderFunction = withAuth(
+  AllowedRoles.adminOnly,
   async ({ params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
 
@@ -58,6 +60,7 @@ export const loader: LoaderFunction = withAuth(
 );
 
 export const action: ActionFunction = withAuthAction(
+  AllowedRoles.adminOnly,
   async ({ request, params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
 

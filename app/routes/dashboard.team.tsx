@@ -1,8 +1,11 @@
-import type { MetaFunction } from "@remix-run/node";
-import { Link, Outlet, useLoaderData } from "@remix-run/react";
-import { UserPlus, Users2Icon } from "lucide-react";
+import type { ActionFunction, MetaFunction } from "@remix-run/node";
+import { Form, Link, Outlet, useLoaderData } from "@remix-run/react";
+import { UserMinus, UserPlus, Users2Icon } from "lucide-react";
+import { ActionProtection } from "~/components/action-protection";
+import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
+import { AllowedRoles } from "~/components/route-protections";
 import { DataTable } from "~/components/table/data-table";
 import { Badge, BadgeProps } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -12,7 +15,8 @@ import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { ScoutService } from "~/services/scoutService";
 import { TeamService } from "~/services/teamService";
 import { Scout, Team, User } from "~/types";
-import { withAuth } from "~/utils/auth-helpers";
+import { invalidateUserAuth, withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { clearUserSession } from "~/utils/require-user";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -32,6 +36,34 @@ export const loader = withAuth(async ({ user, supabaseClient }) => {
   return { teams, users, user };
 });
 
+export const action: ActionFunction = withAuthAction(
+  AllowedRoles.adminOnly,
+  async ({ request, user, supabaseClient }) => {
+    const formData = await request.formData();
+    const targetId = formData.get("id") as string;
+
+    if (!targetId) return { error: "No user selected." };
+
+    // An admin deactivating themselves would be locked out by the very gate
+    // this action arms, with no way back in from the UI.
+    if (targetId === user.id) {
+      return { error: "You cannot deactivate your own account." };
+    }
+
+    const usersService = new ScoutService(supabaseClient);
+    const status = request.method === "DELETE" ? "inactive" : "active";
+
+    await usersService.setUserStatus(targetId, status);
+
+    // The auth layer caches users for 5 minutes, so without this a deactivated
+    // user keeps working until their entry expires.
+    invalidateUserAuth(targetId);
+    clearUserSession();
+
+    return { ok: true };
+  }
+);
+
 const roleToVariant = (role: Scout["role"]): BadgeProps["variant"] => {
   switch (role) {
     case "ADMIN":
@@ -41,6 +73,19 @@ const roleToVariant = (role: Scout["role"]): BadgeProps["variant"] => {
     case "HEAD_OF_DEPARTMENT":
       return "destructive";
     case "SCOUT":
+      return "outline";
+  }
+};
+
+const statusToVariant = (status: User["status"]): BadgeProps["variant"] => {
+  switch (status) {
+    case "active":
+      return "default";
+    case "pending":
+      return "outline";
+    case "inactive":
+      return "destructive";
+    default:
       return "outline";
   }
 };
@@ -127,6 +172,43 @@ export default function Team() {
                     <Badge variant={roleToVariant(val)}>{val}</Badge>
                   )}
                 </>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (val, row: User) => (
+                <Badge variant={statusToVariant(row.status)}>
+                  {row.status ?? "active"}
+                </Badge>
+              ),
+            },
+            {
+              key: "id",
+              header: "",
+              className: "text-right",
+              render: (val, row: User) => (
+                <ActionProtection allowedRoles={AllowedRoles.adminOnly} user={user}>
+                  {row.id === user.id ? null : row.status === "inactive" ? (
+                    <Form method="post">
+                      <input type="hidden" name="id" value={row.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Reactivate
+                      </Button>
+                    </Form>
+                  ) : (
+                    <DeleteConfirm
+                      name={row.name}
+                      id={row.id}
+                      term="deactivate"
+                    >
+                      <Button variant="ghost" size="sm">
+                        <UserMinus />
+                        Deactivate
+                      </Button>
+                    </DeleteConfirm>
+                  )}
+                </ActionProtection>
               ),
             },
           ]}

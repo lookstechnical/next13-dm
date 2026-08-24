@@ -41,6 +41,8 @@ import {
 import { cn } from "~/lib/utils";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
+import { ActionProtection } from "~/components/action-protection";
+import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import {
   calculateAgeGroup,
@@ -57,7 +59,7 @@ export const meta: MetaFunction = () => {
 };
 
 export const loader: LoaderFunction = withAuth(
-  async ({ request, params, supabaseClient }) => {
+  async ({ request, params, supabaseClient, user }) => {
     const eventService = new GroupService(supabaseClient);
 
     const playerService = new PlayerService(supabaseClient);
@@ -137,7 +139,7 @@ export const loader: LoaderFunction = withAuth(
       }));
     }
 
-    return { group: { ...group, playerGroupMembers }, events };
+    return { group: { ...group, playerGroupMembers }, events, user };
   },
 );
 
@@ -263,7 +265,7 @@ const quartileRank = (value: string) =>
   value === UNKNOWN ? 999 : Number(value.replace("Q", "")) || 500;
 
 export default function PlayerPage() {
-  const { group, events } = useLoaderData<typeof loader>();
+  const { group, events, user } = useLoaderData<typeof loader>();
 
   // Client-side filters: everything needed is already loaded, so narrowing the
   // list never costs a reload.
@@ -401,13 +403,18 @@ export default function PlayerPage() {
                     </Button>
                   </Form>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="p-0">
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to={`/dashboard/groups/${group.id}/send-invites`}>
-                      Send Invites
-                    </Link>
-                  </Button>
-                </DropdownMenuItem>
+                <ActionProtection
+                  allowedRoles={AllowedRoles.adminOnly}
+                  user={user}
+                >
+                  <DropdownMenuItem className="p-0">
+                    <Button asChild variant="outline" className="w-full">
+                      <Link to={`/dashboard/groups/${group.id}/send-invites`}>
+                        Send Invites
+                      </Link>
+                    </Button>
+                  </DropdownMenuItem>
+                </ActionProtection>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
