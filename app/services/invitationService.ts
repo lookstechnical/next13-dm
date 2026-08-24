@@ -10,6 +10,20 @@ function randomString(length: number): string {
   return Array.from(array, (n) => chars[n % chars.length]).join("");
 }
 
+/**
+ * Whether an invitation has had an answer either way.
+ *
+ * Defined as accepted-or-rejected rather than "not pending" on purpose. The
+ * enum also carries `expired`, which nothing currently sets; treating anything
+ * unrecognised as "not responded" errs towards sending a reminder rather than
+ * silently skipping someone, which is the failure that actually costs a coach a
+ * player.
+ */
+export const hasRespondedToInvite = (invitation?: {
+  status?: string | null;
+}): boolean =>
+  invitation?.status === "accepted" || invitation?.status === "rejected";
+
 export class InvitationService {
   client: any;
   constructor(client: any) {
@@ -94,6 +108,52 @@ export class InvitationService {
    * Returns a playerId -> invitation map, and the ids of the players whose
    * invitation had to be re-opened so the caller can report it.
    */
+  /**
+   * The current invitation row for each of these players, keyed by player id.
+   *
+   * A player can end up with more than one row (the old create path inserted a
+   * duplicate whenever the single-row lookup errored), so keep the most
+   * recently invited one — that's the invitation any question about "have they
+   * responded?" is really about.
+   *
+   * Raw database rows, snake_case. Use getLatestInvitations for camelCase.
+   */
+  private async latestInvitationRows(
+    playerIds: string[]
+  ): Promise<Map<string, any>> {
+    const latest = new Map<string, any>();
+    const unique = [...new Set(playerIds.filter(Boolean))];
+    if (unique.length === 0) return latest;
+
+    const { data, error } = await this.client
+      .from("invitations")
+      .select()
+      .in("player_id", unique);
+
+    if (error) throw error;
+
+    for (const row of data || []) {
+      const current = latest.get(row.player_id);
+      if (!current || (row.invited_at || "") > (current.invited_at || "")) {
+        latest.set(row.player_id, row);
+      }
+    }
+
+    return latest;
+  }
+
+  /** As latestInvitationRows, converted to the app's camelCase shape. */
+  async getLatestInvitations(
+    playerIds: string[]
+  ): Promise<Map<string, Invitation>> {
+    const rows = await this.latestInvitationRows(playerIds);
+    const result = new Map<string, Invitation>();
+    for (const [playerId, row] of rows) {
+      result.set(playerId, convertKeysToCamelCase(row));
+    }
+    return result;
+  }
+
   async ensureInvitations(
     playerIds: string[],
     content?: InvitePageContent
@@ -121,23 +181,7 @@ export class InvitationService {
       Object.entries(pageContent).filter(([, v]) => v !== undefined)
     );
 
-    const { data: existing, error: selectError } = await this.client
-      .from("invitations")
-      .select()
-      .in("player_id", unique);
-
-    if (selectError) throw selectError;
-
-    // A player can end up with more than one row (the old create path inserted
-    // a duplicate whenever the single-row lookup errored), so keep the most
-    // recently invited one and reuse that.
-    const latest = new Map<string, any>();
-    for (const row of existing || []) {
-      const current = latest.get(row.player_id);
-      if (!current || (row.invited_at || "") > (current.invited_at || "")) {
-        latest.set(row.player_id, row);
-      }
-    }
+    const latest = await this.latestInvitationRows(unique);
 
     const stale = [...latest.values()].filter((row) => row.status !== "pending");
 

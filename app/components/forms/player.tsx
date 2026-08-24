@@ -5,6 +5,7 @@ import { PositionSelect } from "./position";
 import { SelectField } from "./select";
 import { DateField } from "./date";
 import { ImageUpload } from "./image-upload";
+import { KIT_SIZES } from "~/utils/kit";
 
 type PlayerForm = {
   player?: Player;
@@ -24,7 +25,7 @@ type PlayerForm = {
   requiredFields?: string[];
 };
 
-const sizes = ["XS", "SM", "M", "LG", "XL", "XXL", "XXXL"];
+
 
 export const PlayerForm: React.FC<PlayerForm> = ({
   player,
@@ -170,7 +171,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({
                 defaultValue={player?.shirt}
                 required={needs("kit")}
                 errors={errors}
-                options={sizes?.map((c) => ({ id: c, name: c })) || []}
+                options={KIT_SIZES.map((c) => ({ id: c, name: c }))}
               />
 
               <SelectField
@@ -179,7 +180,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({
                 defaultValue={player?.shorts}
                 required={needs("kit")}
                 errors={errors}
-                options={sizes?.map((c) => ({ id: c, name: c })) || []}
+                options={KIT_SIZES.map((c) => ({ id: c, name: c }))}
               />
             </div>
           )}

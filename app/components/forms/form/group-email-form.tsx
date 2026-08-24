@@ -16,7 +16,11 @@ type GroupEmailFormProps = {
   libraryItem?: any;
   defaultTestEmail?: string;
   recipientCount?: number;
+  /** How many members haven't responded to their invitation yet. */
+  reminderCount?: number;
   memberCount?: number;
+  /** Lets the page footer show who the selected type will actually reach. */
+  onTypeChange?: (type: string) => void;
 };
 
 const DEFAULT_FOOTER = `
@@ -63,10 +67,14 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
   libraryItem,
   defaultTestEmail,
   recipientCount,
+  reminderCount,
   memberCount,
+  onTypeChange,
 }) => {
   const [type, setType] = useState<string>("invite");
   const withoutEmail = (memberCount ?? 0) - (recipientCount ?? 0);
+  const isReminder = type === "reminder";
+  const alreadyResponded = (recipientCount ?? 0) - (reminderCount ?? 0);
 
   return (
     <div className="flex gap-4 flex-col p-4">
@@ -79,7 +87,10 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
             name="type"
             label="Type"
             defaultValue="invite"
-            onValueChange={(value) => setType(value)}
+            onValueChange={(value) => {
+              setType(value);
+              onTypeChange?.(value);
+            }}
             options={[
               { id: "invite", name: "Invite" },
               { id: "reminder", name: "Reminder" },
@@ -205,9 +216,28 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
           <strong className="text-white">Send test email</strong> sends a single
           copy to the address above so you can preview it. Its accept and reject
           buttons are inactive.{" "}
-          <strong className="text-white">Send to all</strong> emails all{" "}
-          {recipientCount ?? 0} group member
-          {recipientCount === 1 ? "" : "s"}.
+          {isReminder ? (
+            <>
+              <strong className="text-white">Send reminder</strong> emails only
+              the {reminderCount ?? 0} member
+              {reminderCount === 1 ? "" : "s"} who haven't accepted or rejected
+              their invitation yet.
+              {alreadyResponded > 0 && (
+                <>
+                  {" "}
+                  {alreadyResponded} member
+                  {alreadyResponded === 1 ? " has" : "s have"} already
+                  responded and won't be emailed.
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <strong className="text-white">Send to all</strong> emails all{" "}
+              {recipientCount ?? 0} group member
+              {recipientCount === 1 ? "" : "s"}.
+            </>
+          )}
           {withoutEmail > 0 && (
             <>
               {" "}

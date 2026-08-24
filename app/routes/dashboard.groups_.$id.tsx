@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { SelectField } from "~/components/forms/select";
+import { KitOrderButton } from "~/components/groups/kit-order-button";
 import { PlayersImageButton } from "~/components/groups/players-image-button";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
 import { ListingHeader } from "~/components/layout/listing-header";
@@ -357,6 +358,12 @@ export default function PlayerPage() {
                     teamName={group.name}
                     unavailablePlayerIds={unavailablePlayerIds}
                     eventName={selectedEvent?.name}
+                  />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="p-0">
+                  <KitOrderButton
+                    players={visibleMembers}
+                    groupName={group.name}
                   />
                 </DropdownMenuItem>
                 {/* Building the grid is async and shows progress on the

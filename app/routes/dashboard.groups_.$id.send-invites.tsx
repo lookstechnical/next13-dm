@@ -4,6 +4,7 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import { useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import { useState } from "react";
 import { AlertCircle, CheckCircle } from "lucide-react";
 import { Resend } from "resend";
 import { GroupEmailForm } from "~/components/forms/form/group-email-form";
@@ -12,7 +13,10 @@ import { Button } from "~/components/ui/button";
 import { emailTemplate } from "~/services/email";
 import type { InvitePageContent } from "~/services/inviteContent";
 import { GroupService } from "~/services/groupService";
-import { InvitationService } from "~/services/invitationService";
+import {
+  InvitationService,
+  hasRespondedToInvite,
+} from "~/services/invitationService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -46,16 +50,30 @@ function recipients(group: any) {
 export const loader: LoaderFunction = withAuth(
   async ({ params, supabaseClient, user }) => {
     const groupsService = new GroupService(supabaseClient);
+    const invitationService = new InvitationService(supabaseClient);
 
     const group = params.id
       ? await groupsService.getGroupById(params.id)
       : undefined;
 
     const members = group?.playerGroupMembers ?? [];
+    const emailable = recipients(group);
+
+    // A reminder reaches fewer people than an invite, so the count has to be
+    // worked out here as well as in the action — otherwise the confirm dialog
+    // promises to email the whole group and only some of them get it.
+    const invitations = await invitationService.getLatestInvitations(
+      emailable.map((m) => m.playerId)
+    );
+    const reminderCount = emailable.filter((m) => {
+      const invitation = invitations.get(m.playerId);
+      return invitation && !hasRespondedToInvite(invitation);
+    }).length;
 
     return {
       group,
-      recipientCount: recipients(group).length,
+      recipientCount: emailable.length,
+      reminderCount,
       memberCount: members.length,
       defaultTestEmail: user?.email || "",
     };
@@ -138,10 +156,55 @@ export const action: ActionFunction = withAuthAction(
 
     if (mode !== "all") return { error: "Unknown send mode." };
 
-    const members = recipients(group);
-    const total = members.length;
+    const allMembers = recipients(group);
+    const total = allMembers.length;
     if (total === 0) {
       return { error: "No group members have an email address on file." };
+    }
+
+    // A reminder chases an answer to an invitation already sent, so it only
+    // goes to players who haven't given one.
+    //
+    // This is narrower than the "only email pending invites" guard that used to
+    // sit on the invite path and was removed for skipping anyone carrying an
+    // accepted invitation from a previous season. That guard was wrong there
+    // and right here: an invite re-opens a stale invitation (see
+    // ensureInvitations) so it must reach everyone, whereas a reminder about an
+    // invitation someone already answered is just noise.
+    const members: any[] = [];
+    const skipped: string[] = [];
+
+    if (type === "reminder") {
+      const invitations = await invitationService.getLatestInvitations(
+        allMembers.map((m) => m.playerId)
+      );
+
+      for (const member of allMembers) {
+        const name = member.players?.name || "Unknown";
+        const invitation = invitations.get(member.playerId);
+
+        // Never invited: there's no response to chase, and no link to send.
+        if (!invitation) {
+          skipped.push(`${name} (not invited yet)`);
+          continue;
+        }
+        if (hasRespondedToInvite(invitation)) {
+          skipped.push(`${name} (already ${invitation.status})`);
+          continue;
+        }
+        members.push(member);
+      }
+
+      if (members.length === 0) {
+        return {
+          error:
+            "Everyone in this group has already responded to their invitation, so there's nobody to remind.",
+          skipped,
+          total,
+        };
+      }
+    } else {
+      members.push(...allMembers);
     }
 
     // For invites, prepare every invitation up front in a couple of queries.
@@ -174,8 +237,6 @@ export const action: ActionFunction = withAuthAction(
       subject: string;
       html: string;
     }[] = [];
-    const skipped: string[] = [];
-
     for (const member of members) {
       let invite: any;
 
@@ -236,11 +297,25 @@ export const action: ActionFunction = withAuthAction(
 );
 
 export default function SendInviteToGroup() {
-  const { group, recipientCount, memberCount, defaultTestEmail } =
-    useLoaderData<typeof loader>();
+  const {
+    group,
+    recipientCount,
+    reminderCount,
+    memberCount,
+    defaultTestEmail,
+  } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
+
+  // Mirrors the select inside GroupEmailForm so the footer button can show who
+  // this send will actually reach.
+  const [type, setType] = useState("invite");
+  const sendCount = type === "reminder" ? reminderCount : recipientCount;
+  const audience =
+    type === "reminder"
+      ? `${sendCount} member${sendCount === 1 ? "" : "s"} who haven't responded`
+      : `all ${sendCount} group member${sendCount === 1 ? "" : "s"}`;
 
   return (
     <SheetPage
@@ -263,20 +338,18 @@ export default function SendInviteToGroup() {
             type="submit"
             name="mode"
             value="all"
-            disabled={submitting || recipientCount === 0}
+            disabled={submitting || sendCount === 0}
             onClick={(e) => {
-              if (
-                !confirm(
-                  `Send this email to all ${recipientCount} group member${
-                    recipientCount === 1 ? "" : "s"
-                  }?`
-                )
-              ) {
+              if (!confirm(`Send this email to ${audience}?`)) {
                 e.preventDefault();
               }
             }}
           >
-            {submitting ? "Sending…" : `Send to all (${recipientCount})`}
+            {submitting
+              ? "Sending…"
+              : type === "reminder"
+              ? `Send reminder (${sendCount})`
+              : `Send to all (${sendCount})`}
           </Button>
         </div>
       )}
@@ -323,7 +396,9 @@ export default function SendInviteToGroup() {
       <GroupEmailForm
         defaultTestEmail={defaultTestEmail}
         recipientCount={recipientCount}
+        reminderCount={reminderCount}
         memberCount={memberCount}
+        onTypeChange={setType}
       />
     </SheetPage>
   );

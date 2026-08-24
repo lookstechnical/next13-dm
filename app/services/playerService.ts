@@ -190,6 +190,8 @@ export class PlayerService {
         club,
         photo_url,
         mobile,
+        shirt,
+        shorts,
         player_group_members!inner(group_id),
         invitations(status, reason)
       `
