@@ -17,6 +17,7 @@ import { useState } from "react";
 import { SelectField } from "~/components/forms/select";
 import { KitOrderButton } from "~/components/groups/kit-order-button";
 import { PlayersImageButton } from "~/components/groups/players-image-button";
+import { WhatsAppGroupButton } from "~/components/groups/whatsapp-group-button";
 import { DownloadButton } from "~/components/groups/teamsheet-buttton";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { Avatar } from "~/components/players/avatar";
@@ -358,6 +359,16 @@ export default function PlayerPage() {
                     teamName={group.name}
                     unavailablePlayerIds={unavailablePlayerIds}
                     eventName={selectedEvent?.name}
+                  />
+                </DropdownMenuItem>
+                {/* Opens a dialog, so keep the menu from closing under it. */}
+                <DropdownMenuItem
+                  className="p-0"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  <WhatsAppGroupButton
+                    players={visibleMembers}
+                    groupName={group.name}
                   />
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">
