@@ -16,11 +16,12 @@ type GroupEmailFormProps = {
   libraryItem?: any;
   defaultTestEmail?: string;
   recipientCount?: number;
-  /** How many members haven't responded to their invitation yet. */
-  reminderCount?: number;
+  /** How many members an invite would reach — those yet to accept or reject. */
+  inviteCount?: number;
   memberCount?: number;
-  /** Lets the page footer show who the selected type will actually reach. */
+  /** Let the page footer show who the current settings will actually reach. */
   onTypeChange?: (type: string) => void;
+  onIncludeRespondedChange?: (include: boolean) => void;
 };
 
 const DEFAULT_FOOTER = `
@@ -67,14 +68,16 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
   libraryItem,
   defaultTestEmail,
   recipientCount,
-  reminderCount,
+  inviteCount,
   memberCount,
   onTypeChange,
+  onIncludeRespondedChange,
 }) => {
   const [type, setType] = useState<string>("invite");
+  const [includeResponded, setIncludeResponded] = useState(false);
   const withoutEmail = (memberCount ?? 0) - (recipientCount ?? 0);
-  const isReminder = type === "reminder";
-  const alreadyResponded = (recipientCount ?? 0) - (reminderCount ?? 0);
+  const isInvite = type === "invite";
+  const alreadyResponded = (recipientCount ?? 0) - (inviteCount ?? 0);
 
   return (
     <div className="flex gap-4 flex-col p-4">
@@ -90,6 +93,13 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
             onValueChange={(value) => {
               setType(value);
               onTypeChange?.(value);
+              // The checkbox unmounts for a reminder, so clear it as well —
+              // otherwise switching back to invite would restore a tick the
+              // sender can no longer see.
+              if (value !== "invite") {
+                setIncludeResponded(false);
+                onIncludeRespondedChange?.(false);
+              }
             }}
             options={[
               { id: "invite", name: "Invite" },
@@ -97,6 +107,33 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
             ]}
           />
         </div>
+        {/* Only meaningful for an invite — a reminder always goes to everyone.
+            Unmounted rather than disabled for the other type so it can't post a
+            value that quietly does nothing. */}
+        {isInvite && (
+          <label className="flex items-start gap-3 cursor-pointer text-foreground">
+            <input
+              type="checkbox"
+              name="includeResponded"
+              checked={includeResponded}
+              onChange={(e) => {
+                setIncludeResponded(e.target.checked);
+                onIncludeRespondedChange?.(e.target.checked);
+              }}
+              className="w-4 h-4 mt-0.5"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm text-white">
+                Include players who have already responded
+              </span>
+              <span className="text-xs text-muted">
+                Invites skip anyone who has already accepted or rejected. Tick
+                this to invite the whole group again — for a new season, say —
+                which re-opens their invitation with a fresh link.
+              </span>
+            </span>
+          </label>
+        )}
         <div className="flex flex-row w-full gap-5">
           <Field name="subject" label="Subject">
             <Input
@@ -216,18 +253,18 @@ export const GroupEmailForm: React.FC<GroupEmailFormProps> = ({
           <strong className="text-white">Send test email</strong> sends a single
           copy to the address above so you can preview it. Its accept and reject
           buttons are inactive.{" "}
-          {isReminder ? (
+          {isInvite && !includeResponded ? (
             <>
-              <strong className="text-white">Send reminder</strong> emails only
-              the {reminderCount ?? 0} member
-              {reminderCount === 1 ? "" : "s"} who haven't accepted or rejected
-              their invitation yet.
+              <strong className="text-white">Send invites</strong> emails only
+              the {inviteCount ?? 0} member
+              {inviteCount === 1 ? "" : "s"} who haven't accepted or rejected an
+              invitation yet.
               {alreadyResponded > 0 && (
                 <>
                   {" "}
                   {alreadyResponded} member
-                  {alreadyResponded === 1 ? " has" : "s have"} already
-                  responded and won't be emailed.
+                  {alreadyResponded === 1 ? " has" : "s have"} already responded
+                  and won't be emailed.
                 </>
               )}
             </>

@@ -59,21 +59,21 @@ export const loader: LoaderFunction = withAuth(
     const members = group?.playerGroupMembers ?? [];
     const emailable = recipients(group);
 
-    // A reminder reaches fewer people than an invite, so the count has to be
+    // An invite reaches fewer people than a reminder, so the count has to be
     // worked out here as well as in the action — otherwise the confirm dialog
     // promises to email the whole group and only some of them get it.
     const invitations = await invitationService.getLatestInvitations(
       emailable.map((m) => m.playerId)
     );
-    const reminderCount = emailable.filter((m) => {
+    const inviteCount = emailable.filter((m) => {
       const invitation = invitations.get(m.playerId);
-      return invitation && !hasRespondedToInvite(invitation);
+      return !invitation || !hasRespondedToInvite(invitation);
     }).length;
 
     return {
       group,
       recipientCount: emailable.length,
-      reminderCount,
+      inviteCount,
       memberCount: members.length,
       defaultTestEmail: user?.email || "",
     };
@@ -97,6 +97,10 @@ export const action: ActionFunction = withAuthAction(
     const footer = formData.get("footer") as string;
     const type = (formData.get("type") as string) || "reminder";
     const mode = formData.get("mode") as string; // "test" | "all"
+    // Escape hatch for a new season: without it, a group where everyone
+    // accepted last time can never be invited again, because every member
+    // looks like they've already answered.
+    const includeResponded = formData.get("includeResponded") === "on";
     const testEmail = (formData.get("testEmail") as string)?.trim();
 
     // Copy for the public accept/reject pages, snapshotted onto each
@@ -162,34 +166,30 @@ export const action: ActionFunction = withAuthAction(
       return { error: "No group members have an email address on file." };
     }
 
-    // A reminder chases an answer to an invitation already sent, so it only
-    // goes to players who haven't given one.
+    // An invite only goes to players who haven't answered one yet. A reminder
+    // always goes to the whole group — it's a nudge about the sessions, not a
+    // chase for a response, so who has replied is beside the point.
     //
-    // This is narrower than the "only email pending invites" guard that used to
-    // sit on the invite path and was removed for skipping anyone carrying an
-    // accepted invitation from a previous season. That guard was wrong there
-    // and right here: an invite re-opens a stale invitation (see
-    // ensureInvitations) so it must reach everyone, whereas a reminder about an
-    // invitation someone already answered is just noise.
+    // For invites the status has to be read HERE, before ensureInvitations runs
+    // below. That call re-opens any non-pending invitation back to pending with
+    // a fresh token, so asking afterwards would show everyone as pending and
+    // filter nobody.
     const members: any[] = [];
     const skipped: string[] = [];
 
-    if (type === "reminder") {
+    if (type === "invite" && !includeResponded) {
       const invitations = await invitationService.getLatestInvitations(
         allMembers.map((m) => m.playerId)
       );
 
       for (const member of allMembers) {
-        const name = member.players?.name || "Unknown";
         const invitation = invitations.get(member.playerId);
 
-        // Never invited: there's no response to chase, and no link to send.
-        if (!invitation) {
-          skipped.push(`${name} (not invited yet)`);
-          continue;
-        }
-        if (hasRespondedToInvite(invitation)) {
-          skipped.push(`${name} (already ${invitation.status})`);
+        // No invitation yet — nothing to have replied to, so they get one.
+        if (invitation && hasRespondedToInvite(invitation)) {
+          skipped.push(
+            `${member.players?.name || "Unknown"} (already ${invitation.status})`
+          );
           continue;
         }
         members.push(member);
@@ -198,7 +198,7 @@ export const action: ActionFunction = withAuthAction(
       if (members.length === 0) {
         return {
           error:
-            "Everyone in this group has already responded to their invitation, so there's nobody to remind.",
+            "Everyone in this group has already responded to their invitation. Tick \u201cinclude players who have already responded\u201d to invite them again \u2014 this issues a fresh link and re-opens their invitation.",
           skipped,
           total,
         };
@@ -208,9 +208,11 @@ export const action: ActionFunction = withAuthAction(
     }
 
     // For invites, prepare every invitation up front in a couple of queries.
-    // Doing it per player inside the send loop is what made this time out, and
-    // the old "only email pending invites" guard is what silently skipped
-    // everyone carrying an accepted invitation from a previous season.
+    // Doing it per player inside the send loop is what made this time out.
+    //
+    // Only reached for players the filter above kept, so this either creates a
+    // first invitation or re-opens one that was never answered. A previously
+    // accepted invitation is only re-opened when includeResponded was ticked.
     let invitesByPlayer = new Map<string, any>();
     let reopened = 0;
     if (type === "invite") {
@@ -300,7 +302,7 @@ export default function SendInviteToGroup() {
   const {
     group,
     recipientCount,
-    reminderCount,
+    inviteCount,
     memberCount,
     defaultTestEmail,
   } = useLoaderData<typeof loader>();
@@ -308,14 +310,21 @@ export default function SendInviteToGroup() {
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
 
-  // Mirrors the select inside GroupEmailForm so the footer button can show who
-  // this send will actually reach.
+  // Mirrors the controls inside GroupEmailForm so the footer button can show
+  // who this send will actually reach.
   const [type, setType] = useState("invite");
-  const sendCount = type === "reminder" ? reminderCount : recipientCount;
-  const audience =
-    type === "reminder"
-      ? `${sendCount} member${sendCount === 1 ? "" : "s"} who haven't responded`
-      : `all ${sendCount} group member${sendCount === 1 ? "" : "s"}`;
+  const [includeResponded, setIncludeResponded] = useState(false);
+
+  // Reminders always go to the whole group; only an invite is narrowed, and
+  // only while the override is off.
+  const filtersToUnanswered = type === "invite" && !includeResponded;
+  const sendCount = filtersToUnanswered ? inviteCount : recipientCount;
+
+  const audience = filtersToUnanswered
+    ? `${sendCount} member${
+        sendCount === 1 ? "" : "s"
+      } who haven't responded yet`
+    : `all ${sendCount} group member${sendCount === 1 ? "" : "s"}`;
 
   return (
     <SheetPage
@@ -348,8 +357,8 @@ export default function SendInviteToGroup() {
             {submitting
               ? "Sending…"
               : type === "reminder"
-              ? `Send reminder (${sendCount})`
-              : `Send to all (${sendCount})`}
+              ? `Send to all (${sendCount})`
+              : `Send invites (${sendCount})`}
           </Button>
         </div>
       )}
@@ -396,9 +405,10 @@ export default function SendInviteToGroup() {
       <GroupEmailForm
         defaultTestEmail={defaultTestEmail}
         recipientCount={recipientCount}
-        reminderCount={reminderCount}
+        inviteCount={inviteCount}
         memberCount={memberCount}
         onTypeChange={setType}
+        onIncludeRespondedChange={setIncludeResponded}
       />
     </SheetPage>
   );
