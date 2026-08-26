@@ -763,14 +763,14 @@ export default function ProgrammeRegister() {
      * treated as bottomless, which is how the sheet behaved before anyone
      * counted the bag.
      */
-    const capacity = (colorId: string) => {
+    const capacity = (colorId: string, alsoTaken: Set<number>) => {
       const highest = setOf(colorId).highest;
       if (!highest) return Number.POSITIVE_INFINITY;
       const missing = missingIn(colorId);
       const claimed = claimedByColor.get(colorId) ?? new Map<number, number>();
       let count = 0;
       for (let n = nextBibByColor.get(colorId) ?? 1; n <= highest; n += 1) {
-        if (!missing.has(n) && !claimed.has(n)) count += 1;
+        if (!missing.has(n) && !claimed.has(n) && !alsoTaken.has(n)) count += 1;
       }
       return count;
     };
@@ -785,26 +785,27 @@ export default function ProgrammeRegister() {
     const chooseColor = (
       preferred: string[],
       needed: number,
-      blocked: Set<string>
+      blocked: Set<string>,
+      ownClaims: Set<number>
     ) => {
+      const room = (id: string) => capacity(id, ownClaims);
       const options = preferred.filter((id) => !blocked.has(id));
-      const fits = options.find((id) => capacity(id) >= needed);
-      if (fits) return { id: fits, rescued: false, short: false };
+      const fits = options.find((id) => room(id) >= needed);
+      if (fits) return { id: fits, rescued: false };
 
       const rescue = BIB_COLORS.map((c) => c.id).find(
-        (id) =>
-          !blocked.has(id) && !colorsInUse.has(id) && capacity(id) >= needed
+        (id) => !blocked.has(id) && !colorsInUse.has(id) && room(id) >= needed
       );
-      if (rescue) return { id: rescue, rescued: true, short: false };
+      if (rescue) return { id: rescue, rescued: true };
 
       const best = options.reduce(
-        (a, b) => (capacity(b) > capacity(a) ? b : a),
+        (a, b) => (room(b) > room(a) ? b : a),
         options[0] ?? preferred[0]
       );
-      return { id: best, rescued: false, short: true };
+      return { id: best, rescued: false };
     };
 
-    return built.map((section) => {
+    const assembled = built.map((section) => {
       const teamColors: string[] = [];
 
       const teams = section.rosters.map((roster, teamIndex) => {
@@ -814,17 +815,30 @@ export default function ProgrammeRegister() {
         ).length;
         const chosen = section.colors[teamIndex];
         const spares = section.colors.slice(TEAM_COUNT);
+        // A hand-set number belongs to the player, so it travels with them into
+        // whatever colour the team ends up wearing, and nothing else in that
+        // colour may be dealt it.
+        const ownClaims = new Set(
+          roster
+            .map((p) => bibOverrides.get(p.id))
+            .filter((n): n is number => n !== undefined)
+        );
         const picked = chooseColor(
           [chosen, ...spares],
           needed,
-          new Set(teamColors)
+          new Set(teamColors),
+          ownClaims
         );
 
         const color = colorById(picked.id);
         teamColors.push(color.id);
         colorsInUse.add(color.id);
 
-        const claimed = claimedByColor.get(chosen) ?? new Map<number, number>();
+        // Numbers already spoken for in the colour this team ends up wearing,
+        // plus the ones its own players are bringing with them.
+        const claimedHere =
+          claimedByColor.get(color.id) ?? new Map<number, number>();
+        const taken = (n: number) => claimedHere.has(n) || ownClaims.has(n);
         const missing = missingIn(color.id);
         const highest = setOf(color.id).highest;
         let next = nextBibByColor.get(color.id) ?? 1;
@@ -836,15 +850,14 @@ export default function ProgrammeRegister() {
               ...player,
               bib: override as number | null,
               bibSetByHand: true,
-              bibIssue: ((claimed.get(override) ?? 0) > 1
-                ? "clash"
-                : highest && override > highest
-                ? "outOfSet"
-                : null) as "clash" | "outOfSet" | null,
+              bibIssue: (highest && override > highest ? "outOfSet" : null) as
+                | "clash"
+                | "outOfSet"
+                | null,
             };
           }
 
-          while (claimed.has(next) || missing.has(next)) next += 1;
+          while (taken(next) || missing.has(next)) next += 1;
           // The set has run out. Better an empty box on the sheet than a number
           // nobody can find a bib for.
           if (highest && next > highest) {
@@ -895,6 +908,35 @@ export default function ProgrammeRegister() {
         teams,
       };
     });
+    // Last word on duplicates, counted against the colour each team actually
+    // ended up wearing rather than the one it was given. Two players in one
+    // colour with one number is rare — it takes a team swapping colour with a
+    // hand-set bib aboard — but a sheet that prints it silently is worse than
+    // one that says so.
+    const wornByColor = new Map<string, Map<number, number>>();
+    for (const section of assembled) {
+      for (const team of section.teams) {
+        const worn =
+          wornByColor.get(team.color.id) ?? new Map<number, number>();
+        for (const player of team.players) {
+          if (player.bib === null) continue;
+          worn.set(player.bib, (worn.get(player.bib) ?? 0) + 1);
+        }
+        wornByColor.set(team.color.id, worn);
+      }
+    }
+    for (const section of assembled) {
+      for (const team of section.teams) {
+        for (const player of team.players) {
+          if (player.bib === null) continue;
+          if ((wornByColor.get(team.color.id)?.get(player.bib) ?? 0) > 1) {
+            player.bibIssue = "clash";
+          }
+        }
+      }
+    }
+
+    return assembled;
   }, [
     rows,
     namedGroups,
