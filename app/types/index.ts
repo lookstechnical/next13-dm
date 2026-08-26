@@ -148,6 +148,18 @@ export interface Team {
   createdBy: string;
   progresTemplateId?: string;
   defaultGroup?: string;
+  /**
+   * Bib numbers the club no longer holds, keyed by bib colour id — see
+   * supabase/migrations/20260826_team_missing_bib_numbers.sql. The register
+   * numbers around these.
+   */
+  missingBibNumbers?: Record<string, number[]>;
+  /**
+   * The last number in each bib set, keyed by bib colour id. A colour with no
+   * entry is uncapped. See
+   * supabase/migrations/20260826_team_highest_bib_numbers.sql.
+   */
+  highestBibNumbers?: Record<string, number>;
 }
 
 export interface TeamMembership {

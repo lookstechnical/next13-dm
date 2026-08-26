@@ -133,6 +133,31 @@ export class TeamService {
     return data;
   }
 
+  /**
+   * What each bib set holds: the numbers gone missing, and the number it stops
+   * at. Both written whole rather than merged — the register edits every colour
+   * in one form, so a colour left out of a map is one with nothing to record.
+   */
+  async setBibSets(
+    id: string,
+    sets: {
+      missing: Record<string, number[]>;
+      highest: Record<string, number>;
+    }
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("teams")
+      .update({
+        missing_bib_numbers: sets.missing,
+        highest_bib_numbers: sets.highest,
+      })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    CacheInvalidationService.invalidateTeamCache(id);
+  }
+
   async deleteTeam(id: string): Promise<boolean> {
     const { error } = await this.client.from("teams").delete().eq("id", id);
 
