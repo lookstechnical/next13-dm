@@ -53,6 +53,20 @@ export const PlayerFilters: React.FC<PlayerFilters> = ({
             ]}
           />
 
+          <SelectField
+            name="quartile"
+            label="Relative Age Quartile"
+            placeholder="Select Quartile"
+            defaultValue={appliedFilters?.quartile}
+            options={[
+              { id: "Q1", name: "Q1 - Sept-Nov (oldest)" },
+              { id: "Q2", name: "Q2 - Dec-Feb" },
+              { id: "Q3", name: "Q3 - Mar-May" },
+              { id: "Q4", name: "Q4 - Jun-Aug (youngest)" },
+              { id: "Unknown", name: "Unknown - no date of birth" },
+            ]}
+          />
+
           {groups && (
             <SelectField
               name="group"

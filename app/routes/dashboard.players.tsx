@@ -9,21 +9,66 @@ import { MoreActions } from "~/components/layout/more-actions";
 import { PlayerFilters } from "~/components/players/filters";
 import { PlayerCard } from "~/components/players/player-card";
 import { AllowedRoles } from "~/components/route-protections";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Card } from "~/components/ui/card";
 import { CardGrid } from "~/components/ui/card-grid";
 import { DropdownMenuItem } from "~/components/ui/dropdown-menu";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
 import { ProgrammeService } from "~/services/programmeService";
 import { ScoutService } from "~/services/scoutService";
+import { cn } from "~/lib/utils";
 import { Player } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
+import { calculateRelativeAgeQuartile } from "~/utils/helpers";
 import { POSITION_GROUPS, findPositionGroup } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
 export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
+};
+
+// A player with no date of birth has no birth quartile.
+// calculateRelativeAgeQuartile reports those as label "Q?" (its numeric
+// `quartile` defaults to 1, which would silently bucket them with the oldest
+// players), so the filter and the counts both key off the label.
+const UNKNOWN = "Unknown";
+
+const quartileOf = (player: Player) => {
+  if (!player?.dateOfBirth) return UNKNOWN;
+  const { label } = calculateRelativeAgeQuartile(player.dateOfBirth);
+  return !label || label === "Q?" ? UNKNOWN : label;
+};
+
+// Q1…Q4 in order, Unknown last.
+const quartileRank = (value: string) =>
+  value === UNKNOWN ? 999 : Number(value.replace("Q", "")) || 500;
+
+/**
+ * How the squad splits across the school-year birth quartiles. Every quartile
+ * is listed even when empty — a gap is the point of the summary, so a missing
+ * Q4 has to read as "none" rather than quietly disappearing. Unknown only
+ * appears when there are players to account for.
+ */
+type QuartileCount = { quartile: string; count: number };
+
+const summariseQuartiles = (players: Player[]): QuartileCount[] => {
+  const counts = new Map<string, number>([
+    ["Q1", 0],
+    ["Q2", 0],
+    ["Q3", 0],
+    ["Q4", 0],
+  ]);
+  for (const player of players) {
+    const quartile = quartileOf(player);
+    counts.set(quartile, (counts.get(quartile) || 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort(([a], [b]) => quartileRank(a) - quartileRank(b))
+    .map(([quartile, count]) => ({ quartile, count }));
 };
 
 export const loader = withAuth(async ({ request, user, supabaseClient }) => {
@@ -41,6 +86,7 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
   const group = url.searchParams.get("group") || user.team?.defaultGroup;
   const groupBy = url.searchParams.get("groupBy") ?? "position_group";
   const notInProgramme = url.searchParams.get("not-in-programme");
+  const quartile = url.searchParams.get("quartile");
 
   const playersPromise = playerService.getPlayersByTeam(
     user.team?.id as string,
@@ -76,16 +122,24 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
     const registrations = await programmeService.getProgrammeRegistrations(
       notInProgramme
     );
-    const registeredPlayerIds = new Set(
-      registrations.map((r) => r.playerId)
-    );
+    const registeredPlayerIds = new Set(registrations.map((r) => r.playerId));
     filteredPlayers = filteredPlayers.filter(
       (p) => !registeredPlayerIds.has(p.id)
     );
   }
 
+  // Birth quartile is derived from date of birth rather than stored, so it's
+  // narrowed here rather than in the query. The counts are taken *before* that
+  // narrowing so the summary keeps showing the whole spread — picking Q4 should
+  // still show how many sit in Q1, not collapse to a single bar.
+  const quartileSummary = summariseQuartiles(filteredPlayers);
+  if (quartile) {
+    filteredPlayers = filteredPlayers.filter((p) => quartileOf(p) === quartile);
+  }
+
   return {
     players: filteredPlayers,
+    quartileSummary,
     mentors,
     user,
     groups,
@@ -99,6 +153,7 @@ export const loader = withAuth(async ({ request, user, supabaseClient }) => {
       mentor,
       groupBy,
       notInProgramme,
+      quartile,
     },
   };
 });
@@ -136,9 +191,39 @@ export function shouldRevalidate({
   return false;
 }
 
+// Same colours the player card uses for its quartile pill, so a badge here
+// reads as the same thing as the badge on a card.
+const QUARTILE_STYLES: Record<string, string> = {
+  Q1: "bg-red-400 text-red",
+  Q2: "bg-orange-400 text-orange",
+  Q3: "bg-yellow-400 text-yellow",
+  Q4: "bg-green-400 text-green",
+};
+
+const QUARTILE_MONTHS: Record<string, string> = {
+  Q1: "Sept-Nov, oldest",
+  Q2: "Dec-Feb",
+  Q3: "Mar-May",
+  Q4: "Jun-Aug, youngest",
+};
+
 export default function Players() {
-  const { players, user, appliedFilters, groups, mentors, programmes } =
-    useLoaderData<typeof loader>();
+  const {
+    players,
+    user,
+    appliedFilters,
+    groups,
+    mentors,
+    programmes,
+    quartileSummary,
+  } = useLoaderData<typeof loader>();
+
+  // The summary is counted before the quartile filter is applied, so its total
+  // is the size of the list with that one filter lifted.
+  const summaryTotal = (quartileSummary as QuartileCount[]).reduce(
+    (sum, q) => sum + q.count,
+    0
+  );
 
   const submit = useSubmit();
 
@@ -237,6 +322,61 @@ export default function Players() {
             </div>
           )}
         />
+
+        {summaryTotal > 0 && (
+          <Card className="border-border mt-6">
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex flex-row flex-wrap gap-2 items-center justify-between">
+                <h2 className="text-xl font-semibold text-white">
+                  Relative Age Quartile
+                </h2>
+                <p className="text-sm text-muted">
+                  {appliedFilters?.quartile
+                    ? `Showing ${players.length} of ${summaryTotal} ${
+                        appliedFilters.quartile === UNKNOWN
+                          ? "with no date of birth"
+                          : `born in ${appliedFilters.quartile}`
+                      }`
+                    : `Birth months across ${summaryTotal} ${
+                        summaryTotal === 1 ? "player" : "players"
+                      }`}
+                </p>
+              </div>
+              <div className="flex flex-row flex-wrap gap-2">
+                {(quartileSummary as QuartileCount[]).map(
+                  ({ quartile, count }) => (
+                    <Badge
+                      key={`quartile-${quartile}`}
+                      variant="outline"
+                      className={cn(
+                        "border-muted gap-2 py-1 text-sm font-normal",
+                        appliedFilters?.quartile === quartile &&
+                          "border-white bg-muted/20"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "px-2 py-0.5 rounded text-xs font-medium",
+                          QUARTILE_STYLES[quartile] ?? "bg-gray-500 text-white"
+                        )}
+                      >
+                        {quartile === UNKNOWN ? "Q?" : quartile}
+                      </span>
+                      <span className="text-white">
+                        {quartile === UNKNOWN
+                          ? "No date of birth"
+                          : QUARTILE_MONTHS[quartile]}
+                      </span>
+                      <span className="text-muted">
+                        {count} ({Math.round((count / summaryTotal) * 100)}%)
+                      </span>
+                    </Badge>
+                  )
+                )}
+              </div>
+            </div>
+          </Card>
+        )}
 
         {groupedPlayers ? (
           players.length === 0 ? (
