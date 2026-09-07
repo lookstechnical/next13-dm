@@ -405,3 +405,15 @@ export const profileImageUrl = (value?: string | null): string | undefined => {
     .map(encodeURIComponent)
     .join("/")}`;
 };
+
+// A player with no usable date of birth has no birth quartile.
+// calculateRelativeAgeQuartile reports those as label "Q?" (its numeric
+// `quartile` defaults to 1, which would silently bucket them with the oldest
+// players), so anything keying off the quartile uses this label instead.
+export const UNKNOWN_QUARTILE = "Unknown";
+
+export const quartileLabelOf = (dateOfBirth?: string) => {
+  if (!dateOfBirth) return UNKNOWN_QUARTILE;
+  const { label } = calculateRelativeAgeQuartile(dateOfBirth);
+  return !label || label === "Q?" ? UNKNOWN_QUARTILE : label;
+};

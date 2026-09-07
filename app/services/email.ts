@@ -212,6 +212,41 @@ export const programmeEmailTemplate = (
       </div>`
       : "";
 
+  const cta =
+    options?.ctaUrl || options?.withdrawUrl
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 24px auto 8px;">
+            <tr>
+              ${
+                options?.ctaUrl
+                  ? `<td style="padding: 0 6px;">
+                <a href="${options.ctaUrl}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+                  ${ctaLabel}
+                </a>
+              </td>`
+                  : ""
+              }
+              ${
+                options?.withdrawUrl
+                  ? `<td style="padding: 0 6px;">
+                <a href="${options.withdrawUrl}" style="background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 13px 27px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">
+                  ${withdrawLabel}
+                </a>
+              </td>`
+                  : ""
+              }
+            </tr>
+          </table>`
+      : "";
+
+  const panels = splitSections(message).map(styleRichText);
+  if (panels.length === 0) panels.push("");
+
+  // The availability table and the buttons close out the message, so they ride
+  // along with the last section rather than banding away from it.
+  panels[panels.length - 1] += availabilitySection + cta;
+
+  if (footer?.trim()) panels.push(styleRichText(footer));
+
   return `<!DOCTYPE html>
 <html lang="en" style="margin: 0; padding: 0; background-color: #0f111a;">
   <head>
@@ -220,41 +255,21 @@ export const programmeEmailTemplate = (
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>A message from St Helens RLFC</title>
   </head>
-  <body style="margin: 0; font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff;">
-    <div style="max-width: 600px; margin: 40px auto; background-color: #1b1d2a; padding: 30px; border-radius: 12px; border: 1px solid #2a2d3b;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://be-coachable.com/logo.png" alt="beCoachable" style="width:60px;" />
-      </div>
-
-        ${styleRichText(message)}
-
-      ${availabilitySection}
-
-      ${
-        options?.ctaUrl || options?.withdrawUrl
-          ? `<div style="text-align: center; margin: 30px 0;">
-        ${
-          options?.ctaUrl
-            ? `<a href="${options.ctaUrl}" style="background-color: #1a8cff; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block; margin: 6px;">
-          ${ctaLabel}
-        </a>`
-            : ""
-        }
-        ${
-          options?.withdrawUrl
-            ? `<a href="${options.withdrawUrl}" style="background-color: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 13px 27px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block; margin: 6px;">
-          ${withdrawLabel}
-        </a>`
-            : ""
-        }
-      </div>`
-          : ""
-      }
-
-      ${footer ? styleRichText(footer) : ""}
-
-      <hr style="border: none; border-top: 1px solid #2a2d3b; margin: 40px 0;" />
-    </div>
+  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #0f111a; color: #ffffff;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f111a;">
+      <tr>
+        <td align="center" style="padding: 40px 12px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; border-radius: 12px; border: 1px solid #2a2d3b; border-collapse: separate; overflow: hidden;">
+            <tr>
+              <td style="background-color: ${SECTION_TONES[0]}; padding: 30px 30px 10px; text-align: center;">
+                <img src="https://be-coachable.com/logo.png" alt="beCoachable" style="width: 60px;" />
+              </td>
+            </tr>
+            ${renderSectionRows(panels)}
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>`;
 };

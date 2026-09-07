@@ -1,12 +1,13 @@
 import type { MetaFunction } from "@remix-run/node";
 import type { ShouldRevalidateFunctionArgs } from "@remix-run/react";
 import { Form, Link, Outlet, useLoaderData, useSubmit } from "@remix-run/react";
-import { UserPlus } from "lucide-react";
+import { Download, UserPlus } from "lucide-react";
 import { ActionProtection } from "~/components/action-protection";
 import { SelectField } from "~/components/forms/select";
 import { ListingHeader } from "~/components/layout/listing-header";
 import { MoreActions } from "~/components/layout/more-actions";
 import { PlayerFilters } from "~/components/players/filters";
+import { downloadPlayersCsv } from "~/components/players/export-csv";
 import { PlayerCard } from "~/components/players/player-card";
 import { AllowedRoles } from "~/components/route-protections";
 import { Badge } from "~/components/ui/badge";
@@ -21,7 +22,7 @@ import { ScoutService } from "~/services/scoutService";
 import { cn } from "~/lib/utils";
 import { Player } from "~/types";
 import { withAuth } from "~/utils/auth-helpers";
-import { calculateRelativeAgeQuartile } from "~/utils/helpers";
+import { UNKNOWN_QUARTILE, quartileLabelOf } from "~/utils/helpers";
 import { POSITION_GROUPS, findPositionGroup } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -30,17 +31,11 @@ export const meta: MetaFunction = () => {
   return [{ title: "Players" }, { name: "description", content: "Player" }];
 };
 
-// A player with no date of birth has no birth quartile.
-// calculateRelativeAgeQuartile reports those as label "Q?" (its numeric
-// `quartile` defaults to 1, which would silently bucket them with the oldest
-// players), so the filter and the counts both key off the label.
-const UNKNOWN = "Unknown";
+// The filter, the counts and the CSV all key off the quartile *label* so that
+// players with no date of birth stay in their own bucket — see UNKNOWN_QUARTILE.
+const UNKNOWN = UNKNOWN_QUARTILE;
 
-const quartileOf = (player: Player) => {
-  if (!player?.dateOfBirth) return UNKNOWN;
-  const { label } = calculateRelativeAgeQuartile(player.dateOfBirth);
-  return !label || label === "Q?" ? UNKNOWN : label;
-};
+const quartileOf = (player: Player) => quartileLabelOf(player?.dateOfBirth);
 
 // Q1…Q4 in order, Unknown last.
 const quartileRank = (value: string) =>
@@ -296,12 +291,8 @@ export default function Players() {
                   ]}
                 />
               </Form>
-              <ActionProtection
-                allowedRoles={AllowedRoles.headOfDept}
-                user={user}
-              >
-                <MoreActions>
-                  {/* <DropdownMenuItem asChild>
+              <MoreActions>
+                {/* <DropdownMenuItem asChild>
                   <Button asChild variant={"outline"}>
                     <Link to="/dashboard/players/csv-import">
                       <DownloadIcon />
@@ -309,6 +300,22 @@ export default function Players() {
                     </Link>
                   </Button>
                 </DropdownMenuItem> */}
+                {/* Exports exactly what the list is showing, filters and all. */}
+                <DropdownMenuItem asChild>
+                  <Button
+                    variant={"outline"}
+                    onClick={() =>
+                      downloadPlayersCsv(players as Player[], user.team.name)
+                    }
+                  >
+                    <Download />
+                    Export CSV
+                  </Button>
+                </DropdownMenuItem>
+                <ActionProtection
+                  allowedRoles={AllowedRoles.headOfDept}
+                  user={user}
+                >
                   <DropdownMenuItem asChild>
                     <Button asChild variant={"outline"}>
                       <Link to="/dashboard/players/create">
@@ -317,8 +324,8 @@ export default function Players() {
                       </Link>
                     </Button>
                   </DropdownMenuItem>
-                </MoreActions>
-              </ActionProtection>
+                </ActionProtection>
+              </MoreActions>
             </div>
           )}
         />
