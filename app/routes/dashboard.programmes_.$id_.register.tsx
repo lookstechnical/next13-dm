@@ -147,6 +147,33 @@ const ALL_GROUPS = "__all__";
 const BLANK_ROWS = 10;
 
 /**
+ * Blank rows left at the foot of every group. A walk-up is nearly always
+ * joining a particular group, so the coach needs somewhere to write them in
+ * without flipping to the end of the sheet.
+ */
+const GROUP_WALKUP_ROWS = 4;
+
+/**
+ * An empty row in the same shape as a player row, so a name written in by hand
+ * lines up with the columns above it.
+ */
+const renderBlankRow = (key: string) => (
+  <tr key={key} className="border-b border-border/50">
+    <td className="py-2 px-2 h-8" />
+    <td className="py-2 px-2" />
+    <td className="py-2 px-2" />
+    <td className="py-2 px-2" />
+    <td className="py-2 px-2" />
+    <td className="py-2 px-2" />
+    <td className="py-2 px-2" />
+    <td className="py-2 px-2">
+      <span className="inline-block w-5 h-5 border border-border rounded-sm" />
+    </td>
+    <td className="no-print py-2 px-2" />
+  </tr>
+);
+
+/**
  * Squad-wide groups every registered player belongs to. Naming them in the
  * Group column tells a coach nothing, and hides the group that does.
  */
@@ -1612,8 +1639,10 @@ export default function ProgrammeRegister() {
                         </tbody>
                       ))}
 
+                      {/* Players with no bib are there for the coach on
+                          screen; on paper they only pad the sheet out. */}
                       {section.unavailable.length > 0 && (
-                        <tbody>
+                        <tbody className="no-print">
                           <tr>
                             <td
                               colSpan={columnCount}
@@ -1638,6 +1667,19 @@ export default function ProgrammeRegister() {
                       )}
                     </tbody>
                   )}
+
+                  <tbody>
+                    <tr>
+                      <td colSpan={columnCount} className="pt-4 pb-1 px-2">
+                        <span className="text-sm font-semibold text-muted">
+                          Walk-ups
+                        </span>
+                      </td>
+                    </tr>
+                    {Array.from({ length: GROUP_WALKUP_ROWS }, (_, i) =>
+                      renderBlankRow(`${section.key}-walkup-${i}`)
+                    )}
+                  </tbody>
                 </table>
               </div>
             ))}
@@ -1679,24 +1721,9 @@ export default function ProgrammeRegister() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: BLANK_ROWS }, (_, i) => (
-                    <tr
-                      key={`blank-${i}`}
-                      className="border-b border-border/50"
-                    >
-                      <td className="py-2 px-2 h-8" />
-                      <td className="py-2 px-2" />
-                      <td className="py-2 px-2" />
-                      <td className="py-2 px-2" />
-                      <td className="py-2 px-2" />
-                      <td className="py-2 px-2" />
-                      <td className="py-2 px-2" />
-                      <td className="py-2 px-2">
-                        <span className="inline-block w-5 h-5 border border-border rounded-sm" />
-                      </td>
-                      <td className="no-print py-2 px-2" />
-                    </tr>
-                  ))}
+                  {Array.from({ length: BLANK_ROWS }, (_, i) =>
+                    renderBlankRow(`blank-${i}`)
+                  )}
                 </tbody>
               </table>
             </div>
