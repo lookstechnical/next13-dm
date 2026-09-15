@@ -474,7 +474,158 @@ const PRINT_CSS = `
     print-color-adjust: exact;
   }
 }
+
+/* The pitch sheet: bib, name and somewhere to write, sized from the headcount
+   so the whole session lands on one side of A4. It only exists on paper, and
+   only when asked for — Ctrl+P still prints the full register. */
+.pitch-sheet { display: none; }
+@media print {
+  html[data-print="pitch"] .register-sheet { display: none !important; }
+  html[data-print="pitch"] .register-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  html[data-print="pitch"] .pitch-sheet { display: block !important; }
+  .pitch-sheet, .pitch-sheet * {
+    color: #000 !important;
+    background: transparent !important;
+  }
+  .pitch-sheet { font-size: var(--pitch-font); line-height: 1.1; }
+  .pitch-sheet .pitch-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 4mm;
+    border-bottom: 0.5mm solid #000;
+    padding-bottom: 1mm;
+    margin-bottom: 2mm;
+  }
+  .pitch-sheet .pitch-title h1 { font-size: 13pt; font-weight: 700; }
+  .pitch-sheet .pitch-title p { font-size: 8pt; }
+  .pitch-sheet .pitch-columns {
+    display: grid;
+    grid-template-columns: repeat(var(--pitch-columns), minmax(0, 1fr));
+    align-items: start;
+    gap: 3mm 4mm;
+  }
+  .pitch-sheet .pitch-row,
+  .pitch-sheet .pitch-heading {
+    height: var(--pitch-row);
+    break-inside: avoid;
+  }
+  .pitch-sheet .pitch-row {
+    display: grid;
+    grid-template-columns: 7mm 1fr minmax(8mm, 22%);
+    align-items: center;
+    gap: 1.5mm;
+    border-bottom: 0.2mm solid #bbb;
+  }
+  .pitch-sheet .pitch-heading {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5mm;
+    padding-bottom: 0.5mm;
+    font-weight: 700;
+    break-after: avoid;
+    border-bottom: 0.4mm solid #000;
+  }
+  .pitch-sheet .pitch-heading.team { font-weight: 600; border-bottom-color: #666; }
+  .pitch-sheet .pitch-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pitch-sheet .pitch-score {
+    align-self: stretch;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 0 0.5mm 0.3mm;
+    border-left: 0.2mm solid #bbb;
+    font-size: 0.75em;
+    color: #777 !important;
+  }
+  .pitch-sheet .bib-chip {
+    background: var(--bib-bg) !important;
+    color: var(--bib-fg) !important;
+    border: 0.2mm solid #333 !important;
+    height: calc(var(--pitch-row) - 1.2mm) !important;
+    min-width: 7mm !important;
+    padding: 0 !important;
+    font-size: 1em !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .pitch-sheet .bib-empty {
+    display: inline-block;
+    height: calc(var(--pitch-row) - 1.2mm);
+    width: 7mm;
+    border: 0.2mm dashed #333;
+    border-radius: 1mm;
+  }
+}
 `;
+
+/**
+ * Blank rows at the foot of each group on the pitch sheet. A walk-up is nearly
+ * always joining a particular group, so they're written in under it.
+ */
+const PITCH_WALKUP_ROWS = 3;
+
+/** Groups side by side before the sheet starts a second band of columns. */
+const PITCH_MAX_COLUMNS = 6;
+
+/** A4 at 12mm margins; four or more groups turn the page on its side. */
+const A4_PRINTABLE_MM = { short: 186, long: 273 };
+const PITCH_TITLE_MM = 14;
+
+/**
+ * Page shape, row height and type size for the pitch sheet: one column per
+ * group, as tall as the biggest group needs. Type is capped by column width as
+ * well as row height, so a narrow column doesn't lose every surname to an
+ * ellipsis.
+ */
+const pitchLayout = (groupLines: number[]) => {
+  const groups = Math.max(1, groupLines.length);
+  const columns = Math.min(groups, PITCH_MAX_COLUMNS);
+  const bands = Math.ceil(groups / columns);
+  const landscape = columns >= 4;
+
+  const pageWidth = landscape ? A4_PRINTABLE_MM.long : A4_PRINTABLE_MM.short;
+  const pageHeight = landscape ? A4_PRINTABLE_MM.short : A4_PRINTABLE_MM.long;
+  const columnWidth = (pageWidth - (columns - 1) * 4) / columns;
+
+  const tallest = Math.max(1, ...groupLines);
+  const usableHeight = pageHeight - PITCH_TITLE_MM - (bands - 1) * 3;
+  const rowMm = Math.min(8, Math.max(3.5, usableHeight / (tallest * bands)));
+  const fontPt = Math.min(11, Math.max(6.5, rowMm * 1.7), columnWidth * 0.26);
+
+  return { columns, landscape, rowMm, fontPt };
+};
+
+/**
+ * Print with the pitch sheet in place of the full register, then put it back.
+ * The page size is swapped in only for this print so the full register keeps
+ * printing portrait.
+ */
+const printPitchSheet = (landscape: boolean) => {
+  const root = document.documentElement;
+  const page = document.createElement("style");
+  page.textContent = `@media print { @page { size: A4 ${
+    landscape ? "landscape" : "portrait"
+  }; margin: 12mm; } }`;
+  document.head.appendChild(page);
+  root.dataset.print = "pitch";
+
+  const restore = () => {
+    delete root.dataset.print;
+    page.remove();
+    window.removeEventListener("afterprint", restore);
+  };
+  window.addEventListener("afterprint", restore);
+  window.print();
+};
 
 export default function ProgrammeRegister() {
   const {
@@ -1214,6 +1365,42 @@ export default function ProgrammeRegister() {
     );
   };
 
+  // The pitch sheet is for who is actually on the grass, so anyone who has
+  // said they aren't coming is left off it whether or not bibs are on.
+  const pitchSections = sections.map((section) => ({
+    key: section.key,
+    name: section.name,
+    teams: bibsEnabled
+      ? section.teams
+          .filter((team) => team.players.length > 0)
+          .map((team) => ({
+            color: team.color as BibColor | undefined,
+            players: team.players as { id: string; name: string; bib: number | null }[],
+          }))
+      : [
+          {
+            color: undefined,
+            players: section.members
+              .filter((r) => r.available !== false)
+              .map((r) => ({ id: r.id, name: r.name, bib: null })),
+          },
+        ],
+  }));
+
+  // Lines each group's column needs: its heading, a heading per team, a row per
+  // player and the walk-up rows at the foot.
+  const pitch = pitchLayout(
+    pitchSections.map(
+      (section) =>
+        1 +
+        PITCH_WALKUP_ROWS +
+        section.teams.reduce(
+          (n, team) => n + (team.color ? 1 : 0) + team.players.length,
+          0
+        )
+    )
+  );
+
   if (!programme) {
     return (
       <div className="container px-4 mx-auto py-10 text-foreground">
@@ -1223,7 +1410,7 @@ export default function ProgrammeRegister() {
   }
 
   return (
-    <div className="container px-4 mx-auto py-10 text-foreground">
+    <div className="register-page container px-4 mx-auto py-10 text-foreground">
       <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
 
       <div className="no-print flex flex-wrap gap-3 items-end justify-between mb-6">
@@ -1427,6 +1614,17 @@ export default function ProgrammeRegister() {
           >
             <Printer className="w-4 h-4 mr-2" />
             Print
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9"
+            onClick={() => printPitchSheet(pitch.landscape)}
+            disabled={rows.length === 0}
+            title="Bib, name and a score out of 6 — fits on one side of A4"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Print pitch sheet
           </Button>
         </div>
       </div>
@@ -1729,6 +1927,75 @@ export default function ProgrammeRegister() {
             </div>
           </div>
         )}
+      </div>
+
+      <div
+        className="pitch-sheet"
+        style={
+          {
+            "--pitch-columns": pitch.columns,
+            "--pitch-row": `${pitch.rowMm}mm`,
+            "--pitch-font": `${pitch.fontPt}pt`,
+          } as CSSProperties
+        }
+      >
+        <div className="pitch-title">
+          <h1>{programme.name}</h1>
+          <p>
+            {selectedEvent?.events?.date &&
+              formatDate(selectedEvent.events.date)}
+            {eventTimeRange(selectedEvent?.events) &&
+              ` ${eventTimeRange(selectedEvent?.events)}`}
+            {selectedEvent?.events?.location &&
+              ` · ${selectedEvent.events.location}`}
+          </p>
+        </div>
+
+        <div className="pitch-columns">
+          {pitchSections.map((section) => (
+            <div key={`pitch-${section.key}`}>
+              <div className="pitch-heading">{section.name}</div>
+              {section.teams.map((team, teamIndex) => (
+                <div key={`pitch-${section.key}-${teamIndex}`}>
+                  {team.color && (
+                    <div className="pitch-heading team">
+                      <BibChip color={team.color} />
+                      {team.color.name}
+                    </div>
+                  )}
+                  {team.players.map((player, i) => (
+                    <div key={`pitch-${player.id}`} className="pitch-row">
+                      <span>
+                        {!team.color ? (
+                          i + 1
+                        ) : player.bib === null ? (
+                          <span className="bib-empty" />
+                        ) : (
+                          <BibChip
+                            color={team.color}
+                            label={String(player.bib)}
+                          />
+                        )}
+                      </span>
+                      <span className="pitch-name">{player.name}</span>
+                      <span className="pitch-score">/6</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {Array.from({ length: PITCH_WALKUP_ROWS }, (_, i) => (
+                <div
+                  key={`pitch-${section.key}-walkup-${i}`}
+                  className="pitch-row"
+                >
+                  <span />
+                  <span />
+                  <span className="pitch-score">/6</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
