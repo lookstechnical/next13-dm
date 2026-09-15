@@ -358,6 +358,33 @@ const serialiseBibOverrides = (map: Map<string, BibOverride>) =>
 
 type BibIssue = "clash" | "outOfSet" | null;
 
+const FORWARD_POSITIONS = new Set(["Prop", "Hooker", "Second Row", "Loose Forward"]);
+const BACK_POSITIONS = new Set([
+  "Fullback",
+  "Winger",
+  "Centre",
+  "Scrum-half",
+  "Stand-off",
+]);
+
+/**
+ * Forwards (hookers included) and backs (halves included) in a group. Anyone
+ * with no position, or one outside both, is counted apart so the two numbers
+ * never quietly undercount the group.
+ */
+const positionSplit = (players: { position: string }[]) => ({
+  forwards: players.filter((p) => FORWARD_POSITIONS.has(p.position)).length,
+  backs: players.filter((p) => BACK_POSITIONS.has(p.position)).length,
+  other: players.filter(
+    (p) => !FORWARD_POSITIONS.has(p.position) && !BACK_POSITIONS.has(p.position)
+  ).length,
+});
+
+type PositionSplit = ReturnType<typeof positionSplit>;
+
+const formatSplit = ({ forwards, backs, other }: PositionSplit) =>
+  `${forwards} forwards · ${backs} backs${other > 0 ? ` · ${other} other` : ""}`;
+
 /** Position order used to shape the two teams; unknown positions sort last. */
 const positionRank = (position: string) => {
   const index = POSITION_GROUPS.findIndex((g) =>
@@ -582,6 +609,12 @@ const PRINT_CSS = `
     font-weight: 700;
     break-after: avoid;
     border-bottom: 0.4mm solid #000;
+  }
+  .pitch-sheet .pitch-split {
+    margin-left: auto;
+    font-size: 0.8em;
+    font-weight: 400;
+    white-space: nowrap;
   }
   .pitch-sheet .pitch-name {
     white-space: nowrap;
@@ -1184,6 +1217,8 @@ export default function ProgrammeRegister() {
         colors: section.colors,
         unavailable: section.unavailable,
         total: section.members.length,
+        // Who is playing, which is who a coach is planning around.
+        split: positionSplit(teams.flatMap((team) => team.players)),
         teams,
       };
     });
@@ -1516,6 +1551,7 @@ export default function ProgrammeRegister() {
   const pitchSections = sections.map((section) => ({
     key: section.key,
     name: section.name,
+    split: section.split,
     teams: bibsEnabled
       ? section.teams
           .filter((team) => team.players.length > 0)
@@ -1828,7 +1864,8 @@ export default function ProgrammeRegister() {
                     {section.name}{" "}
                     <span className="text-sm font-normal text-muted">
                       ({section.total} player
-                      {section.total === 1 ? "" : "s"})
+                      {section.total === 1 ? "" : "s"}) ·{" "}
+                      {formatSplit(section.split)}
                     </span>
                   </h2>
 
@@ -2167,7 +2204,13 @@ export default function ProgrammeRegister() {
         <div className="pitch-columns">
           {pitchSections.map((section) => (
             <div key={`pitch-${section.key}`}>
-              <div className="pitch-heading">{section.name}</div>
+              <div className="pitch-heading">
+                {section.name}
+                <span className="pitch-split">
+                  F{section.split.forwards} B{section.split.backs}
+                  {section.split.other > 0 && ` ?${section.split.other}`}
+                </span>
+              </div>
               {section.teams.map((team, teamIndex) => (
                 <div key={`pitch-${section.key}-${teamIndex}`}>
                   {team.players.map((player, i) => (
@@ -2209,7 +2252,7 @@ export default function ProgrammeRegister() {
         {pitchSections.map((section) => {
           const players = section.teams
             .flatMap((team) => team.players)
-            .map((player, i) => ({ ...player, position: i + 1 }));
+            .map((player, i) => ({ ...player, number: i + 1 }));
           const rowMm = scoutRowMm(players.length + PITCH_WALKUP_ROWS);
           return (
             <div
@@ -2218,7 +2261,9 @@ export default function ProgrammeRegister() {
               style={{ "--scout-row": `${rowMm}mm` } as CSSProperties}
             >
               <div className="scout-title">
-                <h1>{section.name}</h1>
+                <h1>
+                  {section.name} · {formatSplit(section.split)}
+                </h1>
                 <p>
                   {programme.name}
                   {selectedEvent?.events?.date &&
@@ -2231,7 +2276,7 @@ export default function ProgrammeRegister() {
                 <div key={`scout-${player.id}`} className="scout-row">
                   <span className="scout-number">
                     {!player.color ? (
-                      player.position
+                      player.number
                     ) : player.bib === null ? (
                       <span className="bib-empty" />
                     ) : (
