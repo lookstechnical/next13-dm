@@ -487,6 +487,20 @@ function defaultEventId(programmeEvents: ProgrammeEvent[]): string | undefined {
   return (upcoming ?? dated[dated.length - 1]).eventId;
 }
 
+/** Height of each scouting sheet page's title band. */
+const SCOUT_TITLE_MM = 16;
+
+/**
+ * Row height on a group's scouting sheet page: the whole page shared between
+ * its rows, kept tall enough to write in and short enough that a small group
+ * doesn't get a page of one-line boxes the size of postcards.
+ */
+const scoutRowMm = (lines: number) =>
+  Math.min(
+    40,
+    Math.max(10, (A4_PRINTABLE_MM.long - SCOUT_TITLE_MM) / Math.max(1, lines))
+  );
+
 const PRINT_CSS = `
 @media print {
   @page { size: A4 portrait; margin: 12mm; }
@@ -569,7 +583,6 @@ const PRINT_CSS = `
     break-after: avoid;
     border-bottom: 0.4mm solid #000;
   }
-  .pitch-sheet .pitch-heading.team { font-weight: 600; border-bottom-color: #666; }
   .pitch-sheet .pitch-name {
     white-space: nowrap;
     overflow: hidden;
@@ -600,6 +613,72 @@ const PRINT_CSS = `
     display: inline-block;
     height: calc(var(--pitch-row) - 1.2mm);
     width: 7mm;
+    border: 0.2mm dashed #333;
+    border-radius: 1mm;
+  }
+}
+
+/* The scouting sheet: a number and room for notes, no names, so what gets
+   written down is about what was seen rather than who it was. One page per
+   group, each row as tall as the group's headcount allows. */
+.scout-sheet { display: none; }
+@media print {
+  html[data-print="scouting"] .register-sheet { display: none !important; }
+  html[data-print="scouting"] .register-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  html[data-print="scouting"] .scout-sheet { display: block !important; }
+  .scout-sheet, .scout-sheet * {
+    color: #000 !important;
+    background: transparent !important;
+  }
+  .scout-sheet .scout-page { break-after: page; font-size: 11pt; }
+  .scout-sheet .scout-page:last-child { break-after: auto; }
+  .scout-sheet .scout-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 4mm;
+    height: ${SCOUT_TITLE_MM - 2}mm;
+    margin-bottom: 2mm;
+    border-bottom: 0.5mm solid #000;
+  }
+  .scout-sheet .scout-title h1 { font-size: 14pt; font-weight: 700; }
+  .scout-sheet .scout-title p { font-size: 9pt; }
+  .scout-sheet .scout-row {
+    display: grid;
+    grid-template-columns: 12mm 1fr;
+    gap: 2mm;
+    align-items: start;
+    height: var(--scout-row);
+    padding-top: 1mm;
+    border-bottom: 0.2mm solid #999;
+    break-inside: avoid;
+  }
+  .scout-sheet .scout-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 7mm;
+    font-weight: 700;
+  }
+  .scout-sheet .bib-chip {
+    background: var(--bib-bg) !important;
+    color: var(--bib-fg) !important;
+    border: 0.2mm solid #333 !important;
+    height: 7mm !important;
+    min-width: 11mm !important;
+    padding: 0 !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .scout-sheet .bib-empty {
+    display: inline-block;
+    height: 7mm;
+    width: 11mm;
     border: 0.2mm dashed #333;
     border-radius: 1mm;
   }
@@ -644,18 +723,18 @@ const pitchLayout = (groupLines: number[]) => {
 };
 
 /**
- * Print with the pitch sheet in place of the full register, then put it back.
- * The page size is swapped in only for this print so the full register keeps
- * printing portrait.
+ * Print the pitch or scouting sheet in place of the full register, then put it
+ * back. The page size is swapped in only for this print so the full register
+ * keeps printing portrait.
  */
-const printPitchSheet = (landscape: boolean) => {
+const printSheet = (sheet: "pitch" | "scouting", landscape: boolean) => {
   const root = document.documentElement;
   const page = document.createElement("style");
   page.textContent = `@media print { @page { size: A4 ${
     landscape ? "landscape" : "portrait"
   }; margin: 12mm; } }`;
   document.head.appendChild(page);
-  root.dataset.print = "pitch";
+  root.dataset.print = sheet;
 
   const restore = () => {
     delete root.dataset.print;
@@ -1441,8 +1520,6 @@ export default function ProgrammeRegister() {
       ? section.teams
           .filter((team) => team.players.length > 0)
           .map((team) => ({
-            label: `Team ${team.index + 1}` as string | undefined,
-            colors: team.worn.map((w) => w.color),
             players: team.players.map((p) => ({
               id: p.id,
               name: p.name,
@@ -1452,8 +1529,6 @@ export default function ProgrammeRegister() {
           }))
       : [
           {
-            label: undefined as string | undefined,
-            colors: [] as BibColor[],
             players: section.members
               .filter((r) => r.available !== false)
               .map((r) => ({
@@ -1466,17 +1541,14 @@ export default function ProgrammeRegister() {
         ],
   }));
 
-  // Lines each group's column needs: its heading, a heading per team, a row per
-  // player and the walk-up rows at the foot.
+  // Lines each group's column needs: its heading, a row per player and the
+  // walk-up rows at the foot.
   const pitch = pitchLayout(
     pitchSections.map(
       (section) =>
         1 +
         PITCH_WALKUP_ROWS +
-        section.teams.reduce(
-          (n, team) => n + (team.label ? 1 : 0) + team.players.length,
-          0
-        )
+        section.teams.reduce((n, team) => n + team.players.length, 0)
     )
   );
 
@@ -1705,12 +1777,23 @@ export default function ProgrammeRegister() {
             type="button"
             variant="outline"
             className="h-9"
-            onClick={() => printPitchSheet(pitch.landscape)}
+            onClick={() => printSheet("pitch", pitch.landscape)}
             disabled={rows.length === 0}
             title="Bib, name and a score out of 6 — fits on one side of A4"
           >
             <Printer className="w-4 h-4 mr-2" />
             Print pitch sheet
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9"
+            onClick={() => printSheet("scouting", false)}
+            disabled={rows.length === 0}
+            title="Numbers and space for notes, no names — one page per group"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Print scouting sheet
           </Button>
         </div>
       </div>
@@ -2087,15 +2170,6 @@ export default function ProgrammeRegister() {
               <div className="pitch-heading">{section.name}</div>
               {section.teams.map((team, teamIndex) => (
                 <div key={`pitch-${section.key}-${teamIndex}`}>
-                  {team.label && (
-                    <div className="pitch-heading team">
-                      {team.label}
-                      {team.colors.map((color) => (
-                        <BibChip key={color.id} color={color} />
-                      ))}
-                      {team.colors.map((color) => color.name).join(" / ")}
-                    </div>
-                  )}
                   {team.players.map((player, i) => (
                     <div key={`pitch-${player.id}`} className="pitch-row">
                       <span>
@@ -2129,6 +2203,59 @@ export default function ProgrammeRegister() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="scout-sheet">
+        {pitchSections.map((section) => {
+          const players = section.teams
+            .flatMap((team) => team.players)
+            .map((player, i) => ({ ...player, position: i + 1 }));
+          const rowMm = scoutRowMm(players.length + PITCH_WALKUP_ROWS);
+          return (
+            <div
+              key={`scout-${section.key}`}
+              className="scout-page"
+              style={{ "--scout-row": `${rowMm}mm` } as CSSProperties}
+            >
+              <div className="scout-title">
+                <h1>{section.name}</h1>
+                <p>
+                  {programme.name}
+                  {selectedEvent?.events?.date &&
+                    ` · ${formatDate(selectedEvent.events.date)}`}
+                  {eventTimeRange(selectedEvent?.events) &&
+                    ` ${eventTimeRange(selectedEvent?.events)}`}
+                </p>
+              </div>
+              {players.map((player) => (
+                <div key={`scout-${player.id}`} className="scout-row">
+                  <span className="scout-number">
+                    {!player.color ? (
+                      player.position
+                    ) : player.bib === null ? (
+                      <span className="bib-empty" />
+                    ) : (
+                      <BibChip
+                        color={player.color}
+                        label={String(player.bib)}
+                      />
+                    )}
+                  </span>
+                  <span />
+                </div>
+              ))}
+              {Array.from({ length: PITCH_WALKUP_ROWS }, (_, i) => (
+                <div
+                  key={`scout-${section.key}-walkup-${i}`}
+                  className="scout-row"
+                >
+                  <span className="scout-number" />
+                  <span />
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
