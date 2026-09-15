@@ -91,7 +91,7 @@ export const loader: LoaderFunction = withAuth(
     for (const color of BIB_COLORS) {
       const missing = team?.missing_bib_numbers?.[color.id] ?? [];
       const highest = team?.highest_bib_numbers?.[color.id];
-      if (missing.length > 0 || highest) {
+      if (missing.length > 0 || highest !== undefined) {
         bibSets[color.id] = { missing, highest };
       }
     }
@@ -121,6 +121,13 @@ export const action: ActionFunction = withAuthAction(
     const missing: Record<string, number[]> = {};
     const highest: Record<string, number> = {};
     for (const color of BIB_COLORS) {
+      // A set the club doesn't have is recorded as stopping at 0, so nothing is
+      // ever dealt from it.
+      if (formData.get(`owned-${color.id}`) !== "on") {
+        highest[color.id] = 0;
+        continue;
+      }
+
       const numbers = parseNumberList(
         String(formData.get(`missing-${color.id}`) ?? "")
       );
@@ -210,43 +217,60 @@ const BIB_COLORS: BibColor[] = [
 const colorById = (id: string) =>
   BIB_COLORS.find((c) => c.id === id) ?? BIB_COLORS[0];
 
-/**
- * Groups run alongside each other on the same pitch, so each one is handed a
- * different pair of colours by default — two groups both in red/blue makes the
- * bibs useless for telling teams apart. The palette has an odd length, so
- * walking it two at a time never repeats a pair until it has been all the way
- * round.
- */
-const defaultColorPair = (index: number): [string, string] => [
-  BIB_COLORS[(index * 2) % BIB_COLORS.length].id,
-  BIB_COLORS[(index * 2 + 1) % BIB_COLORS.length].id,
-];
+/** Each team's colours, in the order bibs are dealt from them. */
+type TeamColors = [string[], string[]];
 
 /**
- * Colour choices ride in the URL (`bibColors=<groupId>:red-blue-yellow,...`) so
- * a printed sheet and a shared link show the same teams. The first two are the
- * two teams; anything after is a spare, used in order when a set hasn't the
- * bibs to cover a team. Only groups that have been changed are stored; the rest
- * fall back to the default pair.
+ * Groups run alongside each other on the same pitch, so each one is handed a
+ * different pair of colours by default where the club owns enough. With fewer
+ * sets than that the pairs come round again, which is safe: numbers are dealt
+ * per colour across the whole sheet, so nobody shares a bib.
  */
-const parseColorOverrides = (value: string | null): Map<string, string[]> => {
-  const map = new Map<string, string[]>();
+const defaultTeamColors = (index: number, palette: string[]): TeamColors => [
+  [palette[(index * 2) % palette.length]],
+  [palette[(index * 2 + 1) % palette.length]],
+];
+
+const validColorIds = (list: string) =>
+  list.split("-").filter((id) => BIB_COLORS.some((c) => c.id === id));
+
+/**
+ * Colour choices ride in the URL (`bibColors=<groupId>:pink-purple~white-blue`)
+ * so a printed sheet and a shared link show the same teams. Each team lists its
+ * own colours, dealt in order: a team uses up what's left of its first set
+ * before starting on the next, which is how a side ends up in two colours.
+ * Only groups that have been changed are stored; the rest fall back to the
+ * default pair.
+ */
+const parseColorOverrides = (value: string | null): Map<string, TeamColors> => {
+  const map = new Map<string, TeamColors>();
   if (!value) return map;
   for (const entry of value.split(",")) {
     const [key, list] = entry.split(":");
-    const ids = (list ?? "")
-      .split("-")
-      .filter((id) => BIB_COLORS.some((c) => c.id === id));
-    if (key && ids.length >= 2) map.set(key, ids);
+    if (!key || !list) continue;
+    if (list.includes("~")) {
+      const [a, b] = list.split("~").map(validColorIds);
+      if (a?.length && b?.length) map.set(key, [a, b]);
+      continue;
+    }
+    // Links from before teams had colours of their own: two team colours, then
+    // spares either team could fall back on.
+    const ids = validColorIds(list);
+    if (ids.length >= 2) {
+      const spares = ids.slice(2);
+      map.set(key, [
+        [ids[0], ...spares],
+        [ids[1], ...spares],
+      ]);
+    }
   }
   return map;
 };
 
-const serialiseColorOverrides = (map: Map<string, string[]>) =>
-  [...map.entries()].map(([key, ids]) => `${key}:${ids.join("-")}`).join(",");
-
-/** How many of a group's colours are teams; the rest are spares. */
-const TEAM_COUNT = 2;
+const serialiseColorOverrides = (map: Map<string, TeamColors>) =>
+  [...map.entries()]
+    .map(([key, teams]) => `${key}:${teams.map((t) => t.join("-")).join("~")}`)
+    .join(",");
 
 /**
  * Where a coach has moved a player, against the automatic split. Rides in the
@@ -280,7 +304,8 @@ const serialiseMoves = (map: Map<string, PlayerMove>) =>
  * What a club's bib set of one colour holds: the numbers it has lost, and the
  * number it stops at. An absent `highest` means nobody has counted the bag, so
  * the register treats that set as bottomless — which is how it behaved before
- * any of this existed.
+ * any of this existed. A `highest` of 0 means the club has no bibs in that
+ * colour at all.
  */
 type BibSet = { missing?: number[]; highest?: number };
 
@@ -301,23 +326,37 @@ const parseNumberList = (value: string): number[] =>
   ].sort((a, b) => a - b);
 
 /**
- * Bib numbers set by hand, as `bibNumbers=<registrationId>:<number>`. Sets go
- * missing numbers over a season, so a coach has to be able to put a player in
- * whatever bib actually exists.
+ * Bib numbers set by hand, as `bibNumbers=<registrationId>:<colour>:<number>`.
+ * Sets go missing numbers over a season and a team can be split across
+ * colours, so a coach has to be able to put a player in whatever bib actually
+ * exists. Older links carry no colour, which meant "in the team's colour".
  */
-const parseBibOverrides = (value: string | null): Map<string, number> => {
-  const map = new Map<string, number>();
+type BibOverride = { color?: string; number: number };
+
+const parseBibOverrides = (value: string | null): Map<string, BibOverride> => {
+  const map = new Map<string, BibOverride>();
   if (!value) return map;
   for (const entry of value.split(",")) {
-    const [id, number] = entry.split(":");
-    const parsed = Number(number);
-    if (id && Number.isInteger(parsed) && parsed > 0) map.set(id, parsed);
+    const parts = entry.split(":");
+    const id = parts[0];
+    const color = parts.length === 3 ? parts[1] : undefined;
+    const number = Number(parts[parts.length - 1]);
+    if (color && !BIB_COLORS.some((c) => c.id === color)) continue;
+    if (id && Number.isInteger(number) && number > 0) {
+      map.set(id, { color, number });
+    }
   }
   return map;
 };
 
-const serialiseBibOverrides = (map: Map<string, number>) =>
-  [...map.entries()].map(([id, number]) => `${id}:${number}`).join(",");
+const serialiseBibOverrides = (map: Map<string, BibOverride>) =>
+  [...map.entries()]
+    .map(([id, o]) =>
+      o.color ? `${id}:${o.color}:${o.number}` : `${id}:${o.number}`
+    )
+    .join(",");
+
+type BibIssue = "clash" | "outOfSet" | null;
 
 /** Position order used to shape the two teams; unknown positions sort last. */
 const positionRank = (position: string) => {
@@ -675,37 +714,75 @@ export default function ProgrammeRegister() {
     setSearchParams(next, { replace: true, preventScrollReset: true });
   };
 
-  // A group's colours are stored as one list — the two teams then any spares —
-  // so changing one slot writes the whole list back.
-  const setGroupColors = (groupKey: string, colors: string[]) => {
+  // Clubs only own some colours. Anything unticked in Bib sets is never
+  // suggested, though a colour already chosen stays selectable so its control
+  // can still show it.
+  const ownedColorIds = useMemo(() => {
+    const owned = BIB_COLORS.filter((c) => bibSets[c.id]?.highest !== 0).map(
+      (c) => c.id
+    );
+    return owned.length > 0 ? owned : BIB_COLORS.map((c) => c.id);
+  }, [bibSets]);
+
+  const colorChoices = (current: string) =>
+    BIB_COLORS.filter((c) => ownedColorIds.includes(c.id) || c.id === current);
+
+  // A group's colours are stored whole — both teams' lists — so changing one
+  // slot writes the lot back.
+  const setGroupColors = (groupKey: string, colors: TeamColors) => {
     const next = new Map(colorOverrides);
     next.set(groupKey, colors);
     setParam("bibColors", serialiseColorOverrides(next));
   };
 
-  const setColorAt = (
+  const updateTeamColors = (
     groupKey: string,
-    index: number,
-    colorId: string,
-    current: string[]
+    current: TeamColors,
+    teamIndex: number,
+    change: (colors: string[]) => string[]
   ) => {
-    const colors = [...current];
-    colors[index] = colorId;
-    setGroupColors(groupKey, colors);
+    const next: TeamColors = [[...current[0]], [...current[1]]];
+    next[teamIndex] = change(next[teamIndex]);
+    setGroupColors(groupKey, next);
   };
 
-  // A spare only earns its place when a set can't cover a team, so the first
-  // colour not already used by this group is the useful suggestion.
-  const addSpareColor = (groupKey: string, current: string[]) => {
-    const unused = BIB_COLORS.find((c) => !current.includes(c.id));
-    if (!unused) return;
-    setGroupColors(groupKey, [...current, unused.id]);
+  const setTeamColorAt = (
+    groupKey: string,
+    current: TeamColors,
+    teamIndex: number,
+    colorIndex: number,
+    colorId: string
+  ) =>
+    updateTeamColors(groupKey, current, teamIndex, (colors) =>
+      colors.map((c, i) => (i === colorIndex ? colorId : c))
+    );
+
+  // The useful colour to add is one neither team is wearing yet; failing that,
+  // any the club owns that this team isn't.
+  const addTeamColor = (
+    groupKey: string,
+    current: TeamColors,
+    teamIndex: number
+  ) => {
+    const inGroup = [...current[0], ...current[1]];
+    const pick =
+      ownedColorIds.find((id) => !inGroup.includes(id)) ??
+      ownedColorIds.find((id) => !current[teamIndex].includes(id));
+    if (!pick) return;
+    updateTeamColors(groupKey, current, teamIndex, (colors) => [
+      ...colors,
+      pick,
+    ]);
   };
 
-  const removeColorAt = (groupKey: string, index: number, current: string[]) =>
-    setGroupColors(
-      groupKey,
-      current.filter((_, i) => i !== index)
+  const removeTeamColorAt = (
+    groupKey: string,
+    current: TeamColors,
+    teamIndex: number,
+    colorIndex: number
+  ) =>
+    updateTeamColors(groupKey, current, teamIndex, (colors) =>
+      colors.filter((_, i) => i !== colorIndex)
     );
 
   // "auto" hands a player back to the automatic split; anything else is a
@@ -727,14 +804,18 @@ export default function ProgrammeRegister() {
   const clearMoves = () => setParam("moves", "");
 
   // Blank hands the player back to the automatic numbering; anything else is
-  // the bib they've actually been given.
-  const setBibNumber = (registrationId: string, value: string) => {
+  // the bib they've actually been given, in the colour it is.
+  const setBibNumber = (
+    registrationId: string,
+    colorId: string,
+    value: string
+  ) => {
     const next = new Map(bibOverrides);
     const parsed = Number(value.trim());
     if (!value.trim() || !Number.isInteger(parsed) || parsed < 1) {
       next.delete(registrationId);
     } else {
-      next.set(registrationId, parsed);
+      next.set(registrationId, { color: colorId || undefined, number: parsed });
     }
     setParam("bibNumbers", serialiseBibOverrides(next));
   };
@@ -900,179 +981,120 @@ export default function ProgrammeRegister() {
         unavailable,
         colors:
           colorOverrides.get(key) ??
-          defaultColorPair(groupOrderIndex.get(key) ?? 0),
+          defaultTeamColors(groupOrderIndex.get(key) ?? 0, ownedColorIds),
         rosters: [teamA, teamB],
       };
     });
 
-    // Every number claimed by hand, counted per colour. Claims are counted
-    // against the colour the group has chosen for that team; if the team ends
-    // up in a spare colour the claim travels with it, which is what a coach
-    // means by "he's wearing 12".
-    const claimedByColor = new Map<string, Map<number, number>>();
+    // The colour a hand-set bib is in. Older links carry only a number, which
+    // meant the team's colour — its first colour now.
+    const overrideColor = (override: BibOverride, teamColors: string[]) =>
+      override.color ?? teamColors[0];
+
+    // Every number claimed by hand, per colour, so nothing dealt automatically
+    // lands on one.
+    const claimedByColor = new Map<string, Set<number>>();
     for (const section of built) {
       section.rosters.forEach((roster, teamIndex) => {
-        const colorId = section.colors[teamIndex];
         for (const player of roster) {
           const override = bibOverrides.get(player.id);
-          if (override === undefined) continue;
-          const claimed =
-            claimedByColor.get(colorId) ?? new Map<number, number>();
-          claimed.set(override, (claimed.get(override) ?? 0) + 1);
+          if (!override) continue;
+          const colorId = overrideColor(override, section.colors[teamIndex]);
+          const claimed = claimedByColor.get(colorId) ?? new Set<number>();
+          claimed.add(override.number);
           claimedByColor.set(colorId, claimed);
         }
       });
     }
 
     // Bibs are dealt per colour across the whole sheet rather than per team —
-    // two groups both wearing red would otherwise each field a Red 3. The
-    // second red team carries on where the first stopped.
+    // two groups both wearing pink would otherwise each field a Pink 3. The
+    // second pink team carries on where the first stopped.
     const nextBibByColor = new Map<string, number>();
-    const colorsInUse = new Set<string>();
-
     const setOf = (colorId: string) => bibSets[colorId] ?? {};
-    const missingIn = (colorId: string) =>
-      new Set(setOf(colorId).missing ?? []);
 
     /**
-     * How many bibs of a colour are still to be handed out: what's left between
-     * the next number and the end of the set, less the ones gone missing and
-     * the ones already claimed by hand. A set with no last number recorded is
-     * treated as bottomless, which is how the sheet behaved before anyone
+     * The next bib of a colour still in the bag, skipping lost numbers and ones
+     * claimed by hand; null once the set is spent. A set with no last number
+     * recorded is bottomless, which is how the sheet behaved before anyone
      * counted the bag.
      */
-    const capacity = (colorId: string, alsoTaken: Set<number>) => {
-      const highest = setOf(colorId).highest;
-      if (!highest) return Number.POSITIVE_INFINITY;
-      const missing = missingIn(colorId);
-      const claimed = claimedByColor.get(colorId) ?? new Map<number, number>();
-      let count = 0;
-      for (let n = nextBibByColor.get(colorId) ?? 1; n <= highest; n += 1) {
-        if (!missing.has(n) && !claimed.has(n) && !alsoTaken.has(n)) count += 1;
-      }
-      return count;
+    const peekBib = (colorId: string) => {
+      const { highest, missing = [] } = setOf(colorId);
+      if (highest === 0) return null;
+      const claimed = claimedByColor.get(colorId);
+      let n = nextBibByColor.get(colorId) ?? 1;
+      while (missing.includes(n) || claimed?.has(n)) n += 1;
+      return highest && n > highest ? null : n;
     };
 
-    /**
-     * The colour a team actually wears. Its own colour if that set can still
-     * cover it, otherwise the group's spares in the order they were listed. If
-     * none of them fit, any colour not already on the sheet is better than
-     * sending players out without a bib — and if even that fails the team wears
-     * whichever of its own colours goes furthest and the shortfall is flagged.
-     */
-    const chooseColor = (
-      preferred: string[],
-      needed: number,
-      blocked: Set<string>,
-      ownClaims: Set<number>
-    ) => {
-      const room = (id: string) => capacity(id, ownClaims);
-      const options = preferred.filter((id) => !blocked.has(id));
-      const fits = options.find((id) => room(id) >= needed);
-      if (fits) return { id: fits, rescued: false };
-
-      const rescue = BIB_COLORS.map((c) => c.id).find(
-        (id) => !blocked.has(id) && !colorsInUse.has(id) && room(id) >= needed
-      );
-      if (rescue) return { id: rescue, rescued: true };
-
-      const best = options.reduce(
-        (a, b) => (room(b) > room(a) ? b : a),
-        options[0] ?? preferred[0]
-      );
-      return { id: best, rescued: false };
-    };
+    const colorOrder = BIB_COLORS.map((c) => c.id);
 
     const assembled = built.map((section) => {
-      const teamColors: string[] = [];
-
       const teams = section.rosters.map((roster, teamIndex) => {
-        // Players holding a hand-set number don't need one dealing to them.
-        const needed = roster.filter(
-          (p) => bibOverrides.get(p.id) === undefined
-        ).length;
-        const chosen = section.colors[teamIndex];
-        const spares = section.colors.slice(TEAM_COUNT);
-        // A hand-set number belongs to the player, so it travels with them into
-        // whatever colour the team ends up wearing, and nothing else in that
-        // colour may be dealt it.
-        const ownClaims = new Set(
-          roster
-            .map((p) => bibOverrides.get(p.id))
-            .filter((n): n is number => n !== undefined)
-        );
-        const picked = chooseColor(
-          [chosen, ...spares],
-          needed,
-          new Set(teamColors),
-          ownClaims
+        const own = section.colors[teamIndex];
+        const other = section.colors[1 - teamIndex];
+        // Once a team's own colours are spent it borrows from the club's other
+        // sets — never the other team's colours, or the two sides can't be
+        // told apart.
+        const borrowable = ownedColorIds.filter(
+          (id) => !own.includes(id) && !other.includes(id)
         );
 
-        const color = colorById(picked.id);
-        teamColors.push(color.id);
-        colorsInUse.add(color.id);
-
-        // Numbers already spoken for in the colour this team ends up wearing,
-        // plus the ones its own players are bringing with them.
-        const claimedHere =
-          claimedByColor.get(color.id) ?? new Map<number, number>();
-        const taken = (n: number) => claimedHere.has(n) || ownClaims.has(n);
-        const missing = missingIn(color.id);
-        const highest = setOf(color.id).highest;
-        let next = nextBibByColor.get(color.id) ?? 1;
-
+        // Each player takes the next bib from the team's first colour with any
+        // left, so a set with three bibs remaining hands out those three and
+        // the rest of the team moves on to the next colour.
         const players = roster.map((player) => {
           const override = bibOverrides.get(player.id);
-          if (override !== undefined) {
+          if (override) {
+            const colorId = overrideColor(override, own);
+            const highest = setOf(colorId).highest;
             return {
               ...player,
-              bib: override as number | null,
+              bibColor: colorById(colorId),
+              bib: override.number as number | null,
               bibSetByHand: true,
-              bibIssue: (highest && override > highest ? "outOfSet" : null) as
-                | "clash"
-                | "outOfSet"
-                | null,
+              borrowed: false,
+              bibIssue: (highest !== undefined && override.number > highest
+                ? "outOfSet"
+                : null) as BibIssue,
             };
           }
 
-          while (taken(next) || missing.has(next)) next += 1;
-          // The set has run out. Better an empty box on the sheet than a number
-          // nobody can find a bib for.
-          if (highest && next > highest) {
-            return {
-              ...player,
-              bib: null as number | null,
-              bibSetByHand: false,
-              bibIssue: null as "clash" | "outOfSet" | null,
-            };
-          }
-
-          const bib = next;
-          next += 1;
+          const ownColor = own.find((id) => peekBib(id) !== null);
+          const colorId =
+            ownColor ?? borrowable.find((id) => peekBib(id) !== null);
+          const bib = colorId ? peekBib(colorId) : null;
+          if (colorId && bib !== null) nextBibByColor.set(colorId, bib + 1);
           return {
             ...player,
-            bib: bib as number | null,
+            // With every set spent the empty box still sits under the team's
+            // own colour.
+            bibColor: colorById(colorId ?? own[0]),
+            bib,
             bibSetByHand: false,
-            bibIssue: null as "clash" | "outOfSet" | null,
+            borrowed: !ownColor && bib !== null,
+            bibIssue: null as BibIssue,
           };
         });
 
-        nextBibByColor.set(color.id, next);
-        const numbers = players
-          .map((p) => p.bib)
-          .filter((n): n is number => n !== null);
+        // The colours the team actually ended up in, its own first.
+        const worn = [...own, ...colorOrder.filter((id) => !own.includes(id))]
+          .map((id) => ({
+            color: colorById(id),
+            count: players.filter(
+              (p) => p.bib !== null && p.bibColor.id === id
+            ).length,
+          }))
+          .filter((w) => w.count > 0);
 
         return {
-          color,
+          index: teamIndex,
+          colors: own.map(colorById),
           players,
-          missing: setOf(color.id).missing ?? [],
-          highest,
-          // The set the group asked for couldn't cover this team.
-          wearingSpare: color.id !== chosen,
-          rescued: picked.rescued,
+          worn,
+          borrowed: players.filter((p) => p.borrowed).length,
           shortfall: players.filter((p) => p.bib === null).length,
-          firstBib: numbers.length > 0 ? Math.min(...numbers) : 0,
-          lastBib: numbers.length > 0 ? Math.max(...numbers) : 0,
         };
       });
 
@@ -1086,28 +1108,28 @@ export default function ProgrammeRegister() {
         teams,
       };
     });
-    // Last word on duplicates, counted against the colour each team actually
-    // ended up wearing rather than the one it was given. Two players in one
-    // colour with one number is rare — it takes a team swapping colour with a
-    // hand-set bib aboard — but a sheet that prints it silently is worse than
-    // one that says so.
+
+    // Last word on duplicates, counted against the colour each bib actually
+    // is. Dealing steps round numbers set by hand, so this takes two players
+    // given the same bib by hand — rare, but a sheet that prints it silently is
+    // worse than one that says so.
     const wornByColor = new Map<string, Map<number, number>>();
     for (const section of assembled) {
       for (const team of section.teams) {
-        const worn =
-          wornByColor.get(team.color.id) ?? new Map<number, number>();
         for (const player of team.players) {
           if (player.bib === null) continue;
+          const worn =
+            wornByColor.get(player.bibColor.id) ?? new Map<number, number>();
           worn.set(player.bib, (worn.get(player.bib) ?? 0) + 1);
+          wornByColor.set(player.bibColor.id, worn);
         }
-        wornByColor.set(team.color.id, worn);
       }
     }
     for (const section of assembled) {
       for (const team of section.teams) {
         for (const player of team.players) {
           if (player.bib === null) continue;
-          if ((wornByColor.get(team.color.id)?.get(player.bib) ?? 0) > 1) {
+          if ((wornByColor.get(player.bibColor.id)?.get(player.bib) ?? 0) > 1) {
             player.bibIssue = "clash";
           }
         }
@@ -1123,6 +1145,7 @@ export default function ProgrammeRegister() {
     moves,
     bibOverrides,
     bibSets,
+    ownedColorIds,
   ]);
 
   // Everywhere a player can be sent. Each group offers a plain move — put them
@@ -1135,7 +1158,9 @@ export default function ProgrammeRegister() {
         ...(bibsEnabled
           ? section.teams.map((team, i) => ({
               value: `${section.key}:${i}`,
-              label: `${section.name} · ${team.color.name}`,
+              label: `${section.name} · Team ${i + 1} (${team.colors
+                .map((c) => c.name)
+                .join("/")})`,
             }))
           : []),
       ]),
@@ -1154,7 +1179,7 @@ export default function ProgrammeRegister() {
 
     const headers = [
       "Group",
-      ...(bibsEnabled ? ["Team", "Bib"] : []),
+      ...(bibsEnabled ? ["Team", "Bib colour", "Bib"] : []),
       "Player",
       "Age Group",
       "Position",
@@ -1175,7 +1200,11 @@ export default function ProgrammeRegister() {
           section.name,
           // A blank bib cell is a player the set couldn't cover.
           ...(bibsEnabled
-            ? [team.color.name, r.bib === null ? "" : String(r.bib)]
+            ? [
+                `Team ${team.index + 1}`,
+                r.bib === null ? "" : r.bibColor.name,
+                r.bib === null ? "" : String(r.bib),
+              ]
             : []),
           r.name,
           r.ageGroup,
@@ -1188,7 +1217,7 @@ export default function ProgrammeRegister() {
       ),
       ...section.unavailable.map((r) => [
         section.name,
-        ...(bibsEnabled ? ["", ""] : []),
+        ...(bibsEnabled ? ["", "", ""] : []),
         r.name,
         r.ageGroup,
         r.position || "",
@@ -1231,7 +1260,8 @@ export default function ProgrammeRegister() {
       color: BibColor;
       bib: number | null;
       setByHand: boolean;
-      issue: "clash" | "outOfSet" | null;
+      borrowed: boolean;
+      issue: BibIssue;
     },
     index?: number,
     teamIndex?: number
@@ -1257,31 +1287,66 @@ export default function ProgrammeRegister() {
         <td className="py-2 px-2 text-muted">
           {bib ? (
             editingBib === row.id ? (
-              <input
-                // Focused on open: the chip was just clicked, so the number is
-                // what the coach means to type into. A ref rather than
-                // autoFocus, which lands on the page rather than on a control
-                // the user has asked for.
-                ref={(el) => el?.focus()}
-                type="number"
-                min={1}
-                inputMode="numeric"
-                className="w-16 h-7 rounded border border-input bg-transparent px-1 text-xs text-foreground"
-                defaultValue={
-                  bib.setByHand && bib.bib !== null ? String(bib.bib) : ""
-                }
-                placeholder={bib.bib !== null ? String(bib.bib) : "no bib"}
-                aria-label={`Bib number for ${row.name}`}
+              <form
+                className="flex items-center gap-1"
+                // Colour and number are one edit, so it's only committed once
+                // focus has left both of them.
                 onBlur={(e) => {
-                  setBibNumber(row.id, e.currentTarget.value);
+                  if (e.currentTarget.contains(e.relatedTarget as Node | null))
+                    return;
+                  const data = new FormData(e.currentTarget);
+                  const colorId = String(data.get("color") ?? "");
+                  const number = String(data.get("number") ?? "").trim();
+                  // Opening and closing the editor on a dealt bib shouldn't
+                  // pin it by hand.
+                  const unchanged =
+                    !bib.setByHand &&
+                    colorId === bib.color.id &&
+                    number === (bib.bib === null ? "" : String(bib.bib));
+                  if (!unchanged) setBibNumber(row.id, colorId, number);
                   setEditingBib(null);
                 }}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  (document.activeElement as HTMLElement | null)?.blur();
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                  // Escape leaves the number as it was.
+                  // Escape leaves the bib as it was.
                   if (e.key === "Escape") setEditingBib(null);
                 }}
-              />
+              >
+                <select
+                  name="color"
+                  defaultValue={bib.color.id}
+                  aria-label={`Bib colour for ${row.name}`}
+                  className="h-7 rounded border border-input bg-card px-1 text-xs text-foreground"
+                >
+                  {colorChoices(bib.color.id).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  // Focused once on open: the chip was just clicked, so the
+                  // number is what the coach means to type into. Only once, so
+                  // a re-render doesn't pull focus back off the colour.
+                  ref={(el) => {
+                    if (el && !el.dataset.focused) {
+                      el.dataset.focused = "1";
+                      el.focus();
+                    }
+                  }}
+                  name="number"
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  className="w-14 h-7 rounded border border-input bg-transparent px-1 text-xs text-foreground"
+                  defaultValue={bib.bib !== null ? String(bib.bib) : ""}
+                  placeholder="auto"
+                  aria-label={`Bib number for ${row.name}`}
+                />
+              </form>
             ) : (
               <button
                 type="button"
@@ -1293,6 +1358,8 @@ export default function ProgrammeRegister() {
                     ? "Another player in this colour has the same number — click to change"
                     : bib.issue === "outOfSet"
                     ? "Past the last number in this set — click to change"
+                    : bib.borrowed
+                    ? "This team's colours ran out, so this bib is from another set — click to change"
                     : "Click to change this bib number"
                 }
               >
@@ -1374,15 +1441,27 @@ export default function ProgrammeRegister() {
       ? section.teams
           .filter((team) => team.players.length > 0)
           .map((team) => ({
-            color: team.color as BibColor | undefined,
-            players: team.players as { id: string; name: string; bib: number | null }[],
+            label: `Team ${team.index + 1}` as string | undefined,
+            colors: team.worn.map((w) => w.color),
+            players: team.players.map((p) => ({
+              id: p.id,
+              name: p.name,
+              bib: p.bib,
+              color: p.bibColor as BibColor | undefined,
+            })),
           }))
       : [
           {
-            color: undefined,
+            label: undefined as string | undefined,
+            colors: [] as BibColor[],
             players: section.members
               .filter((r) => r.available !== false)
-              .map((r) => ({ id: r.id, name: r.name, bib: null })),
+              .map((r) => ({
+                id: r.id,
+                name: r.name,
+                bib: null as number | null,
+                color: undefined as BibColor | undefined,
+              })),
           },
         ],
   }));
@@ -1395,7 +1474,7 @@ export default function ProgrammeRegister() {
         1 +
         PITCH_WALKUP_ROWS +
         section.teams.reduce(
-          (n, team) => n + (team.color ? 1 : 0) + team.players.length,
+          (n, team) => n + (team.label ? 1 : 0) + team.players.length,
           0
         )
     )
@@ -1502,8 +1581,9 @@ export default function ProgrammeRegister() {
                         and any numbers it has lost. Registers number within
                         those bounds, so nobody is sent to the bag for a bib
                         that isn&apos;t in it. Saved against the club, not this
-                        session. Leave the last number blank if a set
-                        hasn&apos;t been counted.
+                        session. Untick any colour the club doesn&apos;t have,
+                        and leave the last number blank if a set hasn&apos;t
+                        been counted.
                       </DialogDescription>
                     </DialogHeader>
 
@@ -1513,7 +1593,7 @@ export default function ProgrammeRegister() {
                       onSubmit={() => setBibSetsOpen(false)}
                     >
                       <div className="flex items-center gap-3 text-xs text-muted">
-                        <span className="w-[6.5rem] shrink-0" />
+                        <span className="w-[8rem] shrink-0">We have</span>
                         <span className="w-20 shrink-0">Last number</span>
                         <span className="flex-1">Missing numbers</span>
                       </div>
@@ -1523,15 +1603,21 @@ export default function ProgrammeRegister() {
                           key={`set-${color.id}`}
                           className="flex items-center gap-3"
                         >
-                          <span className="flex items-center gap-2 w-[6.5rem] shrink-0">
+                          <label className="flex items-center gap-2 w-[8rem] shrink-0 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name={`owned-${color.id}`}
+                              defaultChecked={bibSets[color.id]?.highest !== 0}
+                              aria-label={`The club has a ${color.name} set`}
+                            />
                             <BibChip color={color} />
                             <span className="text-sm">{color.name}</span>
-                          </span>
+                          </label>
                           <Input
                             id={`highest-${color.id}`}
                             name={`highest-${color.id}`}
                             aria-label={`Last number in the ${color.name} set`}
-                            defaultValue={bibSets[color.id]?.highest ?? ""}
+                            defaultValue={bibSets[color.id]?.highest || ""}
                             placeholder="e.g. 15"
                             type="number"
                             min={1}
@@ -1664,78 +1750,121 @@ export default function ProgrammeRegister() {
                   </h2>
 
                   {bibsEnabled && (
-                    <div className="no-print flex flex-wrap gap-2 items-center">
-                      <span className="text-xs text-muted">Bib colours</span>
-                      {section.colors.map((colorId, index) => (
-                        <span
-                          key={`${section.key}-color-${index}`}
-                          className="flex items-center gap-1"
-                        >
-                          <Select
-                            value={colorId}
-                            onValueChange={(v) =>
-                              setColorAt(section.key, index, v, section.colors)
-                            }
+                    <div className="no-print flex flex-col gap-2 items-start">
+                      {section.teams.map((team) => {
+                        const teamColors = section.colors[team.index];
+                        return (
+                          <div
+                            key={`${section.key}-colors-${team.index}`}
+                            className="flex flex-wrap gap-2 items-center"
                           >
-                            <SelectTrigger className="h-8 w-[130px] text-foreground border-input">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="text-foreground">
-                              <SelectGroup>
-                                {BIB_COLORS.map((c) => (
-                                  <SelectItem
-                                    key={c.id}
-                                    value={c.id}
-                                    className="text-foreground"
+                            <span className="text-xs text-muted w-12">
+                              Team {team.index + 1}
+                            </span>
+                            {teamColors.map((colorId, colorIndex) => (
+                              <span
+                                key={`${section.key}-${team.index}-${colorIndex}`}
+                                className="flex items-center gap-1"
+                              >
+                                <Select
+                                  value={colorId}
+                                  onValueChange={(v) =>
+                                    setTeamColorAt(
+                                      section.key,
+                                      section.colors,
+                                      team.index,
+                                      colorIndex,
+                                      v
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="h-8 w-[120px] text-foreground border-input">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="text-foreground">
+                                    <SelectGroup>
+                                      {colorChoices(colorId).map((c) => (
+                                        <SelectItem
+                                          key={c.id}
+                                          value={c.id}
+                                          className="text-foreground"
+                                        >
+                                          <span className="flex items-center gap-2">
+                                            <span
+                                              className="inline-block w-3 h-3 rounded-sm border border-border"
+                                              style={{ background: c.bg }}
+                                            />
+                                            {c.name}
+                                          </span>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                                {/* A team always needs at least one colour. */}
+                                {teamColors.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    title="Remove this colour from the team"
+                                    onClick={() =>
+                                      removeTeamColorAt(
+                                        section.key,
+                                        section.colors,
+                                        team.index,
+                                        colorIndex
+                                      )
+                                    }
                                   >
-                                    <span className="flex items-center gap-2">
-                                      <span
-                                        className="inline-block w-3 h-3 rounded-sm border border-border"
-                                        style={{ background: c.bg }}
-                                      />
-                                      {c.name}
-                                      {index >= TEAM_COUNT && " (spare)"}
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                          {/* Only spares can go: the two teams always need a
-                              colour each. */}
-                          {index >= TEAM_COUNT && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-8 w-8 p-0"
-                              title={`Remove spare colour`}
-                              onClick={() =>
-                                removeColorAt(
-                                  section.key,
-                                  index,
-                                  section.colors
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                )}
+                              </span>
+                            ))}
+                            {ownedColorIds.some(
+                              (id) => !teamColors.includes(id)
+                            ) && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-8"
+                                title="Once the colours before it run out, the rest of this team is dealt from this one"
+                                onClick={() =>
+                                  addTeamColor(
+                                    section.key,
+                                    section.colors,
+                                    team.index
+                                  )
+                                }
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Colour
+                              </Button>
+                            )}
+                            <span className="text-xs text-muted">
+                              {team.players.length} player
+                              {team.players.length === 1 ? "" : "s"}
+                              {team.worn
+                                .map(
+                                  (w) =>
+                                    ` · ${w.count} ${w.color.name.toLowerCase()}`
                                 )
-                              }
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </span>
-                      ))}
-                      {section.colors.length < BIB_COLORS.length && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-8"
-                          title="A team falls back to a spare when its own set hasn't the bibs to cover it"
-                          onClick={() =>
-                            addSpareColor(section.key, section.colors)
-                          }
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Spare
-                        </Button>
-                      )}
+                                .join("")}
+                            </span>
+                            {team.borrowed > 0 && (
+                              <span className="text-xs text-amber-500">
+                                · {team.borrowed} borrowed from another set
+                              </span>
+                            )}
+                            {team.shortfall > 0 && (
+                              <span className="text-xs text-red-500">
+                                · {team.shortfall} without a bib
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1815,9 +1944,10 @@ export default function ProgrammeRegister() {
                               row,
                               section,
                               {
-                                color: team.color,
+                                color: row.bibColor,
                                 bib: row.bib,
                                 setByHand: row.bibSetByHand,
+                                borrowed: row.borrowed,
                                 issue: row.bibIssue,
                               },
                               undefined,
@@ -1957,22 +2087,25 @@ export default function ProgrammeRegister() {
               <div className="pitch-heading">{section.name}</div>
               {section.teams.map((team, teamIndex) => (
                 <div key={`pitch-${section.key}-${teamIndex}`}>
-                  {team.color && (
+                  {team.label && (
                     <div className="pitch-heading team">
-                      <BibChip color={team.color} />
-                      {team.color.name}
+                      {team.label}
+                      {team.colors.map((color) => (
+                        <BibChip key={color.id} color={color} />
+                      ))}
+                      {team.colors.map((color) => color.name).join(" / ")}
                     </div>
                   )}
                   {team.players.map((player, i) => (
                     <div key={`pitch-${player.id}`} className="pitch-row">
                       <span>
-                        {!team.color ? (
+                        {!player.color ? (
                           i + 1
                         ) : player.bib === null ? (
                           <span className="bib-empty" />
                         ) : (
                           <BibChip
-                            color={team.color}
+                            color={player.color}
                             label={String(player.bib)}
                           />
                         )}
