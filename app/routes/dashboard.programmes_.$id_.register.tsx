@@ -555,7 +555,7 @@ const PRINT_CSS = `
   }
 }
 
-/* The pitch sheet: bib, name and somewhere to write, sized from the headcount
+/* The pitch sheet: bib and name only, sized from the headcount
    so the whole session lands on one side of A4. It only exists on paper, and
    only when asked for — Ctrl+P still prints the full register. */
 .pitch-sheet { display: none; }
@@ -596,7 +596,7 @@ const PRINT_CSS = `
   }
   .pitch-sheet .pitch-row {
     display: grid;
-    grid-template-columns: 7mm 1fr minmax(8mm, 22%);
+    grid-template-columns: 7mm 1fr;
     align-items: center;
     gap: 1.5mm;
     border-bottom: 0.2mm solid #bbb;
@@ -620,16 +620,6 @@ const PRINT_CSS = `
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  .pitch-sheet .pitch-score {
-    align-self: stretch;
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
-    padding: 0 0.5mm 0.3mm;
-    border-left: 0.2mm solid #bbb;
-    font-size: 0.75em;
-    color: #777 !important;
   }
   .pitch-sheet .bib-chip {
     background: var(--bib-bg) !important;
@@ -2228,7 +2218,6 @@ export default function ProgrammeRegister() {
                         )}
                       </span>
                       <span className="pitch-name">{player.name}</span>
-                      <span className="pitch-score">/6</span>
                     </div>
                   ))}
                 </div>
@@ -2240,7 +2229,6 @@ export default function ProgrammeRegister() {
                 >
                   <span />
                   <span />
-                  <span className="pitch-score">/6</span>
                 </div>
               ))}
             </div>
