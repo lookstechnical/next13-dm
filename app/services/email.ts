@@ -162,6 +162,8 @@ export const programmeEmailTemplate = (
   options?: {
     name?: string;
     team?: string;
+    /** HTML for {{bib}} — see bibEmailHtml in ~/utils/bibs. */
+    bib?: string;
     ctaUrl?: string;
     ctaLabel?: string;
     withdrawUrl?: string;
@@ -177,11 +179,12 @@ export const programmeEmailTemplate = (
 ) => {
   const name = options?.name || "";
   const team = options?.team || "";
+  const bib = options?.bib || "";
   const ctaLabel = options?.ctaLabel || "Update your Availability";
   const withdrawLabel = options?.withdrawLabel || "Withdraw from programme";
 
   const styleRichText = (html: string) =>
-    styleRichTextBase(html, { name, team });
+    styleRichTextBase(html, { name, team, bib });
 
   const availabilitySection =
     options?.availability && options.availability.length > 0

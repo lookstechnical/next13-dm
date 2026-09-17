@@ -3,7 +3,12 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import {
+  useActionData,
+  useLoaderData,
+  useLocation,
+  useNavigation,
+} from "@remix-run/react";
 import { CheckCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { Resend } from "resend";
@@ -16,6 +21,7 @@ import { GroupService } from "~/services/groupService";
 import { ProgrammeService } from "~/services/programmeService";
 import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { BIB_NOT_ASSIGNED, bibEmailHtml } from "~/utils/bibs";
 import { eventTimeRange } from "~/utils/helpers";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -45,6 +51,8 @@ type Recipient = {
   registered: boolean;
   registrationId?: string;
   playerId?: string;
+  /** Rendered {{bib}} — the bib colour and number, or "TBC". */
+  bib: string;
 };
 
 function buildRecipients(
@@ -52,6 +60,8 @@ function buildRecipients(
     id: string;
     email?: string;
     playerId?: string;
+    bibColor?: string | null;
+    bibNumber?: number | null;
     players?: { name?: string; email?: string };
   }[],
   allowedEmails: { email: string }[],
@@ -71,6 +81,7 @@ function buildRecipients(
       registered: true,
       registrationId: reg.id,
       playerId: reg.playerId,
+      bib: bibEmailHtml(reg.bibColor, reg.bibNumber),
     });
   }
 
@@ -83,6 +94,7 @@ function buildRecipients(
       name: "",
       team: "",
       registered: false,
+      bib: BIB_NOT_ASSIGNED,
     });
   }
 
@@ -295,6 +307,12 @@ export const action: ActionFunction = withAuthAction(
         (ownRegistration?.playerId &&
           teamByPlayer.get(ownRegistration.playerId)) ||
         "Sample Team";
+      // The tester's own bib when they're registered with one, so a real
+      // assignment can be checked; otherwise a sample to show the layout.
+      const testBib =
+        ownRegistration?.bibColor || ownRegistration?.bibNumber
+          ? bibEmailHtml(ownRegistration.bibColor, ownRegistration.bibNumber)
+          : bibEmailHtml("red", 7);
 
       try {
         await resend.emails.send({
@@ -304,6 +322,7 @@ export const action: ActionFunction = withAuthAction(
           html: programmeEmailTemplate(description, footer, {
             name: "Sample Player",
             team: testTeam,
+            bib: testBib,
             ctaUrl: registerUrl,
             ctaLabel: CTA_LABEL,
             withdrawUrl: testWithdrawUrl,
@@ -387,6 +406,7 @@ export const action: ActionFunction = withAuthAction(
             html: programmeEmailTemplate(description, footer, {
               name: r.name,
               team: r.team,
+              bib: r.bib,
               ctaUrl: registerUrl,
               ctaLabel: CTA_LABEL,
               withdrawUrl: `${withdrawBaseUrl}?registration=${r.registrationId}`,
@@ -401,6 +421,7 @@ export const action: ActionFunction = withAuthAction(
           subject,
           html: programmeEmailTemplate(description, footer, {
             name: "there",
+            bib: r.bib,
             ctaUrl: registerUrl,
             ctaLabel: "Register now",
           }),
@@ -434,6 +455,8 @@ export const action: ActionFunction = withAuthAction(
 export default function SendProgrammeReminder() {
   const { programme, recipients, events, defaultTestEmail } =
     useLoaderData<typeof loader>();
+  // Back to the list as it was left, filters and all.
+  const { search } = useLocation();
   const result = useActionData<typeof action>();
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
@@ -468,7 +491,7 @@ export default function SendProgrammeReminder() {
 
   return (
     <SheetPage
-      backLink={`/dashboard/programmes/${programme.id}`}
+      backLink={`/dashboard/programmes/${programme.id}${search}`}
       title={`Send reminder — ${programme.name}`}
       description="Remind members to update their details, profile and availability"
       hasForm

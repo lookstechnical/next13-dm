@@ -3,7 +3,13 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { Link, Outlet, redirect, useLoaderData } from "@remix-run/react";
+import {
+  Link,
+  Outlet,
+  redirect,
+  useLoaderData,
+  useLocation,
+} from "@remix-run/react";
 import { Calendar, Clock, MapPin, MoreVertical } from "lucide-react";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { AddPlayerDialog } from "~/components/programmes/add-player-dialog";
@@ -14,6 +20,7 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { GroupService } from "~/services/groupService";
 import { PlayerService } from "~/services/playerService";
+import { TeamService } from "~/services/teamService";
 import {
   ProgrammeFullError,
   ProgrammeService,
@@ -21,6 +28,11 @@ import {
 import { ActionProtection } from "~/components/action-protection";
 import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import {
+  bibSetsFromTeam,
+  isBibColorId,
+  nextFreeBib,
+} from "~/utils/bibs";
 import {
   eventTimeRange,
   formatDate,
@@ -72,6 +84,12 @@ export const loader: LoaderFunction = withAuth(
     const allowedEmails = await programmeService.getAllowedEmails(
       params.id as string,
     );
+    const teamService = new TeamService(supabaseClient);
+    const bibSets = bibSetsFromTeam(
+      (await teamService.getTeamById(user.current_team as string)) as Parameters<
+        typeof bibSetsFromTeam
+      >[0],
+    );
 
     // Players in the programme's team who aren't already registered — offered
     // in the "Add player" dialog so staff can register an existing player.
@@ -96,13 +114,14 @@ export const loader: LoaderFunction = withAuth(
       attendance,
       playerGroups,
       allowedEmails,
+      bibSets,
       user,
     };
   },
 );
 
 export const action: ActionFunction = withAuthAction(
-  async ({ request, supabaseClient }) => {
+  async ({ request, params, supabaseClient, user }) => {
     const programmeService = new ProgrammeService(supabaseClient);
     const groupService = new GroupService(supabaseClient);
     const formData = await request.formData();
@@ -199,6 +218,54 @@ export const action: ActionFunction = withAuthAction(
       return { ok: true };
     }
 
+    if (intent === "setBib") {
+      const registrationId = formData.get("registrationId") as string;
+      const color = String(formData.get("bibColor") ?? "");
+      const bibColor = isBibColorId(color) ? color : null;
+      const number = Number(String(formData.get("bibNumber") ?? "").trim());
+      let bibNumber = Number.isInteger(number) && number > 0 ? number : null;
+
+      // Picking a colour hands out the next bib of it still in the bag. Worked
+      // out here rather than in the browser so a coach going quickly down the
+      // list gets numbers from what's saved, not from a page that hasn't
+      // caught up with their last pick.
+      if (bibColor && formData.get("autoNumber") === "1") {
+        const teamService = new TeamService(supabaseClient);
+        const bibSets = bibSetsFromTeam(
+          (await teamService.getTeamById(
+            user.current_team as string,
+          )) as Parameters<typeof bibSetsFromTeam>[0],
+        );
+        const registrations = await programmeService.getProgrammeRegistrations(
+          params.id as string,
+        );
+        const taken = new Set(
+          registrations
+            .filter(
+              (r) =>
+                r.id !== registrationId &&
+                r.bibColor === bibColor &&
+                !!r.bibNumber,
+            )
+            .map((r) => r.bibNumber as number),
+        );
+        bibNumber = nextFreeBib(bibSets[bibColor], taken);
+        await programmeService.setRegistrationBib({
+          registrationId,
+          bibColor,
+          bibNumber,
+        });
+        return { ok: true, bibSetFull: bibNumber === null };
+      }
+
+      await programmeService.setRegistrationBib({
+        registrationId,
+        bibColor,
+        bibNumber,
+      });
+      return { ok: true };
+    }
+
     if (intent === "assignToGroup") {
       const groupId = formData.get("groupId") as string;
       const playerId = formData.get("playerId") as string;
@@ -235,8 +302,12 @@ export default function ProgrammeDetail() {
     playerGroups,
     allowedEmails,
     availablePlayers,
+    bibSets,
     user,
   } = useLoaderData<typeof loader>();
+  // Sheets open over the list, so they carry its filters along and hand them
+  // back when closed.
+  const { search } = useLocation();
 
   if (!programme) {
     return (
@@ -293,23 +364,23 @@ export default function ProgrammeDetail() {
                 user={user}
               >
                 <Button asChild variant="outline">
-                  <Link to={`/dashboard/programmes/${programme.id}/send-email`}>
+                  <Link to={`/dashboard/programmes/${programme.id}/send-email${search}`}>
                     Email Members
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link to={`/dashboard/programmes/${programme.id}/invite`}>
+                  <Link to={`/dashboard/programmes/${programme.id}/invite${search}`}>
                     Invite Members
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link to={`/dashboard/programmes/${programme.id}/reminder`}>
+                  <Link to={`/dashboard/programmes/${programme.id}/reminder${search}`}>
                     Send reminder
                   </Link>
                 </Button>
               </ActionProtection>
               <Button asChild variant="outline">
-                <Link to={`/dashboard/programmes/${programme.id}/edit`}>
+                <Link to={`/dashboard/programmes/${programme.id}/edit${search}`}>
                   Edit
                 </Link>
               </Button>
@@ -412,6 +483,7 @@ export default function ProgrammeDetail() {
           availability={availability}
           attendance={attendance}
           playerGroups={playerGroups}
+          bibSets={bibSets}
         />
       </Card>
       <Outlet />

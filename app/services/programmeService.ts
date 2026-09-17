@@ -494,6 +494,21 @@ export class ProgrammeService {
     }
   }
 
+  // The bib a player wears for this programme. Either half can be null — a
+  // colour chosen before the numbers are, or a bib taken back.
+  async setRegistrationBib(data: {
+    registrationId: string;
+    bibColor: string | null;
+    bibNumber: number | null;
+  }): Promise<void> {
+    const { error } = await this.client
+      .from("programme_registrations")
+      .update({ bib_color: data.bibColor, bib_number: data.bibNumber })
+      .eq("id", data.registrationId);
+
+    if (error) throw error;
+  }
+
   async removeRegistration(registrationId: string): Promise<boolean> {
     const { data: registration, error: regError } = await this.client
       .from("programme_registrations")

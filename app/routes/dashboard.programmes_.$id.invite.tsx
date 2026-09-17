@@ -3,7 +3,12 @@ import type {
   LoaderFunction,
   MetaFunction,
 } from "@remix-run/node";
-import { useActionData, useLoaderData, useNavigation } from "@remix-run/react";
+import {
+  useActionData,
+  useLoaderData,
+  useLocation,
+  useNavigation,
+} from "@remix-run/react";
 import { CheckCircle, AlertCircle } from "lucide-react";
 import { Resend } from "resend";
 import { ProgrammeInviteForm } from "~/components/forms/form/programme-invite-form";
@@ -166,13 +171,15 @@ export const action: ActionFunction = withAuthAction(
 
 export default function InviteProgrammeMembers() {
   const { programme, defaultTestEmail } = useLoaderData<typeof loader>();
+  // Back to the list as it was left, filters and all.
+  const { search } = useLocation();
   const result = useActionData<typeof action>();
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting";
 
   return (
     <SheetPage
-      backLink={`/dashboard/programmes/${programme.id}`}
+      backLink={`/dashboard/programmes/${programme.id}${search}`}
       title={`Invite members — ${programme.name}`}
       description="Invite people to register and add them to the allow-list"
       hasForm

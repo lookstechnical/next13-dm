@@ -295,6 +295,9 @@ export interface ProgrammeRegistration {
   email?: string;
   status: "registered" | "confirmed" | "attended" | "no_show";
   registeredAt: string;
+  /** Bib colour id from ~/utils/bibs, assigned for this programme. */
+  bibColor?: string | null;
+  bibNumber?: number | null;
   players?: Player;
   programmes?: Programme;
 }

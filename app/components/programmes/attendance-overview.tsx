@@ -1,5 +1,5 @@
-import { Form, useFetcher } from "@remix-run/react";
-import { useMemo, useState } from "react";
+import { Form, useFetcher, useSearchParams } from "@remix-run/react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PlayerGroup,
   ProgrammeRegistration,
@@ -12,9 +12,16 @@ import {
   eventTimeRange,
   formatDate,
 } from "~/utils/helpers";
+import {
+  BIB_COLORS,
+  colorById,
+  isBibColorId,
+  type BibSet,
+} from "~/utils/bibs";
 import { POSITION_GROUPS } from "~/utils/position-groups";
-import { Check, X, Trash2, Minus } from "lucide-react";
+import { Check, X, Trash2, Minus, AlertTriangle } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
 import {
   Select,
@@ -32,6 +39,7 @@ type AttendanceOverviewProps = {
   availability: ProgrammeEventAvailability[];
   attendance: ProgrammeEventAttendance[];
   playerGroups?: PlayerGroup[];
+  bibSets?: Record<string, BibSet>;
 };
 
 type ViewMode = "availability" | "attendance";
@@ -47,7 +55,59 @@ type SortKey =
   | "availability_asc"
   | "group";
 
+// How players the main sort leaves level are ordered.
+type ThenByKey = "name" | "position";
+
+// Position order follows POSITION_GROUPS (outside backs through to back row),
+// then the order positions are listed within a group. Unknown or missing
+// positions sort last.
+const positionRank = (position?: string | null): number => {
+  if (!position) return Infinity;
+  for (const [groupIndex, group] of POSITION_GROUPS.entries()) {
+    const index = group.positions.indexOf(position);
+    if (index !== -1) return groupIndex * 100 + index;
+  }
+  return Infinity;
+};
+
+const byPosition = (a: ProgrammeRegistration, b: ProgrammeRegistration) => {
+  const aRank = positionRank(a.players?.position);
+  const bRank = positionRank(b.players?.position);
+  return aRank === bRank ? 0 : aRank < bRank ? -1 : 1;
+};
+
+const byName = (a: ProgrammeRegistration, b: ProgrammeRegistration) =>
+  (a.players?.name ?? "").localeCompare(b.players?.name ?? "");
+
 const ALL_VALUE = "__all__";
+
+/**
+ * Filters and sorting live in the URL so a filtered list can be shared or
+ * bookmarked. Each value has a default that's left out of the URL, keeping
+ * links short: an unfiltered list is just the programme's address.
+ */
+const PARAM_DEFAULTS = {
+  view: "availability",
+  position: ALL_VALUE,
+  scope: "primary",
+  age: ALL_VALUE,
+  club: ALL_VALUE,
+  group: "all",
+  attendance: "all",
+  event: ALL_VALUE,
+  sort: "name",
+  then: "name",
+} as const;
+
+type ParamKey = keyof typeof PARAM_DEFAULTS;
+
+// A hand-edited or stale link can carry anything; values outside a fixed set
+// fall back to the default rather than leaving a control showing nothing.
+const oneOf = <T extends string>(
+  value: string | null,
+  allowed: readonly T[],
+  fallback: T,
+): T => (value && (allowed as readonly string[]).includes(value) ? (value as T) : fallback);
 // Players without a club recorded still need to be selectable as a set.
 const NO_CLUB_VALUE = "__no_club__";
 
@@ -202,6 +262,163 @@ const AvailabilityCell: React.FC<{
   );
 };
 
+const NO_BIB_COLOR = "__none__";
+
+const bibKey = (color: string, number: number) => `${color}:${number}`;
+
+// The bib a player wears for the programme: a colour and a number, each saved
+// as soon as it's set. The number saves on blur or Enter rather than on every
+// keystroke, so typing "12" never briefly hands someone bib 1.
+const BibCell: React.FC<{
+  registrationId: string;
+  bibColor?: string | null;
+  bibNumber?: number | null;
+  clash: boolean;
+  bibSets: Record<string, BibSet>;
+}> = ({ registrationId, bibColor, bibNumber, clash, bibSets }) => {
+  const fetcher = useFetcher<{ bibSetFull?: boolean }>();
+
+  const pendingColor = fetcher.formData?.get("bibColor") as string | undefined;
+  const pendingNumber = fetcher.formData?.get("bibNumber") as
+    | string
+    | undefined;
+  const autoNumbering = fetcher.formData?.get("autoNumber") === "1";
+  const color =
+    pendingColor !== undefined
+      ? pendingColor
+      : isBibColorId(bibColor)
+      ? bibColor
+      : "";
+  const savedNumber = autoNumbering
+    ? ""
+    : pendingNumber !== undefined
+    ? pendingNumber
+    : bibNumber
+    ? String(bibNumber)
+    : "";
+
+  const [draft, setDraft] = useState(savedNumber);
+  // Follow the saved value when it changes underneath us (another row's save
+  // revalidating the page, or a reload), but not while this cell is saving.
+  useEffect(() => {
+    if (fetcher.state === "idle") setDraft(bibNumber ? String(bibNumber) : "");
+  }, [bibNumber, fetcher.state]);
+
+  const save = (nextColor: string, nextNumber: string, autoNumber = false) =>
+    fetcher.submit(
+      {
+        intent: "setBib",
+        registrationId,
+        bibColor: nextColor,
+        bibNumber: nextNumber.trim(),
+        autoNumber: autoNumber ? "1" : "0",
+      },
+      { method: "post" },
+    );
+
+  // A new colour gets the next free bib in that set, worked out on the server.
+  // The one exception is a number typed before any colour was picked — that's
+  // the bib the coach is holding, so it stays. "No bib" takes the bib back.
+  const changeColor = (next: string) => {
+    if (next === color) return;
+    if (!next) {
+      setDraft("");
+      save("", "");
+    } else if (!color && draft.trim()) {
+      save(next, draft);
+    } else {
+      setDraft("");
+      save(next, "", true);
+    }
+  };
+
+  // Colours the club has no bibs in aren't offered, bar the one already chosen.
+  const colorChoices = BIB_COLORS.filter(
+    (c) => bibSets[c.id]?.highest !== 0 || c.id === color,
+  );
+  const setFull =
+    fetcher.state === "idle" && fetcher.data?.bibSetFull && !bibNumber;
+
+  const commitNumber = () => {
+    const trimmed = draft.trim();
+    const parsed = Number(trimmed);
+    const valid = trimmed === "" || (Number.isInteger(parsed) && parsed > 0);
+    if (!valid) {
+      setDraft(savedNumber);
+      return;
+    }
+    if (trimmed !== savedNumber) save(color, trimmed);
+  };
+
+  const swatch = color ? colorById(color) : null;
+
+  return (
+    <td className="py-2 px-2">
+      <div className="flex items-center gap-1">
+        <Select
+          value={color || NO_BIB_COLOR}
+          onValueChange={(v) => changeColor(v === NO_BIB_COLOR ? "" : v)}
+        >
+          <SelectTrigger
+            className="h-8 w-[104px] text-xs text-foreground border-input"
+            aria-label="Bib colour"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="text-foreground">
+            <SelectGroup>
+              <SelectItem value={NO_BIB_COLOR} className="text-foreground">
+                No bib
+              </SelectItem>
+              {colorChoices.map((c) => (
+                <SelectItem key={c.id} value={c.id} className="text-foreground">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className="inline-block w-3 h-3 rounded-sm border border-border"
+                      style={{ background: c.bg }}
+                    />
+                    {c.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          value={autoNumbering ? "" : draft}
+          placeholder={autoNumbering ? "…" : "#"}
+          aria-label="Bib number"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitNumber}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="h-8 w-14 px-1 text-center text-xs font-semibold"
+          style={
+            swatch ? { background: swatch.bg, color: swatch.fg } : undefined
+          }
+        />
+        {setFull && swatch && (
+          <span title={`No ${swatch.name} bibs left in the set`}>
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+          </span>
+        )}
+        {clash && (
+          <span title="Another player has this bib">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+          </span>
+        )}
+      </div>
+    </td>
+  );
+};
+
 const PlayerRow: React.FC<{
   reg: ProgrammeRegistration;
   programmeEvents: ProgrammeEvent[];
@@ -217,6 +434,8 @@ const PlayerRow: React.FC<{
   playerGroups?: PlayerGroup[];
   total: number;
   editAvailability: boolean;
+  bibClash: boolean;
+  bibSets: Record<string, BibSet>;
 }> = ({
   reg,
   programmeEvents,
@@ -226,6 +445,8 @@ const PlayerRow: React.FC<{
   playerGroups,
   total,
   editAvailability,
+  bibClash,
+  bibSets,
 }) => {
   const fetcher = useFetcher();
   const ageGroup = reg.players?.dateOfBirth
@@ -295,6 +516,13 @@ const PlayerRow: React.FC<{
       <td className="py-3 px-2">
         <span className="text-xs text-muted">{clubOf(reg) || "-"}</span>
       </td>
+      <BibCell
+        registrationId={reg.id}
+        bibColor={reg.bibColor}
+        bibNumber={reg.bibNumber}
+        clash={bibClash}
+        bibSets={bibSets}
+      />
       {playerGroups && playerGroups.length > 0 && (
         <td className="py-3 px-2">
           <Select value={currentGroupId} onValueChange={handleGroupAssign}>
@@ -384,19 +612,81 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   availability,
   attendance,
   playerGroups,
+  bibSets = {},
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>("availability");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Every change replaces the history entry rather than adding one, so Back
+  // leaves the page instead of stepping through each filter tweak.
+  const updateParams = (updates: Partial<Record<ParamKey, string>>) =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === undefined || value === PARAM_DEFAULTS[key as ParamKey]) {
+            next.delete(key);
+          } else {
+            next.set(key, value);
+          }
+        }
+        return next;
+      },
+      { replace: true, preventScrollReset: true },
+    );
+
+  const param = (key: ParamKey) => searchParams.get(key) ?? PARAM_DEFAULTS[key];
+
+  const viewMode = oneOf<ViewMode>(
+    searchParams.get("view"),
+    ["availability", "attendance"],
+    "availability",
+  );
+  const setViewMode = (value: ViewMode) => updateParams({ view: value });
   // Availability is the player's own answer, so editing is off by default and
-  // has to be switched on deliberately.
+  // has to be switched on deliberately. Deliberately not in the URL: a shared
+  // link should never open with editing armed.
   const [editAvailability, setEditAvailability] = useState(false);
-  const [positionFilter, setPositionFilter] = useState<string>(ALL_VALUE);
-  const [positionScope, setPositionScope] = useState<PositionScope>("primary");
-  const [ageGroupFilter, setAgeGroupFilter] = useState<string>(ALL_VALUE);
-  const [clubFilter, setClubFilter] = useState<string>(ALL_VALUE);
-  const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
-  const [attendanceFilter, setAttendanceFilter] =
-    useState<AttendanceFilter>("all");
-  const [sortBy, setSortBy] = useState<SortKey>("name");
+  const positionFilter = oneOf(
+    searchParams.get("position"),
+    POSITION_GROUPS.map((g) => g.label),
+    ALL_VALUE,
+  );
+  const setPositionFilter = (value: string) => updateParams({ position: value });
+  const positionScope = oneOf<PositionScope>(
+    searchParams.get("scope"),
+    ["primary", "secondary", "both"],
+    "primary",
+  );
+  const setPositionScope = (value: PositionScope) =>
+    updateParams({ scope: value });
+  const ageGroupFilter = param("age");
+  const setAgeGroupFilter = (value: string) => updateParams({ age: value });
+  const clubFilter = param("club");
+  const setClubFilter = (value: string) => updateParams({ club: value });
+  const groupFilter: GroupFilter = param("group");
+  const setGroupFilter = (value: GroupFilter) => updateParams({ group: value });
+  const attendanceFilter = oneOf<AttendanceFilter>(
+    searchParams.get("attendance"),
+    ["all", "never", "missed", "attended"],
+    "all",
+  );
+  const setAttendanceFilter = (value: AttendanceFilter) =>
+    updateParams({ attendance: value });
+  // Narrows the list to players who said they're available for one event.
+  const eventFilter = param("event");
+  const setEventFilter = (value: string) => updateParams({ event: value });
+  const sortBy = oneOf<SortKey>(
+    searchParams.get("sort"),
+    ["name", "position", "availability_desc", "availability_asc", "group"],
+    "name",
+  );
+  const setSortBy = (value: SortKey) => updateParams({ sort: value });
+  const thenBy = oneOf<ThenByKey>(
+    searchParams.get("then"),
+    ["name", "position"],
+    "name",
+  );
+  const setThenBy = (value: ThenByKey) => updateParams({ then: value });
 
   const getAvailability = (
     registrationId: string,
@@ -520,6 +810,14 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     return map;
   }, [playerGroups]);
 
+  // Groups come back from the service in name order, so a group's place in the
+  // list is its place in the sort.
+  const groupSortIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    (playerGroups ?? []).forEach((g, i) => map.set(g.id, i));
+    return map;
+  }, [playerGroups]);
+
   const ageGroupOptions = useMemo(() => {
     const set = new Set<string>();
     for (const r of registrations) {
@@ -537,9 +835,28 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     });
   }, [registrations]);
 
+  const availableRegistrationIdsByEvent = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const a of availability) {
+      if (!a.available) continue;
+      const set = map.get(a.eventId) ?? new Set<string>();
+      set.add(a.programmeRegistrationId);
+      map.set(a.eventId, set);
+    }
+    return map;
+  }, [availability]);
+
+  // The players the summary boxes count. Picking an event narrows them to who
+  // is available for it, so the boxes show the shape of that session's squad.
+  const eventRegistrations = useMemo(() => {
+    if (eventFilter === ALL_VALUE) return registrations;
+    const available = availableRegistrationIdsByEvent.get(eventFilter);
+    return registrations.filter((r) => available?.has(r.id));
+  }, [registrations, eventFilter, availableRegistrationIdsByEvent]);
+
   const ageGroupCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const r of registrations) {
+    for (const r of eventRegistrations) {
       const ag = r.players?.dateOfBirth
         ? calculateAgeGroup(r.players.dateOfBirth)
         : "Unknown";
@@ -556,7 +873,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
         if (bi === -1) return -1;
         return ai - bi;
       });
-  }, [registrations]);
+  }, [eventRegistrations]);
 
   // Clubs present in this programme, alphabetical, with "No club" last so the
   // unrecorded players are still reachable.
@@ -610,7 +927,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
   const positionGroupCounts = useMemo(() => {
     return POSITION_GROUPS.map((g) => {
       let count = 0;
-      for (const r of registrations) {
+      for (const r of eventRegistrations) {
         if (
           matchesPositionGroup(
             r.players?.position,
@@ -623,27 +940,37 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
       }
       return { label: g.label, count };
     }).filter((entry) => entry.count > 0);
-  }, [registrations, positionScope]);
+  }, [eventRegistrations, positionScope]);
 
-  const playerIdToRegistration = useMemo(() => {
+  // Said next to the box headings, so it's clear the counts are for one event.
+  const selectedEvent = programmeEvents.find((pe) => pe.eventId === eventFilter);
+  const eventCountsNote = selectedEvent
+    ? ` · available for ${selectedEvent.events?.name ?? "event"}`
+    : "";
+
+  const eventPlayerIdToRegistration = useMemo(() => {
     const map = new Map<string, ProgrammeRegistration>();
-    for (const r of registrations) {
+    for (const r of eventRegistrations) {
       if (r.players?.id) map.set(r.players.id, r);
     }
     return map;
-  }, [registrations]);
+  }, [eventRegistrations]);
 
   const playerGroupBreakdowns = useMemo(() => {
     if (!playerGroups) return [];
     const order = ["U12", "U13", "U14", "U15", "U16", "U17", "U18", "Senior"];
     return playerGroups
       .map((pg) => {
-        const playerIds = pg.playerIds ?? [];
+        // Only group members on the programme (and, with an event picked,
+        // available for it) count — the group itself can be much bigger.
+        const playerIds = (pg.playerIds ?? []).filter((pid) =>
+          eventPlayerIdToRegistration.has(pid),
+        );
         const total = playerIds.length;
         const breakdown = POSITION_GROUPS.map((g) => {
           let count = 0;
           for (const pid of playerIds) {
-            const reg = playerIdToRegistration.get(pid);
+            const reg = eventPlayerIdToRegistration.get(pid);
             if (!reg) continue;
             if (
               matchesPositionGroup(
@@ -659,7 +986,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
         }).filter((entry) => entry.count > 0);
         const ageCounts = new Map<string, number>();
         for (const pid of playerIds) {
-          const reg = playerIdToRegistration.get(pid);
+          const reg = eventPlayerIdToRegistration.get(pid);
           const dob = reg?.players?.dateOfBirth;
           const ag = dob ? calculateAgeGroup(dob) : "Unknown";
           ageCounts.set(ag, (ageCounts.get(ag) ?? 0) + 1);
@@ -677,7 +1004,22 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
         return { id: pg.id, name: pg.name, total, breakdown, ageBreakdown };
       })
       .filter((entry) => entry.total > 0);
-  }, [playerGroups, playerIdToRegistration, positionScope]);
+  }, [playerGroups, eventPlayerIdToRegistration, positionScope]);
+
+
+  // Bibs worn by more than one player. Checked across the whole programme, not
+  // just the filtered rows — a clash hidden by a filter is still a clash.
+  const clashingBibs = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of registrations) {
+      if (!isBibColorId(r.bibColor) || !r.bibNumber) continue;
+      const key = bibKey(r.bibColor, r.bibNumber);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return new Set(
+      [...counts.entries()].filter(([, n]) => n > 1).map(([key]) => key),
+    );
+  }, [registrations]);
 
   const visibleRegistrations = useMemo(() => {
     const activeGroup =
@@ -732,11 +1074,15 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
       } else if (attendanceFilter === "attended") {
         if ((attendedCountByRegistration.get(r.id) ?? 0) === 0) return false;
       }
+      if (eventFilter !== ALL_VALUE) {
+        if (!availableRegistrationIdsByEvent.get(eventFilter)?.has(r.id)) {
+          return false;
+        }
+      }
       return true;
     });
 
-    const sorted = [...filtered];
-    sorted.sort((a, b) => {
+    const primary = (a: ProgrammeRegistration, b: ProgrammeRegistration) => {
       switch (sortBy) {
         case "availability_desc":
           return (
@@ -749,26 +1095,35 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             (availableCountByRegistration.get(b.id) ?? 0)
           );
         case "position":
-          return (a.players?.position ?? "").localeCompare(
-            b.players?.position ?? "",
-          );
+          return byPosition(a, b);
         case "group": {
-          const aHas =
-            (playerIdToGroupIds.get(a.players?.id ?? "")?.length ?? 0) > 0
-              ? 0
-              : 1;
-          const bHas =
-            (playerIdToGroupIds.get(b.players?.id ?? "")?.length ?? 0) > 0
-              ? 0
-              : 1;
-          if (aHas !== bHas) return aHas - bHas;
-          return (a.players?.name ?? "").localeCompare(b.players?.name ?? "");
+          // A player in several groups sorts under the first by name — the
+          // same group the register files them under. Ungrouped players last.
+          const rank = (r: ProgrammeRegistration) => {
+            const ids = playerIdToGroupIds.get(r.players?.id ?? "") ?? [];
+            return ids.length > 0
+              ? Math.min(...ids.map((id) => groupSortIndex.get(id) ?? Infinity))
+              : Infinity;
+          };
+          const aRank = rank(a);
+          const bRank = rank(b);
+          return aRank === bRank ? 0 : aRank < bRank ? -1 : 1;
         }
         case "name":
         default:
-          return (a.players?.name ?? "").localeCompare(b.players?.name ?? "");
+          return byName(a, b);
       }
-    });
+    };
+
+    // Ties on the main sort go to the chosen secondary order, and name always
+    // settles whatever is left so the list never shuffles between renders.
+    const sorted = [...filtered];
+    sorted.sort(
+      (a, b) =>
+        primary(a, b) ||
+        (thenBy === "position" ? byPosition(a, b) : 0) ||
+        byName(a, b),
+    );
     return sorted;
   }, [
     registrations,
@@ -778,12 +1133,16 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     clubFilter,
     groupFilter,
     attendanceFilter,
+    eventFilter,
     sortBy,
+    thenBy,
     availableCountByRegistration,
+    availableRegistrationIdsByEvent,
     attendedCountByRegistration,
     neverAttendedIds,
     missedSessionIds,
     playerIdToGroupIds,
+    groupSortIndex,
   ]);
 
   const visibleRegistrationIds = useMemo(
@@ -825,7 +1184,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
     clubFilter !== ALL_VALUE ||
     groupFilter !== "all" ||
     attendanceFilter !== "all" ||
-    sortBy !== "name";
+    eventFilter !== ALL_VALUE ||
+    sortBy !== "name" ||
+    thenBy !== "name";
 
   // Overall expected (available) vs attended (present) across every event, for
   // the players currently visible under the active filters.
@@ -1063,6 +1424,35 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
           </Select>
         </div>
 
+        {programmeEvents.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted">Available for</label>
+            <Select value={eventFilter} onValueChange={setEventFilter}>
+              <SelectTrigger className="h-9 w-[230px] text-foreground border-input">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="text-foreground">
+                <SelectGroup>
+                  <SelectItem value={ALL_VALUE} className="text-foreground">
+                    Any event
+                  </SelectItem>
+                  {programmeEvents.map((pe) => (
+                    <SelectItem
+                      key={pe.id}
+                      value={pe.eventId}
+                      className="text-foreground"
+                    >
+                      {pe.events?.name ?? "Event"}
+                      {pe.events?.date ? ` · ${formatDate(pe.events.date)}` : ""}{" "}
+                      ({availableRegistrationIdsByEvent.get(pe.eventId)?.size ?? 0})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1">
           <label className="text-xs text-muted">Attendance</label>
           <Select
@@ -1118,12 +1508,36 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   Availability (low → high)
                 </SelectItem>
                 <SelectItem value="group" className="text-foreground">
-                  Group (in group first)
+                  Group
                 </SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
         </div>
+
+        {sortBy !== "name" && sortBy !== "position" && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted">Then by</label>
+            <Select
+              value={thenBy}
+              onValueChange={(v) => setThenBy(v as ThenByKey)}
+            >
+              <SelectTrigger className="h-9 w-[150px] text-foreground border-input">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="text-foreground">
+                <SelectGroup>
+                  <SelectItem value="name" className="text-foreground">
+                    Name (A–Z)
+                  </SelectItem>
+                  <SelectItem value="position" className="text-foreground">
+                    Position
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {filtersActive && (
           <Button
@@ -1132,13 +1546,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
             size="sm"
             className="h-9"
             onClick={() => {
-              setPositionFilter(ALL_VALUE);
-              setPositionScope("primary");
-              setAgeGroupFilter(ALL_VALUE);
-              setClubFilter(ALL_VALUE);
-              setGroupFilter("all");
-              setAttendanceFilter("all");
-              setSortBy("name");
+              // One update for the lot — separate calls in the same tick
+              // would each start from the old URL and undo one another.
+              updateParams({ ...PARAM_DEFAULTS, view: viewMode });
             }}
           >
             Clear
@@ -1191,7 +1601,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
 
       {ageGroupCounts.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs text-muted mb-2">By age group</p>
+          <p className="text-xs text-muted mb-2">
+            By age group{eventCountsNote}
+          </p>
           <div className="flex flex-wrap gap-2">
             {ageGroupCounts.map((entry) => {
               const active = ageGroupFilter === entry.label;
@@ -1223,7 +1635,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
 
       {playerGroupBreakdowns.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs text-muted mb-2">By group</p>
+          <p className="text-xs text-muted mb-2">
+            By group{eventCountsNote}
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {playerGroupBreakdowns.map((pg) => {
               const active = groupFilter === pg.id;
@@ -1306,6 +1720,9 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               <th className="text-left py-3 px-2 text-muted font-medium">
                 Club
               </th>
+              <th className="text-left py-3 px-2 text-muted font-medium">
+                Bib
+              </th>
               {hasGroupColumn && (
                 <th className="text-left py-3 px-2 text-muted font-medium min-w-[160px]">
                   Assign to Group
@@ -1340,7 +1757,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
               <tr>
                 <td
                   colSpan={
-                    5 + (hasGroupColumn ? 1 : 0) + programmeEvents.length + 2
+                    6 + (hasGroupColumn ? 1 : 0) + programmeEvents.length + 2
                   }
                   className="text-center py-6 text-muted"
                 >
@@ -1363,6 +1780,12 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                       : availableCountByRegistration.get(reg.id) ?? 0
                   }
                   editAvailability={editAvailability}
+                  bibSets={bibSets}
+                  bibClash={
+                    isBibColorId(reg.bibColor) &&
+                    !!reg.bibNumber &&
+                    clashingBibs.has(bibKey(reg.bibColor, reg.bibNumber))
+                  }
                 />
               ))
             )}
@@ -1372,6 +1795,7 @@ export const AttendanceOverview: React.FC<AttendanceOverviewProps> = ({
                   ? "Attended"
                   : "Expected Attendance"}
               </td>
+              <td />
               <td />
               <td />
               <td />

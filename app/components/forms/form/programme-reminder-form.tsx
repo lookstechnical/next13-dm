@@ -98,7 +98,7 @@ export const ProgrammeReminderForm: React.FC<ProgrammeReminderFormProps> = ({
             name="description"
             label="Email Body"
             defaultValue={DEFAULT_BODY}
-            variables={{ name: "", team: "" }}
+            variables={{ name: "", team: "", bib: "" }}
           />
         </div>
 
@@ -106,7 +106,7 @@ export const ProgrammeReminderForm: React.FC<ProgrammeReminderFormProps> = ({
           <RichTextField
             name="footer"
             label="Email Footer"
-            variables={{ name: "", team: "" }}
+            variables={{ name: "", team: "", bib: "" }}
           />
         </div>
 
@@ -114,8 +114,10 @@ export const ProgrammeReminderForm: React.FC<ProgrammeReminderFormProps> = ({
           Every reminder includes a button linking the recipient to the
           registration page, where they can update their player profile, change
           their availability or withdraw. Use <code>{"{{name}}"}</code> to
-          insert each member's name and <code>{"{{team}}"}</code> to insert
-          their assigned team, in the body or footer. When we don't have a name
+          insert each member's name, <code>{"{{team}}"}</code> to insert
+          their assigned team and <code>{"{{bib}}"}</code> to insert their bib
+          colour and number (e.g. Red 7), in the body or footer. Anyone without
+          a bib yet gets "TBC". When we don't have a name
           on file (invited but not yet registered) <code>{"{{name}}"}</code>{" "}
           falls back to "there".
         </p>

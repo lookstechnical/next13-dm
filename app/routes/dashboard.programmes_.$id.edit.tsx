@@ -1,5 +1,5 @@
 import type { ActionFunction, LoaderFunction, MetaFunction } from "@remix-run/node";
-import { redirect, useLoaderData } from "@remix-run/react";
+import { redirect, useLoaderData, useLocation } from "@remix-run/react";
 import { ProgrammeForm } from "~/components/forms/form/programme";
 import SheetPage from "~/components/sheet-page";
 import { EventService } from "~/services/eventService";
@@ -99,17 +99,22 @@ export const action: ActionFunction = withAuthAction(
       await programmeService.addEventsToProgramme(programmeId, eventIds);
     }
 
-    return redirect(`/dashboard/programmes/${programmeId}`);
+    // Saving returns to the list with whatever filters it was opened from.
+    return redirect(
+      `/dashboard/programmes/${programmeId}${new URL(request.url).search}`
+    );
   }
 );
 
 export default function EditProgramme() {
   const { programme, events, selectedEventIds } =
     useLoaderData<typeof loader>();
+  // Back to the list as it was left, filters and all.
+  const { search } = useLocation();
 
   return (
     <SheetPage
-      backLink={`/dashboard/programmes/${programme.id}`}
+      backLink={`/dashboard/programmes/${programme.id}${search}`}
       title="Edit Programme"
       description="Edit Programme"
       hasForm

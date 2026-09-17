@@ -37,10 +37,17 @@ import type {
   ProgrammeEvent,
   ProgrammeEventAvailability,
   ProgrammeRegistration,
-  Team,
 } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { calculateAgeGroup, eventTimeRange, formatDate } from "~/utils/helpers";
+import {
+  BIB_COLORS,
+  bibSetsFromTeam,
+  colorById,
+  isBibColorId,
+  type BibColor,
+  type BibSet,
+} from "~/utils/bibs";
 import { POSITION_GROUPS } from "~/utils/position-groups";
 
 export { ErrorBoundary } from "~/components/error-boundry";
@@ -73,28 +80,12 @@ export const loader: LoaderFunction = withAuth(
     const playerGroups = await groupService.getGroupsByTeam(
       user.current_team as string
     );
-    // getTeamById hands the row back as Postgres stores it, so this one column
-    // arrives snake_case where the rest of the page is camelCase.
+    // getTeamById hands the row back as Postgres stores it, so the bib
+    // columns arrive snake_case where the rest of the page is camelCase.
     const team = (await teamService.getTeamById(
       user.current_team as string
-    )) as
-      | (Team & {
-          missing_bib_numbers?: Record<string, number[]>;
-          highest_bib_numbers?: Record<string, number>;
-        })
-      | null;
-
-    // Two columns on the team, one view for the page: what each set is missing
-    // and where it stops. Colours with nothing recorded are left out, so the
-    // register can read "absent" as "complete and uncounted".
-    const bibSets: Record<string, BibSet> = {};
-    for (const color of BIB_COLORS) {
-      const missing = team?.missing_bib_numbers?.[color.id] ?? [];
-      const highest = team?.highest_bib_numbers?.[color.id];
-      if (missing.length > 0 || highest !== undefined) {
-        bibSets[color.id] = { missing, highest };
-      }
-    }
+    )) as Parameters<typeof bibSetsFromTeam>[0];
+    const bibSets = bibSetsFromTeam(team);
 
     return {
       programme,
@@ -195,28 +186,6 @@ const UNGROUPED_KEY = "__ungrouped__";
 const AUTO_PLACEMENT = "auto";
 const UNGROUPED_NAME = "No group";
 
-type BibColor = { id: string; name: string; bg: string; fg: string };
-
-/**
- * Bib colours a club is likely to own, with the text colour that stays legible
- * on each. Both are carried as hex rather than Tailwind classes because the
- * printed sheet sets them as inline custom properties — see PRINT_CSS.
- */
-const BIB_COLORS: BibColor[] = [
-  { id: "red", name: "Red", bg: "#dc2626", fg: "#ffffff" },
-  { id: "blue", name: "Blue", bg: "#2563eb", fg: "#ffffff" },
-  { id: "yellow", name: "Yellow", bg: "#facc15", fg: "#111827" },
-  { id: "green", name: "Green", bg: "#16a34a", fg: "#ffffff" },
-  { id: "orange", name: "Orange", bg: "#ea580c", fg: "#ffffff" },
-  { id: "purple", name: "Purple", bg: "#7c3aed", fg: "#ffffff" },
-  { id: "pink", name: "Pink", bg: "#db2777", fg: "#ffffff" },
-  { id: "black", name: "Black", bg: "#111827", fg: "#ffffff" },
-  { id: "white", name: "White", bg: "#f9fafb", fg: "#111827" },
-];
-
-const colorById = (id: string) =>
-  BIB_COLORS.find((c) => c.id === id) ?? BIB_COLORS[0];
-
 /** Each team's colours, in the order bibs are dealt from them. */
 type TeamColors = [string[], string[]];
 
@@ -300,14 +269,6 @@ const serialiseMoves = (map: Map<string, PlayerMove>) =>
     .map(([id, m]) => `${id}:${m.groupKey}:${m.team ?? "x"}`)
     .join(",");
 
-/**
- * What a club's bib set of one colour holds: the numbers it has lost, and the
- * number it stops at. An absent `highest` means nobody has counted the bag, so
- * the register treats that set as bottomless — which is how it behaved before
- * any of this existed. A `highest` of 0 means the club has no bibs in that
- * colour at all.
- */
-type BibSet = { missing?: number[]; highest?: number };
 
 /**
  * "3, 7 11" → [3, 7, 11]. These get typed off the top of someone's head while
@@ -805,6 +766,18 @@ export default function ProgrammeRegister() {
     () => parseBibOverrides(searchParams.get("bibNumbers")),
     [searchParams]
   );
+  // Bibs handed out on the programme page are the player's bib unless this
+  // sheet says otherwise — a change made here stays a change to this printout.
+  const bibs = useMemo(() => {
+    const map = new Map<string, BibOverride>();
+    for (const reg of registrations) {
+      if (isBibColorId(reg.bibColor) && reg.bibNumber) {
+        map.set(reg.id, { color: reg.bibColor, number: reg.bibNumber });
+      }
+    }
+    for (const [id, override] of bibOverrides) map.set(id, override);
+    return map;
+  }, [registrations, bibOverrides]);
 
   const selectedEvent = programmeEvents.find(
     (pe) => pe.eventId === selectedEventId
@@ -1099,7 +1072,7 @@ export default function ProgrammeRegister() {
     for (const section of built) {
       section.rosters.forEach((roster, teamIndex) => {
         for (const player of roster) {
-          const override = bibOverrides.get(player.id);
+          const override = bibs.get(player.id);
           if (!override) continue;
           const colorId = overrideColor(override, section.colors[teamIndex]);
           const claimed = claimedByColor.get(colorId) ?? new Set<number>();
@@ -1147,7 +1120,7 @@ export default function ProgrammeRegister() {
         // left, so a set with three bibs remaining hands out those three and
         // the rest of the team moves on to the next colour.
         const players = roster.map((player) => {
-          const override = bibOverrides.get(player.id);
+          const override = bibs.get(player.id);
           if (override) {
             const colorId = overrideColor(override, own);
             const highest = setOf(colorId).highest;
@@ -1247,7 +1220,7 @@ export default function ProgrammeRegister() {
     groupOrderIndex,
     colorOverrides,
     moves,
-    bibOverrides,
+    bibs,
     bibSets,
     ownedColorIds,
   ]);
