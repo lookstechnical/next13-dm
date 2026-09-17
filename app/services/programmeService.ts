@@ -509,6 +509,16 @@ export class ProgrammeService {
     if (error) throw error;
   }
 
+  // Takes every bib back on a programme, ready to hand them out afresh.
+  async clearProgrammeBibs(programmeId: string): Promise<void> {
+    const { error } = await this.client
+      .from("programme_registrations")
+      .update({ bib_color: null, bib_number: null })
+      .eq("programme_id", programmeId);
+
+    if (error) throw error;
+  }
+
   async removeRegistration(registrationId: string): Promise<boolean> {
     const { data: registration, error: regError } = await this.client
       .from("programme_registrations")

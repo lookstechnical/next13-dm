@@ -4,13 +4,21 @@ import type {
   MetaFunction,
 } from "@remix-run/node";
 import {
+  Form,
   Link,
   Outlet,
   redirect,
   useLoaderData,
   useLocation,
+  useNavigation,
 } from "@remix-run/react";
-import { Calendar, Clock, MapPin, MoreVertical } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  MoreVertical,
+  RotateCcw,
+} from "lucide-react";
 import { DeleteConfirm } from "~/components/forms/delete-confirm";
 import { AddPlayerDialog } from "~/components/programmes/add-player-dialog";
 import { AttendanceOverview } from "~/components/programmes/attendance-overview";
@@ -266,6 +274,11 @@ export const action: ActionFunction = withAuthAction(
       return { ok: true };
     }
 
+    if (intent === "clearAllBibs") {
+      await programmeService.clearProgrammeBibs(params.id as string);
+      return { ok: true };
+    }
+
     if (intent === "assignToGroup") {
       const groupId = formData.get("groupId") as string;
       const playerId = formData.get("playerId") as string;
@@ -308,6 +321,14 @@ export default function ProgrammeDetail() {
   // Sheets open over the list, so they carry its filters along and hand them
   // back when closed.
   const { search } = useLocation();
+  const navigation = useNavigation();
+  const clearingBibs =
+    navigation.state === "submitting" &&
+    navigation.formData?.get("intent") === "clearAllBibs";
+  const bibsAssigned = registrations.filter(
+    (r: { bibColor?: string | null; bibNumber?: number | null }) =>
+      r.bibColor || r.bibNumber,
+  ).length;
 
   if (!programme) {
     return (
@@ -471,10 +492,35 @@ export default function ProgrammeDetail() {
               </Badge>
             )}
         </div>
-        <AddPlayerDialog
-          programmeId={programme.id}
-          availablePlayers={availablePlayers}
-        />
+        <div className="flex items-center gap-2">
+          {bibsAssigned > 0 && (
+            <Form
+              method="post"
+              preventScrollReset
+              onSubmit={(e) => {
+                if (
+                  !confirm(
+                    `Clear the bib colour and number from ${bibsAssigned} player${
+                      bibsAssigned === 1 ? "" : "s"
+                    }? This can't be undone.`,
+                  )
+                ) {
+                  e.preventDefault();
+                }
+              }}
+            >
+              <input type="hidden" name="intent" value="clearAllBibs" />
+              <Button type="submit" variant="outline" disabled={clearingBibs}>
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {clearingBibs ? "Clearing…" : `Clear all bibs (${bibsAssigned})`}
+              </Button>
+            </Form>
+          )}
+          <AddPlayerDialog
+            programmeId={programme.id}
+            availablePlayers={availablePlayers}
+          />
+        </div>
       </div>
       <Card className="border-border p-4">
         <AttendanceOverview
