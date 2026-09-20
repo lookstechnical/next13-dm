@@ -2,26 +2,37 @@ import { useState } from "react";
 import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
 
-export type ReminderRecipient = {
+export type EmailRecipient = {
   email: string;
   name: string;
-  registered: boolean;
+  /**
+   * Programme audiences mix registered members with invited-but-not-yet-
+   * registered addresses, and the badge tells them apart. Audiences that make
+   * no such distinction (a group's members, say) leave it undefined and get no
+   * badge at all.
+   */
+  registered?: boolean;
 };
 
-type ReminderRecipientSelectorProps = {
-  recipients: ReminderRecipient[];
+type RecipientSelectorProps = {
+  recipients: EmailRecipient[];
   selected: Set<string>;
   onChange: (next: Set<string>) => void;
+  /** Shown when there is nobody at all to email. */
+  emptyMessage?: string;
 };
 
-// Lets the sender pick exactly which players/invitees the reminder goes to.
-// Selection lives in the parent (so the footer's send button can read the
-// count); this component renders the filterable list and keeps hidden inputs
-// in sync so the current selection is submitted with the form — regardless of
-// what the search box is currently showing.
-export const ReminderRecipientSelector: React.FC<
-  ReminderRecipientSelectorProps
-> = ({ recipients, selected, onChange }) => {
+// Lets the sender pick exactly who an email goes to. Selection lives in the
+// parent (so the footer's send button can read the count); this component
+// renders the filterable list and keeps hidden inputs in sync so the current
+// selection is submitted with the form — regardless of what the search box is
+// currently showing.
+export const RecipientSelector: React.FC<RecipientSelectorProps> = ({
+  recipients,
+  selected,
+  onChange,
+  emptyMessage = "There is nobody to email yet.",
+}) => {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
 
@@ -91,9 +102,7 @@ export const ReminderRecipientSelector: React.FC<
 
       <div className="flex flex-col gap-1 max-h-72 overflow-auto rounded-md border border-border p-2">
         {recipients.length === 0 && (
-          <p className="text-sm text-muted p-2">
-            No registered members or invited emails for this programme yet.
-          </p>
+          <p className="text-sm text-muted p-2">{emptyMessage}</p>
         )}
         {recipients.length > 0 && filtered.length === 0 && (
           <p className="text-sm text-muted p-2">
@@ -119,12 +128,14 @@ export const ReminderRecipientSelector: React.FC<
                 <p className="text-xs text-muted truncate">{r.email}</p>
               )}
             </div>
-            <Badge
-              variant="outline"
-              className="uppercase text-[10px] shrink-0"
-            >
-              {r.registered ? "Registered" : "Invited"}
-            </Badge>
+            {typeof r.registered === "boolean" && (
+              <Badge
+                variant="outline"
+                className="uppercase text-[10px] shrink-0"
+              >
+                {r.registered ? "Registered" : "Invited"}
+              </Badge>
+            )}
           </label>
         ))}
       </div>

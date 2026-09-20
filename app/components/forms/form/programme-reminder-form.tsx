@@ -1,9 +1,9 @@
 import { Field } from "~/components/forms/field";
 import { SelectField } from "~/components/forms/select";
 import {
-  ReminderRecipient,
-  ReminderRecipientSelector,
-} from "~/components/programmes/reminder-recipient-selector";
+  EmailRecipient,
+  RecipientSelector,
+} from "~/components/recipient-selector";
 import { Input } from "~/components/ui/input";
 import { eventTimeRange, formatDate } from "~/utils/helpers";
 import { RichTextField } from "../rich-text";
@@ -18,7 +18,7 @@ type ReminderEventOption = {
 type ProgrammeReminderFormProps = {
   defaultTestEmail?: string;
   /** Recipients shown for the current event filter (all of them when unset). */
-  recipients: ReminderRecipient[];
+  recipients: EmailRecipient[];
   /** Total recipients on the programme, ignoring the event filter. */
   totalRecipientCount: number;
   events: ReminderEventOption[];
@@ -78,10 +78,11 @@ export const ProgrammeReminderForm: React.FC<ProgrammeReminderFormProps> = ({
           </div>
         )}
 
-        <ReminderRecipientSelector
+        <RecipientSelector
           recipients={recipients}
           selected={selected}
           onChange={onSelectedChange}
+          emptyMessage="No registered members or invited emails for this programme yet."
         />
 
         <Field name="subject" label="Subject">

@@ -414,6 +414,13 @@ export default function PlayerPage() {
                       </Link>
                     </Button>
                   </DropdownMenuItem>
+                  <DropdownMenuItem className="p-0">
+                    <Button asChild variant="outline" className="w-full">
+                      <Link to={`/dashboard/groups/${group.id}/send-email`}>
+                        Send Email
+                      </Link>
+                    </Button>
+                  </DropdownMenuItem>
                 </ActionProtection>
               </DropdownMenuContent>
             </DropdownMenu>

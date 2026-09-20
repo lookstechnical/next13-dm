@@ -13,7 +13,7 @@ import { CheckCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { Resend } from "resend";
 import { ProgrammeReminderForm } from "~/components/forms/form/programme-reminder-form";
-import type { ReminderRecipient } from "~/components/programmes/reminder-recipient-selector";
+import type { EmailRecipient } from "~/components/recipient-selector";
 import SheetPage from "~/components/sheet-page";
 import { Button } from "~/components/ui/button";
 import { programmeEmailTemplate } from "~/services/email";
@@ -110,8 +110,8 @@ function buildDisplayRecipients(
     players?: { name?: string; email?: string };
   }[],
   allowedEmails: { email: string }[],
-): ReminderRecipient[] {
-  const byEmail = new Map<string, ReminderRecipient>();
+): EmailRecipient[] {
+  const byEmail = new Map<string, EmailRecipient>();
 
   for (const reg of registrations) {
     const email = reg.players?.email || reg.email;
@@ -467,9 +467,9 @@ export default function SendProgrammeReminder() {
   const selectedEvent = events?.find((e: ReminderEvent) => e.id === eventFilter);
 
   const recipientsForEvent = (event?: ReminderEvent) => {
-    if (!event) return recipients as ReminderRecipient[];
+    if (!event) return recipients as EmailRecipient[];
     const available = new Set(event.availableEmails);
-    return (recipients as ReminderRecipient[]).filter((r) =>
+    return (recipients as EmailRecipient[]).filter((r) =>
       available.has(r.email.toLowerCase()),
     );
   };
@@ -478,7 +478,7 @@ export default function SendProgrammeReminder() {
 
   // Everyone is selected by default; the sender can narrow it down.
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(recipients.map((r: ReminderRecipient) => r.email)),
+    () => new Set(recipients.map((r: EmailRecipient) => r.email)),
   );
 
   // Switching event re-selects exactly who is available for it.
