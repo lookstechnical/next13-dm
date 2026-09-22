@@ -19,6 +19,7 @@ import {
 } from "~/services/invitationService";
 import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { playerEmails } from "~/utils/player-emails";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -37,13 +38,16 @@ export const meta: MetaFunction = () => {
 };
 
 // Members we can actually email: one entry per unique address, preferring the
-// first player found for a shared parent/guardian inbox.
+// first player found for a shared parent/guardian inbox. Keyed on the player's
+// primary address; the invite itself goes to every address they have.
 function recipients(group: any) {
   const seen = new Map<string, any>();
   for (const member of group?.playerGroupMembers ?? []) {
-    const email = member.players?.email?.trim();
-    if (!email || seen.has(email.toLowerCase())) continue;
-    seen.set(email.toLowerCase(), member);
+    const emails = playerEmails(member.players);
+    if (emails.length === 0) continue;
+    const key = emails[0].toLowerCase();
+    if (seen.has(key)) continue;
+    seen.set(key, member);
   }
   return [...seen.values()];
 }
@@ -259,7 +263,10 @@ export const action: ActionFunction = withAuthAction(
 
       payloads.push({
         from: FROM,
-        to: [member.players.email],
+        // One invite per player, addressed to every parent on file. They share
+        // a single accept/reject link, which is what a household wants — either
+        // parent can answer for the player.
+        to: playerEmails(member.players),
         subject,
         html: emailTemplate(description, footer, invite, member.players),
       });

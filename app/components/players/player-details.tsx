@@ -47,6 +47,18 @@ export const PlayerDetails: React.FC<PlayerDetails> = ({ player }) => {
       <Card className="border-border p-6">
         <div className="flex flex-col">
           <Row label="Email" value={player.email} />
+          {/* Only worth a row when there is one — most players have a single
+              address, and an empty "Not provided" row would just be noise. */}
+          {(player.additionalEmails?.length ?? 0) > 0 && (
+            <Row
+              label={
+                player.additionalEmails!.length === 1
+                  ? "Additional email"
+                  : "Additional emails"
+              }
+              value={player.additionalEmails!.join(", ")}
+            />
+          )}
           <Row label="Mobile" value={player.mobile} />
           <Row label="Club" value={player.club} />
           <Row label="School" value={player.school} />

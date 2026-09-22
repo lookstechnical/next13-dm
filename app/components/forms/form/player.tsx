@@ -1,4 +1,5 @@
 import { Club, Player } from "~/types";
+import { AdditionalEmails } from "../additional-emails";
 import { Input } from "../../ui/input";
 import { Field } from "../field";
 import { PositionSelect } from "../position";
@@ -38,6 +39,7 @@ export const PlayerForm: React.FC<PlayerForm> = ({ player, clubs }) => {
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />
           </Field>
+          <AdditionalEmails defaultValue={player?.additionalEmails} />
           <DateField
             range="past"
             name="dateOfBirth"

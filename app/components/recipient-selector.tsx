@@ -3,7 +3,17 @@ import { Badge } from "~/components/ui/badge";
 import { Input } from "~/components/ui/input";
 
 export type EmailRecipient = {
+  /**
+   * The address this recipient is keyed and selected by — the player's primary.
+   * Always the first entry of `emails`.
+   */
   email: string;
+  /**
+   * Every address the message will actually be sent to. A player can have a
+   * second parent's address on file; one message goes to all of them. Omitted
+   * by audiences that only ever have the one (a bare invited address).
+   */
+  emails?: string[];
   name: string;
   /**
    * Programme audiences mix registered members with invited-but-not-yet-
@@ -13,6 +23,9 @@ export type EmailRecipient = {
    */
   registered?: boolean;
 };
+
+const addressesOf = (r: EmailRecipient) =>
+  r.emails?.length ? r.emails : [r.email];
 
 type RecipientSelectorProps = {
   recipients: EmailRecipient[];
@@ -36,11 +49,13 @@ export const RecipientSelector: React.FC<RecipientSelectorProps> = ({
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
 
+  // Search any of a recipient's addresses, not just the primary — looking up
+  // "dad@" should find the player his address is attached to.
   const filtered = q
     ? recipients.filter(
         (r) =>
           r.name.toLowerCase().includes(q) ||
-          r.email.toLowerCase().includes(q),
+          addressesOf(r).some((email) => email.toLowerCase().includes(q)),
       )
     : recipients;
 
@@ -122,10 +137,12 @@ export const RecipientSelector: React.FC<RecipientSelectorProps> = ({
             />
             <div className="flex-grow min-w-0">
               <p className="text-sm text-white truncate">
-                {r.name || r.email}
+                {r.name || addressesOf(r).join(", ")}
               </p>
               {r.name && (
-                <p className="text-xs text-muted truncate">{r.email}</p>
+                <p className="text-xs text-muted truncate">
+                  {addressesOf(r).join(", ")}
+                </p>
               )}
             </div>
             {typeof r.registered === "boolean" && (

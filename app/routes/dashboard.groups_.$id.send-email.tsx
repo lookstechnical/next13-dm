@@ -20,6 +20,7 @@ import { Button } from "~/components/ui/button";
 import { emailTemplate } from "~/services/email";
 import { GroupService } from "~/services/groupService";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
+import { playerEmails } from "~/utils/player-emails";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -39,19 +40,22 @@ export const meta: MetaFunction = () => {
 
 type GroupRecipient = EmailRecipient & { playerId?: string };
 
-// Members we can actually email: one entry per unique address, preferring the
-// first player found for a shared parent/guardian inbox. Sorted by name so the
-// list reads the same way the group does.
+// Members we can actually email: one entry per unique player, carrying every
+// address they have (a second parent's, typically) so one message reaches all
+// of them. Keyed on the primary address, preferring the first player found for
+// a shared parent/guardian inbox. Sorted by name so the list reads the same
+// way the group does.
 function buildRecipients(group: any): GroupRecipient[] {
   const byEmail = new Map<string, GroupRecipient>();
 
   for (const member of group?.playerGroupMembers ?? []) {
-    const email = member.players?.email?.trim();
-    if (!email) continue;
-    const key = email.toLowerCase();
+    const emails = playerEmails(member.players);
+    if (emails.length === 0) continue;
+    const key = emails[0].toLowerCase();
     if (byEmail.has(key)) continue;
     byEmail.set(key, {
-      email,
+      email: emails[0],
+      emails,
       name: member.players?.name || "",
       playerId: member.playerId,
     });
@@ -162,9 +166,10 @@ export const action: ActionFunction = withAuthAction(
       return { error: "None of the selected recipients could be found." };
     }
 
+    // One message per player, addressed to every address they have.
     const payloads = recipients.map((r) => ({
       from: FROM,
-      to: [r.email],
+      to: r.emails ?? [r.email],
       subject,
       html: emailTemplate(description, footer, undefined, {
         name: r.name,

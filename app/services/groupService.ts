@@ -41,7 +41,7 @@ export class GroupService {
         *,
         player_group_members (
           player_id,
-          players ( name , date_of_birth, position, secondary_position, id, club, photo_url, email )
+          players ( name , date_of_birth, position, secondary_position, id, club, photo_url, email, additional_emails )
         )
       `
       )

@@ -65,6 +65,11 @@ export interface Player {
   ageGroup: string;
   photoUrl?: string;
   email?: string;
+  /**
+   * Extra addresses emailed alongside `email` — a second parent, typically.
+   * See app/utils/player-emails.ts; `email` is never repeated here.
+   */
+  additionalEmails?: string[];
   mobile?: string;
   scoutId: string;
   createdAt: string;

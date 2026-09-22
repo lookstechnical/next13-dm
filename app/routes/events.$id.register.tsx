@@ -20,6 +20,7 @@ import { getSupabaseServerClient } from "~/lib/supabase";
 import { ClubService } from "~/services/clubService";
 import { EventService } from "~/services/eventService";
 import { PlayerService } from "~/services/playerService";
+import { normaliseAdditionalEmails } from "~/utils/player-emails";
 import { eventTimeRange, formatDate } from "~/utils/helpers";
 import { step1 } from "~/validations/player-registration";
 import z from "zod";
@@ -89,6 +90,10 @@ export const action: ActionFunction = async ({ request }) => {
       school: formData.get("school") as string,
       photoUrl: formData.get("photoUrl") as string,
       email: formData.get("email") as string,
+      additionalEmails: normaliseAdditionalEmails(
+        formData.getAll("additionalEmails") as string[],
+        formData.get("email") as string
+      ),
       scoutId: null,
       teamId: event?.teamId,
       mentor: formData.get("mentor") as string,

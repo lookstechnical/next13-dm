@@ -23,6 +23,7 @@ import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { BIB_NOT_ASSIGNED, bibEmailHtml } from "~/utils/bibs";
 import { eventTimeRange } from "~/utils/helpers";
+import { registrationEmails } from "~/utils/player-emails";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -45,7 +46,10 @@ export const meta: MetaFunction = () => {
 // register. Emails are de-duplicated across both groups, preferring the
 // registered version.
 type Recipient = {
+  /** The address this recipient is keyed and selected by. */
   email: string;
+  /** Every address the message goes to — the primary plus any second parent. */
+  emails: string[];
   name: string;
   team: string;
   registered: boolean;
@@ -62,7 +66,7 @@ function buildRecipients(
     playerId?: string;
     bibColor?: string | null;
     bibNumber?: number | null;
-    players?: { name?: string; email?: string };
+    players?: { name?: string; email?: string; additionalEmails?: string[] };
   }[],
   allowedEmails: { email: string }[],
   teamByPlayer: Map<string, string>,
@@ -70,12 +74,13 @@ function buildRecipients(
   const byEmail = new Map<string, Recipient>();
 
   for (const reg of registrations) {
-    const email = reg.players?.email || reg.email;
-    if (!email) continue;
-    const key = email.toLowerCase();
+    const emails = registrationEmails(reg);
+    if (emails.length === 0) continue;
+    const key = emails[0].toLowerCase();
     if (byEmail.has(key)) continue;
     byEmail.set(key, {
-      email,
+      email: emails[0],
+      emails,
       name: reg.players?.name || "",
       team: (reg.playerId && teamByPlayer.get(reg.playerId)) || "",
       registered: true,
@@ -91,6 +96,7 @@ function buildRecipients(
     if (byEmail.has(key)) continue; // already registered — richer email wins
     byEmail.set(key, {
       email: allowed.email,
+      emails: [allowed.email],
       name: "",
       team: "",
       registered: false,
@@ -107,19 +113,20 @@ function buildRecipients(
 function buildDisplayRecipients(
   registrations: {
     email?: string;
-    players?: { name?: string; email?: string };
+    players?: { name?: string; email?: string; additionalEmails?: string[] };
   }[],
   allowedEmails: { email: string }[],
 ): EmailRecipient[] {
   const byEmail = new Map<string, EmailRecipient>();
 
   for (const reg of registrations) {
-    const email = reg.players?.email || reg.email;
-    if (!email) continue;
-    const key = email.toLowerCase();
+    const emails = registrationEmails(reg);
+    if (emails.length === 0) continue;
+    const key = emails[0].toLowerCase();
     if (byEmail.has(key)) continue;
     byEmail.set(key, {
-      email,
+      email: emails[0],
+      emails,
       name: reg.players?.name || "",
       registered: true,
     });
@@ -166,10 +173,12 @@ function buildEventOptions(
     available: boolean;
   }[],
 ): ReminderEvent[] {
+  // Keyed on the primary address, matching how buildDisplayRecipients keys the
+  // list — the event filter compares the two, so they have to agree.
   const emailByRegistration = new Map<string, string>();
   for (const reg of registrations) {
-    const email = reg.players?.email || reg.email;
-    if (email) emailByRegistration.set(reg.id, email.toLowerCase());
+    const [primary] = registrationEmails(reg);
+    if (primary) emailByRegistration.set(reg.id, primary.toLowerCase());
   }
 
   const emailsByEvent = new Map<string, Set<string>>();
@@ -296,9 +305,12 @@ export const action: ActionFunction = withAuthAction(
       // they're registered), so the flow can be tested for real.
       const testRegistrations =
         await programmeService.getProgrammeRegistrations(params.id as string);
-      const ownRegistration = testRegistrations.find(
-        (r) =>
-          (r.players?.email || r.email)?.toLowerCase() === to.toLowerCase(),
+      // Match on any of the player's addresses so a tester using their second
+      // address still gets their own withdraw link rather than the generic one.
+      const ownRegistration = testRegistrations.find((r) =>
+        registrationEmails(r).some(
+          (email) => email.toLowerCase() === to.toLowerCase(),
+        ),
       );
       const testWithdrawUrl = ownRegistration
         ? `${withdrawBaseUrl}?registration=${ownRegistration.id}`
@@ -401,7 +413,7 @@ export const action: ActionFunction = withAuthAction(
 
           return {
             from: FROM,
-            to: [r.email],
+            to: r.emails,
             subject,
             html: programmeEmailTemplate(description, footer, {
               name: r.name,
@@ -417,7 +429,7 @@ export const action: ActionFunction = withAuthAction(
 
         return {
           from: FROM,
-          to: [r.email],
+          to: r.emails,
           subject,
           html: programmeEmailTemplate(description, footer, {
             name: "there",

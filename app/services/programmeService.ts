@@ -356,7 +356,7 @@ export class ProgrammeService {
     const { data, error } = await this.client
       .from("programme_registrations")
       .select(
-        "*, players ( id, name, photo_url, position, secondary_position, date_of_birth, club, email )"
+        "*, players ( id, name, photo_url, position, secondary_position, date_of_birth, club, email, additional_emails )"
       )
       .eq("programme_id", programmeId)
       .order("registered_at", { ascending: false });
@@ -680,7 +680,7 @@ export class ProgrammeService {
     const { data, error } = await this.client
       .from("programme_registrations")
       .select(
-        "*, players ( id, name, email ), programmes ( id, name, url )"
+        "*, players ( id, name, email, additional_emails ), programmes ( id, name, url )"
       )
       .eq("id", registrationId)
       .single();

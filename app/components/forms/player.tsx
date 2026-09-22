@@ -1,4 +1,5 @@
 import { Club, Player, User } from "~/types";
+import { AdditionalEmails } from "./additional-emails";
 import { Input } from "../ui/input";
 import { Field } from "./field";
 import { PositionSelect } from "./position";
@@ -92,6 +93,12 @@ export const PlayerForm: React.FC<PlayerForm> = ({
               className="bg-card border-gray-600 text-white placeholder:text-gray-400"
             />
           </Field>
+          )}
+          {/* Rides along with the email field rather than being its own
+              programme-configurable key: a form that asks for an address
+              should always let a second parent add theirs. */}
+          {shows("email") && (
+            <AdditionalEmails defaultValue={player?.additionalEmails} />
           )}
           {(shows("mobile") || shows("dateOfBirth")) && (
             <div className="flex flex-row gap-4">

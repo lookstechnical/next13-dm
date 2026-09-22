@@ -35,6 +35,7 @@ import {
 import { ExtraProfileFields } from "~/components/programmes/extra-profile-fields";
 import { registrationDeadlinePassed } from "~/utils/helpers";
 import { HEIGHT_RANGE_LABEL, parseHeightInput } from "~/utils/height";
+import { normaliseAdditionalEmails } from "~/utils/player-emails";
 import {
   ProgrammeFieldKey,
   resolveProgrammeFields,
@@ -114,6 +115,17 @@ const profileFields = (formData: FormData, programme: any) => {
   // Always carried: this is the existing photo's URL, echoed back by a hidden
   // input so a save doesn't drop a photo the registrant already has.
   submitted.photoUrl = formData.get("photoUrl") as string;
+
+  // The extra addresses ride along with the email field, which is always
+  // requested. One input per address, all named the same, so read them as a
+  // list. Whatever is submitted replaces what was there — removing a row in
+  // the form has to actually remove the address.
+  if (requested.includes("email")) {
+    submitted.additionalEmails = normaliseAdditionalEmails(
+      formData.getAll("additionalEmails") as string[],
+      formData.get("email") as string,
+    );
+  }
 
   return submitted;
 };

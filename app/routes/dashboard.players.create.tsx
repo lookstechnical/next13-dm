@@ -5,6 +5,7 @@ import { AllowedRoles } from "~/components/route-protections";
 import SheetPage from "~/components/sheet-page";
 import { ClubService } from "~/services/clubService";
 import { PlayerService } from "~/services/playerService";
+import { normaliseAdditionalEmails } from "~/utils/player-emails";
 import { ScoutService } from "~/services/scoutService";
 import { Player } from "~/types";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
@@ -46,6 +47,10 @@ export const action = withAuthAction(
       school: formData.get("school") as string,
       photoUrl: formData.get("photoUrl") as string,
       email: formData.get("email") as string,
+      additionalEmails: normaliseAdditionalEmails(
+        formData.getAll("additionalEmails") as string[],
+        formData.get("email") as string
+      ),
       scoutId: user.id as string,
       teamId: user.current_team as string,
       mentor: formData.get("mentor") as string,

@@ -3,10 +3,33 @@ import {
   convertKeysToCamelCase,
   getDateRangeForAgeGroup,
 } from "../utils/helpers";
+import { normaliseAdditionalEmails } from "../utils/player-emails";
 import { withCache, cacheManager } from "./cache";
 import { CacheInvalidationService, CacheTTL } from "./cacheInvalidation";
 
 type AvScore = { score: string };
+
+/** The columns getPlayerByEmail reads, shared by its two lookups. */
+const PLAYER_BY_EMAIL_SELECT = `
+        id,
+        team_id,
+        name,
+        position,
+        secondary_position,
+        date_of_birth,
+        nationality,
+        club,
+        school,
+        height,
+        foot,
+        photo_url,
+        email,
+        additional_emails,
+        scout_id,
+        created_at,
+        updated_at,
+        mobile
+      `;
 
 export class PlayerService {
   client;
@@ -37,6 +60,7 @@ export class PlayerService {
             foot,
             photo_url,
             email,
+            additional_emails,
             scout_id,
             created_at,
             updated_at,
@@ -81,6 +105,7 @@ export class PlayerService {
             medical_conditions,
             photo_url,
             email,
+            additional_emails,
             scout_id,
             created_at,
             updated_at,
@@ -102,38 +127,43 @@ export class PlayerService {
     );
   }
 
+  /**
+   * Find a player by any address on file — their primary, or one of the extra
+   * addresses a second parent registers with.
+   *
+   * Two queries rather than one `or`, because matching a text[] inside a
+   * PostgREST `or` means hand-building a `cs.{...}` filter string; `.contains`
+   * is the supported way to ask and does not need an address escaped into a
+   * filter expression. The second query only runs when the primary misses.
+   *
+   * Siblings can share a parent's inbox, so neither lookup is guaranteed to
+   * return one row — take the first rather than erroring the way `.single()`
+   * would.
+   */
   async getPlayerByEmail(email: string): Promise<Player | null> {
     const { data, error } = await this.client
       .from("players")
-      .select(
-        `
-        id,
-        team_id,
-        name,
-        position,
-        secondary_position,
-        date_of_birth,
-        nationality,
-        club,
-        school,
-        height,
-        foot,
-        photo_url,
-        email,
-        scout_id,
-        created_at,
-        updated_at,
-        mobile
-      `
-      )
+      .select(PLAYER_BY_EMAIL_SELECT)
       .eq("email", email)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
-    if (error) {
-      if (error.code === "PGRST116") return null; // Not found
-      throw error;
+    if (error && error.code !== "PGRST116") throw error;
+    if (data) return this.transformFromDb(data);
+
+    // additional_emails is stored lower-cased (see normaliseAdditionalEmails),
+    // so a parent typing "Dad@..." is still recognised.
+    const { data: viaAdditional, error: additionalError } = await this.client
+      .from("players")
+      .select(PLAYER_BY_EMAIL_SELECT)
+      .contains("additional_emails", [email.trim().toLowerCase()])
+      .limit(1)
+      .maybeSingle();
+
+    if (additionalError && additionalError.code !== "PGRST116") {
+      throw additionalError;
     }
-    return this.transformFromDb(data);
+    return viaAdditional ? this.transformFromDb(viaAdditional) : null;
   }
 
   async getPlayersByScout(scoutId: string): Promise<Player[]> {
@@ -154,6 +184,7 @@ export class PlayerService {
         foot,
         photo_url,
         email,
+        additional_emails,
         scout_id,
         created_at,
         updated_at,
@@ -266,6 +297,7 @@ export class PlayerService {
         photo_url,
         mobile,
         email,
+        additional_emails,
         player_group_members(group_id),
         mentor(id,name)
       `
@@ -349,6 +381,7 @@ export class PlayerService {
         foot,
         photo_url,
         email,
+        additional_emails,
         scout_id,
         created_at,
         updated_at,
@@ -404,6 +437,7 @@ export class PlayerService {
         medical_conditions: playerData.medicalConditions,
         photo_url: playerData.photoUrl,
         email: playerData.email,
+        additional_emails: playerData.additionalEmails ?? [],
         mobile: playerData.mobile,
         // scout_id: scoutId,
       })
@@ -431,6 +465,13 @@ export class PlayerService {
       school: formData.get("school") as string,
       photoUrl: formData.get("photoUrl") as string,
       email: formData.get("email") as string,
+      // The form renders one input per extra address, all named the same, so
+      // they arrive as a list. Normalising here keeps every caller — dashboard
+      // edit, create, invite, programme registration — consistent.
+      additionalEmails: normaliseAdditionalEmails(
+        formData.getAll("additionalEmails") as string[],
+        formData.get("email") as string
+      ),
       teamId: formData.get("teamId") as string,
       mobile: formData.get("mobile") as string,
       shirt: formData.get("shirt") as string,
@@ -465,6 +506,8 @@ export class PlayerService {
       updateData.medical_conditions = updates.medicalConditions;
     if (updates.photoUrl !== undefined) updateData.photo_url = updates.photoUrl;
     if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.additionalEmails !== undefined)
+      updateData.additional_emails = updates.additionalEmails;
     if (updates.mobile !== undefined) updateData.mobile = updates.mobile;
     if (updates.shorts !== undefined) updateData.shorts = updates.shorts;
     if (updates.shirt !== undefined) updateData.shirt = updates.shirt;
@@ -571,6 +614,7 @@ export class PlayerService {
       ageGroup: "", // Will be calculated by the UI
       photoUrl: dbRow.photo_url,
       email: dbRow.email,
+      additionalEmails: dbRow.additional_emails ?? [],
       mobile: dbRow.mobile,
       scoutId: dbRow.scout_id,
       createdAt: dbRow.created_at,

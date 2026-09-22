@@ -20,6 +20,7 @@ import { ProgrammeService } from "~/services/programmeService";
 import { AllowedRoles } from "~/components/route-protections";
 import { withAuth, withAuthAction } from "~/utils/auth-helpers";
 import { eventTimeRange } from "~/utils/helpers";
+import { registrationEmails } from "~/utils/player-emails";
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -32,18 +33,19 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-// Collect a de-duplicated list of recipient emails for a programme's
-// registrations, preferring the player's current email over the one captured
-// at registration time.
-function recipientEmails(
+// Collect a de-duplicated list of recipients for a programme's registrations,
+// keyed on the player's primary address (preferring their current email over
+// the one captured at registration time). Each entry carries every address the
+// message should reach — a player can have a second parent's on file.
+function recipientAddresses(
   registrations: { email?: string; players?: { email?: string } }[],
-) {
-  const seen = new Map<string, string>();
+): string[][] {
+  const seen = new Map<string, string[]>();
   for (const reg of registrations) {
-    const email = reg.players?.email || reg.email;
-    if (email && !seen.has(email.toLowerCase())) {
-      seen.set(email.toLowerCase(), email);
-    }
+    const emails = registrationEmails(reg);
+    if (emails.length === 0) continue;
+    const key = emails[0].toLowerCase();
+    if (!seen.has(key)) seen.set(key, emails);
   }
   return [...seen.values()];
 }
@@ -87,7 +89,7 @@ export const loader: LoaderFunction = withAuth(
 
     return {
       programme,
-      recipientCount: recipientEmails(registrations).length,
+      recipientCount: recipientAddresses(registrations).length,
       defaultTestEmail: user.email || "",
     };
   },
@@ -144,9 +146,12 @@ export const action: ActionFunction = withAuthAction(
       // real. Falls back to the base URL otherwise.
       const testRegistrations =
         await programmeService.getProgrammeRegistrations(params.id as string);
-      const ownRegistration = testRegistrations.find(
-        (r) =>
-          (r.players?.email || r.email)?.toLowerCase() === to.toLowerCase(),
+      // Match on any of the player's addresses so a tester using their second
+      // address still gets their own withdraw link rather than the generic one.
+      const ownRegistration = testRegistrations.find((r) =>
+        registrationEmails(r).some(
+          (email) => email.toLowerCase() === to.toLowerCase(),
+        ),
       );
       const testWithdrawUrl = ownRegistration
         ? `${withdrawBaseUrl}?registration=${ownRegistration.id}`
@@ -213,9 +218,12 @@ export const action: ActionFunction = withAuthAction(
       }[] = [];
 
       for (const reg of registrations) {
-        const email = reg.players?.email || reg.email;
-        if (!email || seen.has(email.toLowerCase())) continue;
-        seen.add(email.toLowerCase());
+        // Every address this registration should reach — the player's primary
+        // plus any second parent. De-duplicated on the primary, so two
+        // registrations sharing an inbox still get a single message.
+        const emails = registrationEmails(reg);
+        if (emails.length === 0 || seen.has(emails[0].toLowerCase())) continue;
+        seen.add(emails[0].toLowerCase());
 
         const availMap = availByReg.get(reg.id);
         const availability = programmeEvents.map((pe) => ({
@@ -229,7 +237,7 @@ export const action: ActionFunction = withAuthAction(
 
         payloads.push({
           from: FROM,
-          to: [email],
+          to: emails,
           subject,
           html: programmeEmailTemplate(description, footer, {
             name: reg.players?.name || "",
