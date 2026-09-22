@@ -1047,16 +1047,31 @@ export default function ProgrammeRegister() {
       const unavailable = members.filter(
         (r) => r.available === false && placedByHand(r) === undefined
       );
-      const [teamA, teamB] = splitIntoTeams(playing, placedByHand);
+      const colors =
+        colorOverrides.get(key) ??
+        defaultTeamColors(groupOrderIndex.get(key) ?? 0, ownedColorIds);
+
+      // A player already holding a bib stays with the team wearing that
+      // colour, so a saved bib isn't dealt onto the other side. A move by hand
+      // still wins, and a colour neither team wears leaves them to the split.
+      const placed = (row: (typeof rows)[number]) => {
+        const byHand = placedByHand(row);
+        if (byHand !== undefined) return byHand;
+        const bibColor = bibs.get(row.id)?.color;
+        if (!bibColor) return undefined;
+        if (colors[0].includes(bibColor)) return 0;
+        if (colors[1].includes(bibColor)) return 1;
+        return undefined;
+      };
+
+      const [teamA, teamB] = splitIntoTeams(playing, placed);
 
       return {
         key,
         name: groupNames.get(key) ?? UNGROUPED_NAME,
         members,
         unavailable,
-        colors:
-          colorOverrides.get(key) ??
-          defaultTeamColors(groupOrderIndex.get(key) ?? 0, ownedColorIds),
+        colors,
         rosters: [teamA, teamB],
       };
     });
