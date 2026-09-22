@@ -1153,8 +1153,26 @@ export default function ProgrammeRegister() {
           };
         });
 
+        // The team's own colours first, then anything borrowed.
+        const colorRank = [
+          ...own,
+          ...colorOrder.filter((id) => !own.includes(id)),
+        ];
+
+        // Listed as the bibs come out of the bag: by colour, then number, with
+        // anyone left without a bib at the foot.
+        players.sort((a, b) => {
+          if (a.bib === null || b.bib === null) {
+            return (a.bib === null ? 1 : 0) - (b.bib === null ? 1 : 0);
+          }
+          return (
+            colorRank.indexOf(a.bibColor.id) -
+              colorRank.indexOf(b.bibColor.id) || a.bib - b.bib
+          );
+        });
+
         // The colours the team actually ended up in, its own first.
-        const worn = [...own, ...colorOrder.filter((id) => !own.includes(id))]
+        const worn = colorRank
           .map((id) => ({
             color: colorById(id),
             count: players.filter(
