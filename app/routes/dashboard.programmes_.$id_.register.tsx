@@ -1013,6 +1013,9 @@ export default function ProgrammeRegister() {
 
     const byGroup = new Map<string, typeof rows>();
     for (const row of rows) {
+      // Anyone who has said they aren't coming is left off the sheet
+      // altogether, so they never take a bib someone on the day could wear.
+      if (row.available === false) continue;
       // A move to a group that is no longer on the sheet (it was renamed, or
       // the player left it) falls back to where the player would sit anyway.
       const moved = moves.get(row.id);
@@ -1032,8 +1035,6 @@ export default function ProgrammeRegister() {
       ...(byGroup.has(UNGROUPED_KEY) ? [UNGROUPED_KEY] : []),
     ];
 
-    // Placing someone by hand says they're playing, whatever they answered — a
-    // coach reaching for the control is usually looking at the player.
     const placedByHand = (row: (typeof rows)[number]) =>
       moves.get(row.id)?.team;
 
@@ -1041,12 +1042,6 @@ export default function ProgrammeRegister() {
     // wears. Numbering has to wait until every hand-set bib is known.
     const built = orderedKeys.map((key) => {
       const members = byGroup.get(key) ?? [];
-      const playing = members.filter(
-        (r) => r.available !== false || placedByHand(r) !== undefined
-      );
-      const unavailable = members.filter(
-        (r) => r.available === false && placedByHand(r) === undefined
-      );
       const colors =
         colorOverrides.get(key) ??
         defaultTeamColors(groupOrderIndex.get(key) ?? 0, ownedColorIds);
@@ -1064,13 +1059,12 @@ export default function ProgrammeRegister() {
         return undefined;
       };
 
-      const [teamA, teamB] = splitIntoTeams(playing, placed);
+      const [teamA, teamB] = splitIntoTeams(members, placed);
 
       return {
         key,
         name: groupNames.get(key) ?? UNGROUPED_NAME,
         members,
-        unavailable,
         colors,
         rosters: [teamA, teamB],
       };
@@ -1211,7 +1205,6 @@ export default function ProgrammeRegister() {
         name: section.name,
         members: section.members,
         colors: section.colors,
-        unavailable: section.unavailable,
         total: section.members.length,
         // Who is playing, which is who a coach is planning around.
         split: positionSplit(teams.flatMap((team) => team.players)),
@@ -1325,17 +1318,6 @@ export default function ProgrammeRegister() {
           "",
         ])
       ),
-      ...section.unavailable.map((r) => [
-        section.name,
-        ...(bibsEnabled ? ["", "", ""] : []),
-        r.name,
-        r.ageGroup,
-        r.position || "",
-        r.club,
-        r.groups.length > 0 ? r.groups.join(", ") : "",
-        availableLabel(r.available),
-        "",
-      ]),
     ]);
 
     const csv = [headers, ...dataRows]
@@ -1561,14 +1543,12 @@ export default function ProgrammeRegister() {
           }))
       : [
           {
-            players: section.members
-              .filter((r) => r.available !== false)
-              .map((r) => ({
-                id: r.id,
-                name: r.name,
-                bib: null as number | null,
-                color: undefined as BibColor | undefined,
-              })),
+            players: section.members.map((r) => ({
+              id: r.id,
+              name: r.name,
+              bib: null as number | null,
+              color: undefined as BibColor | undefined,
+            })),
           },
         ],
   }));
@@ -2082,27 +2062,6 @@ export default function ProgrammeRegister() {
                           )}
                         </tbody>
                       ))}
-
-                      {/* Players with no bib are there for the coach on
-                          screen; on paper they only pad the sheet out. */}
-                      {section.unavailable.length > 0 && (
-                        <tbody className="no-print">
-                          <tr>
-                            <td
-                              colSpan={columnCount}
-                              className="pt-4 pb-1 px-2"
-                            >
-                              <span className="text-sm font-semibold text-muted">
-                                Not available ({section.unavailable.length}) —
-                                no bib assigned
-                              </span>
-                            </td>
-                          </tr>
-                          {section.unavailable.map((row) =>
-                            renderRow(row, section)
-                          )}
-                        </tbody>
-                      )}
                     </>
                   ) : (
                     <tbody>
