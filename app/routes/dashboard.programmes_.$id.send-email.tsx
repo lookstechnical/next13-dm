@@ -118,6 +118,9 @@ export const action: ActionFunction = withAuthAction(
     const footer = formData.get("footer") as string;
     const mode = formData.get("mode") as string; // "test" | "all"
     const testEmail = (formData.get("testEmail") as string)?.trim();
+    // The availability table and its update/withdraw buttons are optional —
+    // a message that isn't about availability goes out as just the message.
+    const includeAvailability = formData.get("includeAvailability") === "on";
 
     if (!subject?.trim()) return { error: "Please enter a subject." };
 
@@ -172,9 +175,13 @@ export const action: ActionFunction = withAuthAction(
           html: programmeEmailTemplate(description, footer, {
             name: "Sample Player",
             team: testTeam,
-            ctaUrl: registerUrl,
-            withdrawUrl: testWithdrawUrl,
-            availability: sampleAvailability,
+            ...(includeAvailability
+              ? {
+                  ctaUrl: registerUrl,
+                  withdrawUrl: testWithdrawUrl,
+                  availability: sampleAvailability,
+                }
+              : {}),
           }),
         });
       } catch (error) {
@@ -191,10 +198,11 @@ export const action: ActionFunction = withAuthAction(
       );
 
       // Group recorded availability by registration: registrationId -> (eventId -> available)
-      const availabilityRows =
-        await programmeService.getProgrammeEventAvailability(
-          params.id as string,
-        );
+      const availabilityRows = includeAvailability
+        ? await programmeService.getProgrammeEventAvailability(
+            params.id as string,
+          )
+        : [];
       const availByReg = new Map<string, Map<string, boolean>>();
       for (const row of availabilityRows) {
         if (!availByReg.has(row.programmeRegistrationId)) {
@@ -242,9 +250,13 @@ export const action: ActionFunction = withAuthAction(
           html: programmeEmailTemplate(description, footer, {
             name: reg.players?.name || "",
             team: teamByPlayer.get(reg.playerId) || "",
-            ctaUrl: registerUrl,
-            withdrawUrl: `${withdrawBaseUrl}?registration=${reg.id}`,
-            availability,
+            ...(includeAvailability
+              ? {
+                  ctaUrl: registerUrl,
+                  withdrawUrl: `${withdrawBaseUrl}?registration=${reg.id}`,
+                  availability,
+                }
+              : {}),
           }),
         });
       }

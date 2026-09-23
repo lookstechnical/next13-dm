@@ -53,10 +53,31 @@ export const ProgrammeEmailForm: React.FC<ProgrammeEmailFormProps> = ({
           />
         </div>
 
+        {/* Not every message is about availability — a kit note or a
+            thank-you reads better without a table of sessions and a withdraw
+            button under it. Left ticked, because most of these emails are
+            asking members to check their availability. */}
+        <label className="flex items-start gap-3 cursor-pointer text-foreground">
+          <input
+            type="checkbox"
+            name="includeAvailability"
+            defaultChecked
+            className="w-4 h-4 mt-0.5"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm text-white">
+              Include availability summary and buttons
+            </span>
+            <span className="text-xs text-muted">
+              Adds each member's current availability for every session in the
+              programme, with buttons to update it or withdraw. Untick to send
+              the message on its own.
+            </span>
+          </span>
+        </label>
+
         <p className="text-xs text-muted">
-          Every email includes a button linking the member to their registration
-          page, where they can update their availability or withdraw. Use{" "}
-          <code>{"{{name}}"}</code> to insert each member's name and{" "}
+          Use <code>{"{{name}}"}</code> to insert each member's name and{" "}
           <code>{"{{team}}"}</code> to insert their assigned team, in the body
           or footer.
         </p>
