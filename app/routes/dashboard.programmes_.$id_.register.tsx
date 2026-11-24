@@ -464,7 +464,7 @@ const slugify = (value: string) =>
 function defaultEventId(programmeEvents: ProgrammeEvent[]): string | undefined {
   const dated = programmeEvents
     .filter((pe) => pe.events?.date)
-    .sort((a, b) => (a.events!.date < b.events!.date ? -1 : 1));
+    .sort((a, b) => a.events!.date.localeCompare(b.events!.date));
   if (dated.length === 0) return programmeEvents[0]?.eventId;
 
   const todayStart = new Date();

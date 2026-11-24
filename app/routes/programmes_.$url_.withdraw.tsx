@@ -5,6 +5,14 @@ import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ProgrammeService } from "~/services/programmeService";
+import { Resend } from "resend";
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -67,6 +75,28 @@ export const action: ActionFunction = async ({ request, params }) => {
   }
 
   await programmeService.removeRegistration(registrationId);
+
+  // Let the admin know someone has withdrawn. A failed notification must not
+  // undo or block the withdrawal itself, so errors are logged and swallowed.
+  try {
+    const playerName = escapeHtml(registration.players?.name ?? "Unknown player");
+    const playerEmail = escapeHtml(registration.players?.email ?? "");
+    const programmeName = escapeHtml(programme.name ?? "");
+    const resend = new Resend(process.env.VITE_RESEND_API);
+    const { error } = await resend.emails.send({
+      from: "beCoachable <noreply@be-coachable.com>",
+      to: ["info@lookstechnical.co.uk"],
+      subject: `Programme withdrawal: ${registration.players?.name ?? "Unknown player"} - ${programme.name}`,
+      html: `<div>
+        <p><strong>${playerName}</strong>${playerEmail ? ` (${playerEmail})` : ""} has withdrawn from <strong>${programmeName}</strong>.</p>
+        <p>Withdrawn at ${new Date().toLocaleString("en-GB", { timeZone: "Europe/London" })}.</p>
+      </div>`,
+    });
+    if (error) console.error("Withdrawal notification failed", error);
+  } catch (e) {
+    console.error("Withdrawal notification failed", e);
+  }
+
   return { withdrawn: true, error: null };
 };
 
