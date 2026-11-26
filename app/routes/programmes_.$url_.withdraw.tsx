@@ -1,8 +1,10 @@
 import { ActionFunction, LoaderFunction } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData } from "@remix-run/react";
+import { useState } from "react";
 import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
+import { Textarea } from "~/components/ui/textarea";
 import { getSupabaseServerClient } from "~/lib/supabase";
 import { ProgrammeService } from "~/services/programmeService";
 import { Resend } from "resend";
@@ -13,6 +15,22 @@ const escapeHtml = (value: string) =>
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+
+const WITHDRAW_REASONS = [
+  {
+    value: "scholarship_other_club",
+    label: "Accepted a scholarship offer at another club",
+  },
+  { value: "injury", label: "Injury, Illness or health reasons" },
+  { value: "schedule_clash", label: "Can't make the session dates or times" },
+  { value: "school_commitments", label: "School, college or exam commitments" },
+  { value: "other_sport", label: "Focusing on another sport" },
+  { value: "travel", label: "Travel or distance" },
+  { value: "personal", label: "Personal or family reasons" },
+  { value: "other", label: "Other" },
+] as const;
+
+const OTHER_DETAILS_MAX = 1000;
 
 export { ErrorBoundary } from "~/components/error-boundry";
 
@@ -38,9 +56,7 @@ export const loader: LoaderFunction = async ({ request, params }) => {
 
   // The registration must exist and belong to the programme in the URL.
   const valid =
-    !!programme &&
-    !!registration &&
-    registration.programmeId === programme.id;
+    !!programme && !!registration && registration.programmeId === programme.id;
 
   return {
     programme,
@@ -55,6 +71,11 @@ export const action: ActionFunction = async ({ request, params }) => {
 
   const formData = await request.formData();
   const registrationId = formData.get("registrationId") as string;
+  const reasonValue = (formData.get("reason") as string | null) ?? "";
+  const reasonDetails = ((formData.get("reasonDetails") as string | null) ?? "")
+    .trim()
+    .slice(0, OTHER_DETAILS_MAX);
+  const reason = WITHDRAW_REASONS.find((r) => r.value === reasonValue);
 
   const programme = params.url
     ? await programmeService.getProgrammeByUrl(params.url)
@@ -79,17 +100,35 @@ export const action: ActionFunction = async ({ request, params }) => {
   // Let the admin know someone has withdrawn. A failed notification must not
   // undo or block the withdrawal itself, so errors are logged and swallowed.
   try {
-    const playerName = escapeHtml(registration.players?.name ?? "Unknown player");
+    const playerName = escapeHtml(
+      registration.players?.name ?? "Unknown player",
+    );
     const playerEmail = escapeHtml(registration.players?.email ?? "");
     const programmeName = escapeHtml(programme.name ?? "");
+    const reasonLabel = escapeHtml(reason?.label ?? "Not given");
+    const detailsHtml = reasonDetails
+      ? escapeHtml(reasonDetails).replaceAll("\n", "<br />")
+      : "";
     const resend = new Resend(process.env.VITE_RESEND_API);
     const { error } = await resend.emails.send({
       from: "beCoachable <noreply@be-coachable.com>",
       to: ["info@lookstechnical.co.uk"],
-      subject: `Programme withdrawal: ${registration.players?.name ?? "Unknown player"} - ${programme.name}`,
+      subject: `Programme withdrawal: ${
+        registration.players?.name ?? "Unknown player"
+      } - ${programme.name}`,
       html: `<div>
-        <p><strong>${playerName}</strong>${playerEmail ? ` (${playerEmail})` : ""} has withdrawn from <strong>${programmeName}</strong>.</p>
-        <p>Withdrawn at ${new Date().toLocaleString("en-GB", { timeZone: "Europe/London" })}.</p>
+        <p><strong>${playerName}</strong>${
+        playerEmail ? ` (${playerEmail})` : ""
+      } has withdrawn from <strong>${programmeName}</strong>.</p>
+        <p><strong>Reason:</strong> ${reasonLabel}</p>
+        ${
+          detailsHtml
+            ? `<p><strong>Details:</strong><br />${detailsHtml}</p>`
+            : ""
+        }
+        <p>Withdrawn at ${new Date().toLocaleString("en-GB", {
+          timeZone: "Europe/London",
+        })}.</p>
       </div>`,
     });
     if (error) console.error("Withdrawal notification failed", error);
@@ -103,9 +142,10 @@ export const action: ActionFunction = async ({ request, params }) => {
 export default function ProgrammeWithdraw() {
   const { programme, registration, playerName } =
     useLoaderData<typeof loader>();
-  const action = useActionData<typeof action>();
+  const actionData = useActionData<typeof action>();
 
   const programmeName = programme?.name ?? "this programme";
+  const [reason, setReason] = useState("");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -130,7 +170,7 @@ export default function ProgrammeWithdraw() {
       {/* Content */}
       <div className="container mx-auto max-w-2xl px-4 py-6">
         {/* Success: registration removed */}
-        {action?.withdrawn ? (
+        {actionData?.withdrawn ? (
           <Card className="border-border p-8 text-center">
             <CheckCircle className="w-12 h-12 text-success mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-white mb-2">Withdrawn</h2>
@@ -139,12 +179,14 @@ export default function ProgrammeWithdraw() {
               again any time before the deadline.
             </p>
             <Button asChild variant="outline" className="w-full sm:w-auto">
-              <Link to={programme ? `/programmes/${programme.url}` : "/programmes"}>
+              <Link
+                to={programme ? `/programmes/${programme.url}` : "/programmes"}
+              >
                 Back to Programme
               </Link>
             </Button>
           </Card>
-        ) : registration && !action?.error ? (
+        ) : registration && !actionData?.error ? (
           /* Confirmation screen */
           <Card className="border-destructive/30 p-6">
             <h2 className="text-lg font-semibold text-white mb-1">
@@ -163,13 +205,59 @@ export default function ProgrammeWithdraw() {
               This removes you from the programme and all of its sessions. You
               can register again later if you change your mind.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Form method="post">
-                <input
-                  type="hidden"
-                  name="registrationId"
-                  value={registration.id}
-                />
+            <Form method="post">
+              <input
+                type="hidden"
+                name="registrationId"
+                value={registration.id}
+              />
+
+              <fieldset className="mb-6">
+                <legend className="text-sm font-medium text-white mb-3">
+                  Why are you withdrawing? (optional)
+                </legend>
+                <div className="space-y-2">
+                  {WITHDRAW_REASONS.map((r) => (
+                    <label
+                      key={r.value}
+                      className={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${
+                        reason === r.value
+                          ? "border-destructive/60 bg-destructive/10 text-white"
+                          : "border-border text-muted hover:text-white"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="reason"
+                        value={r.value}
+                        checked={reason === r.value}
+                        onChange={(e) => setReason(e.target.value)}
+                        className="accent-destructive"
+                      />
+                      {r.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {reason && (
+                <div className="mb-6">
+                  <label
+                    htmlFor="reasonDetails"
+                    className="block text-sm font-medium text-white mb-2"
+                  >
+                    Anything else you'd like to tell us? (optional)
+                  </label>
+                  <Textarea
+                    id="reasonDetails"
+                    name="reasonDetails"
+                    rows={3}
+                    maxLength={OTHER_DETAILS_MAX}
+                  />
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   type="submit"
                   variant="destructive"
@@ -177,13 +265,17 @@ export default function ProgrammeWithdraw() {
                 >
                   Yes, withdraw me
                 </Button>
-              </Form>
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link to={programme ? `/programmes/${programme.url}` : "/programmes"}>
-                  No, keep my place
-                </Link>
-              </Button>
-            </div>
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                  <Link
+                    to={
+                      programme ? `/programmes/${programme.url}` : "/programmes"
+                    }
+                  >
+                    No, keep my place
+                  </Link>
+                </Button>
+              </div>
+            </Form>
           </Card>
         ) : (
           /* Invalid or already-withdrawn link */
@@ -198,7 +290,9 @@ export default function ProgrammeWithdraw() {
               registration, please use the programme page.
             </p>
             <Button asChild variant="outline" className="w-full sm:w-auto">
-              <Link to={programme ? `/programmes/${programme.url}` : "/programmes"}>
+              <Link
+                to={programme ? `/programmes/${programme.url}` : "/programmes"}
+              >
                 Back to Programme
               </Link>
             </Button>
